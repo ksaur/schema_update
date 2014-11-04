@@ -1,0 +1,25 @@
+{
+    "menu": {
+        "id": 1,
+        "delta": 9,
+        "live": false,
+	"pointer": null,
+        "value": "File",
+        "popup": {
+            "menuitem": [
+                {
+                    "value": "New",
+                    "onclick": "CreateNewDoc()"
+                },
+                {
+                    "value": "Open",
+                    "onclick": "OpenDoc()"
+                },
+                {
+                    "value": "Close",
+                    "onclick": "CloseDoc()"
+                }
+            ]
+        }
+    }
+}
