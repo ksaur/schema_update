@@ -2,7 +2,8 @@
     "menu": {
         "id": 1,
         "live": true,
-	"pointer": null,
+        "deleteme": true,
+        "pointer": null,
         "value": "File",
         "popup": {
             "menuitem": [

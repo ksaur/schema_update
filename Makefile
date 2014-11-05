@@ -1,2 +1,2 @@
 all:
-	gcc -g -o jsondiff jsondiff.c -ljansson
+	gcc -g -o jsondiff jsondiff.c -ljansson -lhiredis

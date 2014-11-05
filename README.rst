@@ -2,8 +2,11 @@ schema_update
 =============
 
 Requires:
-Jansson_
+Jansson_  (jansson.h), HiRedis_ (hiredis.h)
+
+You'll also need to be able to run Redis_.
 
 
 
 .. _Jansson: http://www.digip.org/jansson/
+.. _HiRedis: https://github.com/redis/hiredis
