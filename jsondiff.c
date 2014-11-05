@@ -30,7 +30,6 @@ int rappend(const char * key, const char * value)
 }
 
 /* Add the JSON field @key to the JSON object @root */
-/* TODO make this less horribly inefficient...sprintf? */
 int radd(const char * root, const char * key, command cmd)
 {
    int ret = 0, size = 0;
@@ -45,7 +44,10 @@ int radd(const char * root, const char * key, command cmd)
          printf("ERROR creating a DEFAULT string for %s\n", key);
          return -1;
       }
-      size = asprintf(&app_cmd, "%s%s%s%s%s", SET_CMD_STR, key, ", ", defval, ");\n");
+
+      size = asprintf(&app_cmd, "%s%s%s%s%s", SET_CMD_STR, key, ", ",
+                      defval, ");\n");
+
       if(size == -1)
       {
          printf("ERROR creating a cmd string for %s\n", key);
@@ -148,9 +150,7 @@ void riterall(int scan_at)
 
 }
 
-/*
-    *  This loop checks for objects in "in" that are not present
-    *  in the "out" */
+/* This loop checks for objects in "in" that are not present in the "out" */
 void diff_objects_iter(json_t * in, json_t * out, const char *root, command cmd)
 {
    const char *key;
