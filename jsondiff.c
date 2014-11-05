@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <hiredis/hiredis.h>
 #include <jansson.h>
+#include "jsondiff.h"
 
 /* Global redis instance for storing code to output. Could use a hashmap, but
  * this seem appropriate... */
@@ -30,15 +31,69 @@ int rappend(const char * key, const char * value)
 
 /* Add the JSON field @key to the JSON object @root */
 /* TODO make this less horribly inefficient...sprintf? */
-int radd(const char * root, const char * key)
+int radd(const char * root, const char * key, command cmd)
 {
-   int ret = 0;
-   ret += rappend(root, "\tjson_object_set(out, ");
-   ret += rappend(root, key);
-   ret += rappend(root, ", DEFAULT_");
-   ret += rappend(root, key);
-   ret += rappend(root, ");\n");
+   int ret = 0, size = 0;
+   char * defval;
+   char * app_cmd;
+
+   if(cmd == SET_CMD)
+   {
+      size = asprintf(&defval, "%s%s", "DEFAULT_", key);
+      if(size == -1)
+      {
+         printf("ERROR creating a DEFAULT string for %s\n", key);
+         return -1;
+      }
+      size = asprintf(&app_cmd, "%s%s%s%s%s", SET_CMD_STR, key, ", ", defval, ");\n");
+      if(size == -1)
+      {
+         printf("ERROR creating a cmd string for %s\n", key);
+         return -1;
+      }
+
+      /* add the #define for the user to fill out. */
+      reply = redisCommand(redis, "SADD %s %s", DEFINE_KEY, defval);
+      if(reply->integer == 0)
+         printf("WARNING: %s already added\n", defval);
+      freeReplyObject(reply);
+      free(defval);
+   }
+   else if(cmd ==  DEL_CMD)
+   {
+
+
+      size = asprintf(&app_cmd, "%s%s%s%s", DEL_CMD_STR, key, defval, ");\n");
+      if(size == -1)
+      {
+         printf("ERROR creating a cmd string for %s\n", key);
+         return -1;
+      }
+   }
+
+
+   /* add a command to modify @key in @root */
+   ret = rappend(root, app_cmd);
+
+
+   free(app_cmd);
    return ret;
+}
+
+/* Write out the header to file */
+void rprintheader(void)
+{
+
+   int i;
+   printf("\n");
+   reply = redisCommand(redis, "SMEMBERS %s", DEFINE_KEY);
+   for(i=0; i<reply->elements; i++)
+   {
+      printf("#define %s (your_new_default_val)\n", reply->element[i]->str);
+   }
+   freeReplyObject(reply);
+   printf("\n");
+
 }
 
 /* Write all of the update code/structs out from the database */
@@ -64,6 +119,15 @@ void riterall(int scan_at)
    for(i = 0; i < num_to_iter; i++)
    {
       char * key = reply->element[1]->element[i]->str;
+      reply_local = redisCommand(redis, "TYPE %s", key);
+
+      /* if it's not a string, don't print. */
+      if(strncmp(reply_local->str, "string", 6) != 0)
+      {
+         freeReplyObject(reply_local);
+         continue;
+      }
+      freeReplyObject(reply_local);
       reply_local = redisCommand(redis, "GET %s", key);
       /* TODO printing to file? */
       if(reply_local)
@@ -84,12 +148,55 @@ void riterall(int scan_at)
 
 }
 
+/*
+    *  This loop checks for objects in "in" that are not present
+    *  in the "out" */
+void diff_objects_iter(json_t * in, json_t * out, const char *root, command cmd)
+{
+   const char *key;
+   json_t *value;
+
+   /* Iterate over every key-value pair of object */
+   json_object_foreach(in, key, value)
+   {
+      json_t * outvalue = json_object_get(out, key);
+      if(json_is_object(value))
+      {
+         if(outvalue == NULL)
+            radd(root, key, cmd);
+         else
+            diff_objects(outvalue, value, key);
+      }
+      else if(json_is_string(value) || json_is_number(value) ||
+              json_is_boolean(value) || json_is_null(value))
+      {
+         //printf("Found string = %s\n", key);
+         if(outvalue == NULL)
+            radd(root, key, cmd);
+      }
+      else if(json_is_array(value))
+      {
+         //printf("Found array = %s\n", key);
+         if(outvalue == NULL)
+            printf("OMG TOODO (%s)\n", key);
+         /* TODO: for now, just going to process the FIRST element of the
+            array.  I'm not sure yet what our stated assumptions will be.
+            Currently I'm assuming that all array elements are identical,
+            and that the number of array elements does not matter. */
+
+         /* get and process the head array element */
+         // TODO TESTING
+         else  // oldvalue is not NULL
+            diff_objects_iter(json_array_get(outvalue,  0),
+                              json_array_get(value,  0), NULL, cmd);
+      }
+   }
+}
+
 /* Diff two JSON objects */
 void diff_objects(json_t * old, json_t * new, const char *root)
 {
 
-   const char *key;
-   json_t *value;
 
    if(root == NULL && (!json_is_object(new) || !json_is_object(old)))
    {
@@ -110,6 +217,10 @@ void diff_objects(json_t * old, json_t * new, const char *root)
          rappend(root, "struct upd_");
          rappend(root, root);
          rappend(root, "{\n");
+         diff_objects_iter(old, new, root, DEL_CMD);
+         diff_objects_iter(new, old, root, SET_CMD);
+         /* Print the trailer*/
+         rappend(root, "};");
       }
       else
       {
@@ -117,80 +228,6 @@ void diff_objects(json_t * old, json_t * new, const char *root)
          printf("Already processed %s.\n", root);
       }
    }
-
-   /* Iterate over every key-value pair of object
-    *  This loop checks for objects in the NEW that are not present
-    *  in the OLD */
-   json_object_foreach(new, key, value)
-   {
-      json_t * oldvalue = json_object_get(old, key);
-      if(json_is_object(value))
-      {
-         if(oldvalue == NULL)
-            radd(root, key);
-         else
-            diff_objects(oldvalue, value, key);
-      }
-      else if(json_is_string(value) || json_is_number(value) ||
-              json_is_boolean(value) || json_is_null(value))
-      {
-         //printf("Found string = %s\n", key);
-         if(oldvalue == NULL)
-            radd(root, key);
-      }
-      else if(json_is_array(value))
-      {
-         //printf("Found array = %s\n", key);
-         if(oldvalue == NULL)
-            printf("OMG TOODO (%s)\n", key);
-         /* TODO: for now, just going to process the FIRST element of the
-            array.  I'm not sure yet what our stated assumptions will be.
-            Currently I'm assuming that all array elements are identical,
-            and that the number of array elements does not matter. */
-
-         /* get and process the head array element */
-         // TODO TESTING
-         else  // oldvalue is not NULL
-            diff_objects(json_array_get(oldvalue,  0), json_array_get(value,  0), NULL);
-      }
-   }
-   /* Iterate over every key-value pair of object
-    *  This loop checks for objects in the OLD that are not present
-    *  in the NEW */
-   //TODO fixup
-   //json_object_foreach(old, key, value){
-   //   json_t * newvalue = json_object_get(new, key);
-   //   if(json_is_object(value)){
-   //      if(newvalue == NULL)
-   //         j += sprintf(buffer+j, "\tjson_object_set(out, "
-   //            "\"%s\", DEFAULT_%s);\n", key, key);
-   //      else  // oldvalue is not NULL
-   //         diff_objects(newvalue, value, key);
-   //   }
-   //    else if(json_is_string(value) || json_is_number(value) ||
-   //         json_is_boolean(value) || json_is_null(value)){
-   //      //printf("Found string = %s\n", key);
-   //      if(newvalue == NULL)
-   //         j += sprintf(buffer+j, "\tjson_object_set(out, \"%s\", DEFAULT_%s);\n", key, key);
-   //   }
-   //    else if(json_is_array(value)){
-   //      //printf("Found array = %s\n", key);
-   //      if(newvalue == NULL)
-   //         printf("OMG TOODO (%s)\n", key);
-   //      /* TODO: for now, just going to process the FIRST element of the
-   //         array.  I'm not sure yet what our stated assumptions will be.
-   //         Currently I'm assuming that all array elements are identical,
-   //         and that the number of array elements does not matter. */
-
-   //      /* get and process the head array element */
-   //      // TODO TESTING
-   //      else  // oldvalue is not NULL
-   //         diff_objects(json_array_get(value,  0), json_array_get(newvalue,  0), NULL);
-   //   }
-   //}
-   /* Print the trailer*/
-   if(root !=NULL)
-      rappend(root, "};");
 }
 
 
@@ -334,6 +371,8 @@ int main(int argc, char *argv[])
    char *text, *text2;
    json_t *old, *new;
    json_error_t error, error2;
+   const char *key;
+   json_t *newvalue, *oldvalue;
    const char *host = (argc > 1) ? argv[1] : "127.0.0.1";
    int port = (argc > 2) ? atoi(argv[2]) : 6379;
 
@@ -365,14 +404,18 @@ int main(int argc, char *argv[])
 
    /* This loops over all of the new json fields.
     * Assume drop any fields in the old not in the new  */
-   for (i = 0; i < json_object_size(new); i++)
+   json_object_foreach(new, key, newvalue)
    {
 
-      /* JSON container: object */
+      /* JSON container: object. Look inside */
       if (json_is_object(new))
       {
-         //print_object(new);
-         diff_objects(old, new, NULL);
+         /* get the corresponding old object for comparison */
+         oldvalue = json_object_get(old, key);
+         if(!oldvalue)
+            printf("Warning: No matching object (%s) in old version\n", key);
+         else
+            diff_objects(oldvalue, newvalue, key);
       }
       ///* JSON container: array */
       else if (json_is_array(new))
@@ -385,6 +428,7 @@ int main(int argc, char *argv[])
          /* get and process the head array element */
          // TODO this code not tested
          //print_object(json_array_get(new,  0));
+         //TODO implement!!!
          diff_objects(json_array_get(old,  0), json_array_get(new,  0), NULL);
 
       }
@@ -395,6 +439,9 @@ int main(int argc, char *argv[])
       }
    }
 
+
+   /* Dump the header to file */
+   rprintheader();
 
    /* Dump keys to file */
    riterall(0);
