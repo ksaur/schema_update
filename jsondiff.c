@@ -87,14 +87,26 @@ void rprintheader(void)
 {
 
    int i;
-   printf("\n");
+   printf("\n\n"); //TODO put all to file instead of printing
+   printf("/*file: jsondiff.c\n *Generated structures to migrate schema.\n ");
+   printf("*fill in the initialization values for (your_new_default_val).\n */\n");
+
+   /* Print out all of the #defines for the user to fill in */
    reply = redisCommand(redis, "SMEMBERS %s", DEFINE_KEY);
    for(i=0; i<reply->elements; i++)
    {
       printf("#define %s (your_new_default_val)\n", reply->element[i]->str);
    }
    freeReplyObject(reply);
-   printf("\n");
+
+   /* Print of all the forward declarations. */
+//   reply = redisCommand(redis, "SMEMBERS %s", TOP_DECLS_KEY);
+//   for(i=0; i<reply->elements; i++)
+//   {
+//      printf("%s\n", reply->element[i]->str);
+//   }
+//   freeReplyObject(reply);
+   printf("\n\n/* Migration functions */\n");
 
 }
 
@@ -150,7 +162,30 @@ void riterall(int scan_at)
 
 }
 
-/* This loop checks for objects in "in" that are not present in the "out" */
+/* Print the forward calls for this object */
+// TODO merge old/new....
+// TODO make sure functions exists!!!!!!!!!
+// TODO forward decls!!
+void diff_objects_continue(json_t * old, json_t * new, const char * root)
+{
+   const char *key;
+   json_t *value;
+
+   json_object_foreach(old, key, value)
+   {
+      json_t * value = json_object_get(old, key);
+      if(json_is_object(value))
+      {
+         char * cmd;
+         int err = asprintf(&cmd, "\t%s%s%s", "upd_", key, "(obj);\n\n");
+         rappend(root, cmd);
+         free(cmd);
+      }
+   }
+}
+
+/* This loop checks for objects in "in" that are not present in the "out".
+ * Called for new->old and old->new */
 void diff_objects_iter(json_t * in, json_t * out, const char *root, command cmd)
 {
    const char *key;
@@ -214,11 +249,25 @@ void diff_objects(json_t * old, json_t * new, const char *root)
       {
          freeReplyObject(reply);
          printf("Processing %s:\n", root);
-         rappend(root, "struct upd_");
-         rappend(root, root);
-         rappend(root, "{\n");
+         char * header;
+
+         int err = asprintf(&header, "%s%s%s%s%s", "struct upd_", root,
+                            "(json_t * parent){\n\tjson_t * obj = "
+                            "json_object_get(parent, ", root, ");\n\n");
+         if(err == -1)
+         {
+            printf("ERROR: Problem creating header\n");
+            return;
+         }
+
+         rappend(root, header);
+         free(header);
          diff_objects_iter(old, new, root, DEL_CMD);
          diff_objects_iter(new, old, root, SET_CMD);
+
+         /* Insert function calls for subsequent objects */
+         diff_objects_continue(old, new, root);
+
          /* Print the trailer*/
          rappend(root, "};");
       }
