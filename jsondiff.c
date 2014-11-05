@@ -100,12 +100,13 @@ void rprintheader(void)
    freeReplyObject(reply);
 
    /* Print of all the forward declarations. */
-//   reply = redisCommand(redis, "SMEMBERS %s", TOP_DECLS_KEY);
-//   for(i=0; i<reply->elements; i++)
-//   {
-//      printf("%s\n", reply->element[i]->str);
-//   }
-//   freeReplyObject(reply);
+   printf("\n\n/* Declarations */\n");
+   reply = redisCommand(redis, "SMEMBERS %s", TOP_DECLS_KEY);
+   for(i=0; i<reply->elements; i++)
+   {
+      printf("%s\n", reply->element[i]->str);
+   }
+   freeReplyObject(reply);
    printf("\n\n/* Migration functions */\n");
 
 }
@@ -232,6 +233,8 @@ void diff_objects_iter(json_t * in, json_t * out, const char *root, command cmd)
 void diff_objects(json_t * old, json_t * new, const char *root)
 {
 
+   char * header, * decl;
+   int err;
 
    if(root == NULL && (!json_is_object(new) || !json_is_object(old)))
    {
@@ -249,9 +252,7 @@ void diff_objects(json_t * old, json_t * new, const char *root)
       {
          freeReplyObject(reply);
          printf("Processing %s:\n", root);
-         char * header;
-
-         int err = asprintf(&header, "%s%s%s%s%s", "struct upd_", root,
+         err = asprintf(&header, "%s%s%s%s%s", "struct upd_", root,
                             "(json_t * parent){\n\tjson_t * obj = "
                             "json_object_get(parent, ", root, ");\n\n");
          if(err == -1)
@@ -264,6 +265,20 @@ void diff_objects(json_t * old, json_t * new, const char *root)
          free(header);
          diff_objects_iter(old, new, root, DEL_CMD);
          diff_objects_iter(new, old, root, SET_CMD);
+
+         /* Insert function call for @root to forward declaration */
+         err = asprintf(&decl, "%s%s%s", "struct upd_", root,
+                            "(json_t * parent);");
+         if(err == -1)
+         {
+            printf("ERROR: Problem creating header\n");
+            return;
+         }
+         reply = redisCommand(redis, "SADD %s %s", TOP_DECLS_KEY, decl);
+         if(reply->integer == 0)
+            printf("WARNING: %s already added\n", decl);
+         freeReplyObject(reply);
+         free(decl);
 
          /* Insert function calls for subsequent objects */
          diff_objects_continue(old, new, root);
