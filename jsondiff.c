@@ -21,10 +21,24 @@ redisReply *reply;
 
 
 /* Return the length of the string appended */
+int rsadd(const char * key, const char * value)
+{
+   int ret;
+   reply = redisCommand(redis, "SADD %s %s", key, value);
+   ret = reply->integer;
+   if(reply->integer == 0)
+      printf("WARNING: %s already added\n", value);
+   freeReplyObject(reply);
+   return ret;
+}
+
+/* Return the length of the string appended */
 int rappend(const char * key, const char * value)
 {
+   int ret;
    reply = redisCommand(redis, "APPEND %s %s", key, value);
-   int ret = reply->integer;
+   ret = reply->integer;
+   ret = reply->integer;
    freeReplyObject(reply);
    return ret;
 }
@@ -55,10 +69,7 @@ int radd(const char * root, const char * key, command cmd)
       }
 
       /* add the #define for the user to fill out. */
-      reply = redisCommand(redis, "SADD %s %s", DEFINE_KEY, defval);
-      if(reply->integer == 0)
-         printf("WARNING: %s already added\n", defval);
-      freeReplyObject(reply);
+      rsadd(DEFINE_KEY, defval); 
       free(defval);
    }
    else if(cmd ==  DEL_CMD)
@@ -142,7 +153,9 @@ void riterall(int scan_at)
       char * key = reply->element[1]->element[i]->str;
       reply_local = redisCommand(redis, "TYPE %s", key);
 
-      /* if it's not a string, don't print. */
+      /* If it's not a string, don't print.
+       * (All strings in the database are functions to print.
+       * All sets, etc are auxillary, so skip them here.) */
       if(strncmp(reply_local->str, "string", 6) != 0)
       {
          freeReplyObject(reply_local);
@@ -282,10 +295,9 @@ void diff_objects(json_t * old, json_t * new, const char *root)
             printf("ERROR: Problem creating header\n");
             return;
          }
-         reply = redisCommand(redis, "SADD %s %s", TOP_DECLS_KEY, decl);
-         if(reply->integer == 0)
-            printf("WARNING: %s already added\n", decl);
-         freeReplyObject(reply);
+
+         /* add the function declaration to the set of top decls */
+         rsadd(TOP_DECLS_KEY, decl); 
          free(decl);
 
          /* Insert function calls for subsequent objects */
