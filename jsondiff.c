@@ -72,6 +72,10 @@ int radd(const char * root, const char * key, command cmd)
          return -1;
       }
    }
+   else
+   {
+      printf("ERROR: unknown function command %d\n", cmd);
+   }
 
 
    /* add a command to modify @key in @root */
@@ -88,8 +92,10 @@ void rprintheader(void)
 
    int i;
    printf("\n\n"); //TODO put all to file instead of printing
-   printf("/*file: jsondiff.c\n *Generated structures to migrate schema.\n ");
-   printf("*fill in the initialization values for (your_new_default_val).\n */\n");
+   printf("/* file: jsondiff.c\n * Generated structures to migrate schema.\n");
+   printf(" * TODO: (somehow enable the user to) fill in the initialization\n");
+   printf(" *       values for (your_new_default_val).\n */\n\n");
+   printf("#include <jansson.h>\n");
 
    /* Print out all of the #defines for the user to fill in */
    reply = redisCommand(redis, "SMEMBERS %s", DEFINE_KEY);
@@ -253,8 +259,8 @@ void diff_objects(json_t * old, json_t * new, const char *root)
          freeReplyObject(reply);
          printf("Processing %s:\n", root);
          err = asprintf(&header, "%s%s%s%s%s", "struct upd_", root,
-                            "(json_t * parent){\n\tjson_t * obj = "
-                            "json_object_get(parent, ", root, ");\n\n");
+                        "(json_t * parent){\n\tjson_t * obj = "
+                        "json_object_get(parent, ", root, ");\n\n");
          if(err == -1)
          {
             printf("ERROR: Problem creating header\n");
@@ -263,12 +269,14 @@ void diff_objects(json_t * old, json_t * new, const char *root)
 
          rappend(root, header);
          free(header);
+
+         /* Call the iteration functions to create the diff function calls */
          diff_objects_iter(old, new, root, DEL_CMD);
          diff_objects_iter(new, old, root, SET_CMD);
 
          /* Insert function call for @root to forward declaration */
          err = asprintf(&decl, "%s%s%s", "struct upd_", root,
-                            "(json_t * parent);");
+                        "(json_t * parent);");
          if(err == -1)
          {
             printf("ERROR: Problem creating header\n");
