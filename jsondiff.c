@@ -102,7 +102,7 @@ void rprintheader(void)
 
    int i;
    printf("\n\n"); //TODO put all to file instead of printing
-   printf("/* file: jsondiff.c\n * Generated functions to migrate schema.\n");
+   printf("/* file: jsondiffcmds.c\n * Generated functions to migrate schema.\n");
    printf(" * TODO: (somehow enable the user to) fill in the initialization\n");
    printf(" *       values for (your_new_default_val).\n */\n\n");
    printf("#include <jansson.h>\n");

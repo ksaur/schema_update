@@ -1,4 +1,8 @@
 Download redis...I grabbed redis-2.8.17.
 
-More changes to be added soon.  For now, just dump the generated C file into
-redis' /src directory, and change the Makefile in /src to the one here.
+More changes to be added soon.  For now, just dump the generated C file (save
+it as jsondiffcmds.c) into redis' /src directory, and change the Makefile in
+/src to the one here.
+
+(The only changes to Redis' make file are the linking with jansson and the
+compiling the jsondiffcmds.o file)
