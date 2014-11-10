@@ -6,3 +6,7 @@ it as jsondiffcmds.c) into redis' /src directory, and change the Makefile in
 
 (The only changes to Redis' make file are the linking with jansson and the
 compiling the jsondiffcmds.o file)
+
+Later, this (jsondiffcmds.o) is going to have to be some sort of dynamically
+loaded object so that the user can dynamically generated and then run what
+schema change they want...
