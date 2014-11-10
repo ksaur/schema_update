@@ -1,0 +1,4 @@
+Download redis...I grabbed redis-2.8.17.
+
+More changes to be added soon.  For now, just dump the generated C file into
+redis' /src directory, and change the Makefile in /src to the one here.
