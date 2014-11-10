@@ -68,7 +68,7 @@ int radd(const char * root, const char * key, command cmd)
       }
 
       /* add the #define for the user to fill out. */
-      rsadd(DEFINE_KEY, defval); 
+      rsadd(DEFINE_KEY, defval);
       free(defval);
    }
    else if(cmd ==  DEL_CMD)
@@ -106,6 +106,7 @@ void rprintheader(void)
    printf(" * TODO: (somehow enable the user to) fill in the initialization\n");
    printf(" *       values for (your_new_default_val).\n */\n\n");
    printf("#include <jansson.h>\n");
+   printf("#include <string.h>\n");
 
    /* Print out all of the #defines for the user to fill in */
    printf("/* All user-defined variables must be strings (put int's in \"'s).*/\n");
@@ -121,8 +122,29 @@ void rprintheader(void)
    reply = redisCommand(redis, "SMEMBERS %s", TOP_DECLS_KEY);
    for(i=0; i<reply->elements; i++)
    {
-      printf("%s\n", reply->element[i]->str);
+      char * decl;
+      /* Insert function call for @root to forward declaration */
+      int err = asprintf(&decl, "%s%s%s", "void upd_", reply->element[i]->str,
+                         "(json_t * parent);");
+      if(err == -1)
+      {
+         printf("ERROR: Problem creating header\n");
+         return;
+      }
+      printf("%s\n", decl);
+      free(decl);
    }
+   /* Print the giant switch function...for now... */
+   printf("\n\n/* The update funcion: */\n");
+   printf("void update_json(json_t * parent, const char* key){\n");
+   for(i=0; i<reply->elements; i++)
+   {
+      printf("  if(strncmp(key, \"%s\", %d) == 0){\n", reply->element[i]->str,
+             reply->element[i]->len);
+      printf("    upd_%s(parent);\n    return;\n", reply->element[i]->str);
+      printf("  }\n");
+   }
+   printf("  printf(\"ERROR!!! Did not find match TODO\");\n}\n\n");
    freeReplyObject(reply);
    printf("\n\n/* Migration functions */\n");
 
@@ -185,7 +207,6 @@ void riterall(int scan_at)
 /* Print the forward calls for this object */
 // TODO merge old/new....
 // TODO make sure functions exists!!!!!!!!!
-// TODO forward decls!!
 void diff_objects_continue(json_t * old, json_t * new, const char * root)
 {
    const char *key;
@@ -197,7 +218,7 @@ void diff_objects_continue(json_t * old, json_t * new, const char * root)
       if(json_is_object(value))
       {
          char * cmd;
-         int err = asprintf(&cmd, "\t%s%s%s", "upd_", key, "(obj);\n\n");
+         int err = asprintf(&cmd, "  %s%s%s", "upd_", key, "(obj);\n\n");
          rappend(root, cmd);
          free(cmd);
       }
@@ -252,7 +273,7 @@ void diff_objects_iter(json_t * in, json_t * out, const char *root, command cmd)
 void diff_objects(json_t * old, json_t * new, const char *root)
 {
 
-   char * header, * decl;
+   char * header;
    int err;
 
    if(root == NULL && (!json_is_object(new) || !json_is_object(old)))
@@ -272,7 +293,7 @@ void diff_objects(json_t * old, json_t * new, const char *root)
          freeReplyObject(reply);
          printf("Processing %s:\n", root);
          err = asprintf(&header, "%s%s%s%s%s", "void upd_", root,
-                        "(json_t * parent){\n\tjson_t * obj = "
+                        "(json_t * parent){\n  json_t * obj = "
                         "json_object_get(parent, \"", root, "\");\n\n");
          if(err == -1)
          {
@@ -287,18 +308,8 @@ void diff_objects(json_t * old, json_t * new, const char *root)
          diff_objects_iter(old, new, root, DEL_CMD);
          diff_objects_iter(new, old, root, SET_CMD);
 
-         /* Insert function call for @root to forward declaration */
-         err = asprintf(&decl, "%s%s%s", "void upd_", root,
-                        "(json_t * parent);");
-         if(err == -1)
-         {
-            printf("ERROR: Problem creating header\n");
-            return;
-         }
-
          /* add the function declaration to the set of top decls */
-         rsadd(TOP_DECLS_KEY, decl); 
-         free(decl);
+         rsadd(TOP_DECLS_KEY, root);
 
          /* Insert function calls for subsequent objects */
          diff_objects_continue(old, new, root);

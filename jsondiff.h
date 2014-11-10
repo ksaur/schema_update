@@ -2,8 +2,8 @@
 #define JSONDIFF_H
 
 typedef enum {SET_CMD, DEL_CMD} command;
-#define SET_CMD_STR "\tjson_object_set(obj, "
-#define DEL_CMD_STR "\tjson_object_del(obj, "
+#define SET_CMD_STR "  json_object_set(obj, "
+#define DEL_CMD_STR "  json_object_del(obj, "
 
 
 #define DEFINE_KEY "setofdefines"
