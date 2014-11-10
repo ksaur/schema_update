@@ -1,0 +1,16 @@
+{
+    "_id": "4bd8ae97c47016442af4a580",
+    "customerid": 99999,
+    "name": "Foo Sushi Inc",
+    "since": "12/12/2001",
+    "order": {
+        "orderid": "UXWE-122012",
+        "orderdate": "12/12/2001",
+        "orderItems": [
+            {
+                "product": "Fortune Cookies",
+                "price": 19.99
+            }
+        ]
+    }
+}
