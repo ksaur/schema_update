@@ -59,8 +59,7 @@ int radd(const char * root, const char * key, command cmd)
          return -1;
       }
 
-      size = asprintf(&app_cmd, "%s%s%s%s%s", SET_CMD_STR, key, ", ",
-                      defval, ");\n");
+      size = asprintf(&app_cmd, "%s\"%s\", json_string(%s));\n", SET_CMD_STR, key, defval);
 
       if(size == -1)
       {
@@ -76,7 +75,7 @@ int radd(const char * root, const char * key, command cmd)
    {
 
 
-      size = asprintf(&app_cmd, "%s%s%s%s", DEL_CMD_STR, key, defval, ");\n");
+      size = asprintf(&app_cmd, "%s\"%s\");\n", DEL_CMD_STR, key);
       if(size == -1)
       {
          printf("ERROR creating a cmd string for %s\n", key);
@@ -103,12 +102,13 @@ void rprintheader(void)
 
    int i;
    printf("\n\n"); //TODO put all to file instead of printing
-   printf("/* file: jsondiff.c\n * Generated structures to migrate schema.\n");
+   printf("/* file: jsondiff.c\n * Generated functions to migrate schema.\n");
    printf(" * TODO: (somehow enable the user to) fill in the initialization\n");
    printf(" *       values for (your_new_default_val).\n */\n\n");
    printf("#include <jansson.h>\n");
 
    /* Print out all of the #defines for the user to fill in */
+   printf("/* All user-defined variables must be strings (put int's in \"'s).*/\n");
    reply = redisCommand(redis, "SMEMBERS %s", DEFINE_KEY);
    for(i=0; i<reply->elements; i++)
    {
@@ -271,9 +271,9 @@ void diff_objects(json_t * old, json_t * new, const char *root)
       {
          freeReplyObject(reply);
          printf("Processing %s:\n", root);
-         err = asprintf(&header, "%s%s%s%s%s", "struct upd_", root,
+         err = asprintf(&header, "%s%s%s%s%s", "void upd_", root,
                         "(json_t * parent){\n\tjson_t * obj = "
-                        "json_object_get(parent, ", root, ");\n\n");
+                        "json_object_get(parent, \"", root, "\");\n\n");
          if(err == -1)
          {
             printf("ERROR: Problem creating header\n");
@@ -288,7 +288,7 @@ void diff_objects(json_t * old, json_t * new, const char *root)
          diff_objects_iter(new, old, root, SET_CMD);
 
          /* Insert function call for @root to forward declaration */
-         err = asprintf(&decl, "%s%s%s", "struct upd_", root,
+         err = asprintf(&decl, "%s%s%s", "void upd_", root,
                         "(json_t * parent);");
          if(err == -1)
          {
@@ -304,7 +304,7 @@ void diff_objects(json_t * old, json_t * new, const char *root)
          diff_objects_continue(old, new, root);
 
          /* Print the trailer*/
-         rappend(root, "};");
+         rappend(root, "}");
       }
       else
       {
