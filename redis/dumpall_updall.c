@@ -9,6 +9,7 @@
 #include <hiredis/hiredis.h>
 #include <jansson.h>
 
+
 redisContext *redis;
 redisReply *reply;
 
@@ -38,7 +39,7 @@ int main(int argc, char *argv[])
    int i;
    const char *host = (argc > 1) ? argv[1] : "127.0.0.1";
    int port = (argc > 2) ? atoi(argv[2]) : 6379;
-   json_t *old, *new;
+   json_t *old;
    json_error_t error;
    const char *key;
    json_t *newvalue, *oldvalue;
@@ -67,23 +68,40 @@ int main(int argc, char *argv[])
          old = json_loads(reply->str, 0, &error);
          if (json_is_object(old))
          {
-            printf("successfully loaded object into json for key %s\n", curr_key);
-			/* Grab the head key.  Assuming for now that there is just one json
-             * object per redis entry*/
-            json_object_foreach(old, key, oldvalue){
-                printf("key = %s\n", key);
+            printf("Loaded object into json for key %s\n", curr_key);
+
+            /* Assume here should only be one object per redis JSON entry.
+             * There is no way with Jansson to get the name of the object
+             * except by looping, so hence the loop. Iterate once, then break*/
+            json_object_foreach(old, key, oldvalue)
+            {
+               printf("key = %s\n", key);
+               update_json(old, key);
+               freeReplyObject(reply);
+               char * new = json_dumps(old, JSON_INDENT(2)); //indent for \"'s
+               if(new==NULL)
+               {
+                  printf("ERROR: Could not parse key (%s) into json\n", curr_key);
+                  break;
+               }
+               reply = redisCommand(redis, "SET %s \"%s\"", curr_key, new);
+               if((reply->len != 2) || (strncmp(reply->str, "OK", 2) != 0))
+               {
+                  printf("ERROR: Could not write updated key (%s) back to redis\n",
+                         curr_key);
+               }
+               freeReplyObject(reply);
+               /* Break out of iterator... see comment at top of loop*/
+               break;
 
             }
          }
          else
          {
-
             printf("Failed to load object into json for key %s\n", curr_key);
+            freeReplyObject(reply);
          }
-
-         freeReplyObject(reply);
       }
-
    }
    freeReplyObject(all_keys_arr);
 
