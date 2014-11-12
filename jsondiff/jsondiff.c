@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>     /* assert */
 #include <hiredis/hiredis.h>
 #include <jansson.h>
 #include "jsondiff.h"
@@ -468,12 +469,15 @@ int main(int argc, char *argv[])
    json_error_t error, error2;
    const char *key;
    json_t *newvalue, *oldvalue;
-   const char *host = (argc > 1) ? argv[1] : "127.0.0.1";
-   int port = (argc > 2) ? atoi(argv[2]) : 6379;
+   if(!((argc == 1) || (argc == 3))){
+      printf("expected (program file file) or (program), but got %d args\n", argc);
+      return -1;
+   }
+   char *fileold = (argc > 2) ? argv[1] : "../example_json/simple1.json";
+   char *filenew = (argc > 2) ? argv[2] : "../example_json/simple2.json";
 
-   // TODO args.
-   text = request("./example_json/simple1.json");
-   text2 = request("./example_json/simple2.json");
+   text = request(fileold);
+   text2 = request(filenew);
    if(!text || !text2)
       return 1;
 
@@ -482,7 +486,7 @@ int main(int argc, char *argv[])
    free(text);
    free(text2);
 
-   redisconnect(host, port);
+   redisconnect("127.0.0.1", 6379);
 
 
    if(!old)

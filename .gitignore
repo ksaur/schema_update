@@ -27,7 +27,8 @@
 *.i*86
 *.x86_64
 *.hex
-jsondiff
+jsondiff/jsondiff
+redis_schema_upd/dumpall_updall
 
 # Dev artifacts
 *.swp
