@@ -64,7 +64,7 @@ def diff(left_struc, right_struc, verbose=True, key=None):
         print("Truncating Array....")
         left_struc=left_struc[0]
         right_struc=right_struc[0]
-    if common < 0.5:
+    if common is True:
         print ("a") 
         print type(left_struc)
         # We don't care about values changing, just keys.
@@ -233,6 +233,11 @@ def compute_keysets(left_seq, right_seq):
     left_only = left_keyset - right_keyset
     right_only = right_keyset - left_keyset
 
+    print ("=========================================")
+    print (overlap)
+    print (left_only)
+    print (right_only)
+    print ("=========================================")
     return (overlap, left_only, right_only)
 
 def keyset_diff(left_struc, right_struc, key):
@@ -249,8 +254,15 @@ def keyset_diff(left_struc, right_struc, key):
     '''
     out = []
     (o, l, r) = compute_keysets(left_struc, right_struc)
+    print "11111111"
+    print out
     out.extend([[key + [k]] for k in l])
-    out.extend([[key + [k], right_struc[k]] for k in r])
+    print "22222222"
+    print out
+    out.extend([[key + [k], "INIT"] for k in r])
+    #out.extend([[key + [k], right_struc[k]] for k in r])
+    print "33333333"
+    print out
     for k in o:
         print ("Processing: " + k)
         sub_key = key + [k]
@@ -262,58 +274,37 @@ def this_level_diff(left_struc, right_struc, key=None, common=None):
     '''Return a sequence of diff stanzas between the structures
     left_struc and right_struc, assuming that they are each at the
     key-path ``key`` within the overall structure.'''
+#==========
 
-    print("LEFT AND RIGHT:")
-    print(left_struc)
-    print(right_struc)
+    #print("LEFT AND RIGHT:")
+    #print(left_struc)
+    #print(right_struc)
+#==========
     out = []
-
-    if key is None:
-        key = []
-
-    if common is None:
-        common = commonality(left_struc, right_struc)
-
-    if common:
-        (o, l, r) = compute_keysets(left_struc, right_struc)
-        for okey in o:
-            if left_struc[okey] != right_struc[okey]:
-                out.append([key[:] + [okey], right_struc[okey]])
-        for okey in l:
-            out.append([key[:] + [okey]])
-        for okey in r:
+    # Always compute the keysets, return the diff.
+    (o, l, r) = compute_keysets(left_struc, right_struc)
+    for okey in o:
+        if left_struc[okey] != right_struc[okey]:
             out.append([key[:] + [okey], right_struc[okey]])
-        return out
-    elif left_struc != right_struc:
-        return [[key[:], right_struc]]
-    else:
-        return []
+    for okey in l:
+        print ("DELETE ME!!!")
+        print (okey)
+        out.append([key[:] + [okey]])
+    for okey in r:
+        print ("ADDD MEEE!!!")
+        print (right_struc[okey])
+        out.append([key[:] + [okey], right_struc[okey]])
+    return out
 
 def commonality(left_struc, right_struc):
-    '''Return a float between 0.0 and 1.0 representing the amount
-    that the structures left_struc and right_struc have in common.  
-
-    If left_struc and right_struc are of the same type, this is
-    computed as the fraction (elements in common) / (total elements).
-    Otherwise, commonality is 0.0.
+    '''Return True if structs are the same type or terminals. Else False.
     '''
     if type(left_struc) is not type(right_struc):
-        return 0.0
+        return True
     if type(left_struc) in TERMINALS:
-        return 0.0
-    if type(left_struc) is dict:
-        (o, l, r) = compute_keysets(left_struc, right_struc)
-        com = float(len(o))
-        tot = len(o.union(l, r))
+        return True
     else:
-        assert type(left_struc) in (list, tuple), left_struc
-        com = 0.0
-        for elem in left_struc:
-            if elem in right_struc: com += 1
-        tot = max(len(left_struc), len(right_struc))
-
-    if not tot: return 0.0
-    return com / tot
+        return False
 
 def split_deletions(diff):
     '''Return a tuple of length 3, of which the first element is a
@@ -489,10 +480,9 @@ def main():
     json2 = json.loads(str2, object_hook=_decode_dict)
 
     ###print ("\n\nTHE DELTA IS:")
-    thediffto = diff(json1, json2)
-    thedifffrom = diff(json2, json1)
-    print (thediffto)
-    print (thedifffrom)
+    thediff = diff(json1, json2)
+    #thediff = diff(dbg1, dbg2)
+    print (thediff)
 
 
     #print (compute_keysets(json1, json2))
