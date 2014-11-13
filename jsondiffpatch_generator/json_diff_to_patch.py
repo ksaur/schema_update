@@ -391,13 +391,15 @@ def main():
     str2 = file2.read()
     json1 = json.loads(str1, object_hook=_decode_dict)
     json2 = json.loads(str2, object_hook=_decode_dict)
+    print ("\nTHE KEYS ARE: (len " + str(len(json1.keys())) + ")") 
+    print json1.keys() 
 
-    print ("\n\nTHE DIFF IS:")
     thediff = diff(json1, json2)
+    print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
     #thediff = diff(dbg1, dbg2)
     print (thediff)
 
-    print ("\n\nPATCH IS:")
+    print ("\nPATCHED FILE1 IS:")
     #thepatch = patch(dbg1, thediff)
     thepatch = patch(json1, thediff)
     print thepatch

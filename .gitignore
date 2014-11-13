@@ -33,3 +33,4 @@ redis_schema_upd/dumpall_updall
 
 # Dev artifacts
 *.swp
+*.bak
