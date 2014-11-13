@@ -37,6 +37,8 @@ SERIALIZABLE_TYPES = ((str, int, float, bool, type(None),
 # ----------------------------------------------------------------------
 # Main entry points
 
+initdict = dict()
+
 def diff(left_struc, right_struc, key=None):
     '''Compose a sequence of diff stanzas sufficient to convert the
     structure ``left_struc`` into the structure ``right_struc``.  (The
@@ -382,27 +384,49 @@ def _decode_dict(data):
 
 
 def main():
-    assert len(sys.argv) is 3
+    assert (len(sys.argv) in (3, 4)), '\n\nUsage is: \"python json_diff_to_patch.py <json1> <json2> (optional <initfile>)\".\n Ex: \"python json_diff_to_patch.py ../example_json/sample1.json ../example_json/sample2.json\"'
 
-    #print ("\nDiff'ing files:" + sys.argv[1] +  " and " +sys.argv[2])
     file1 = open(sys.argv[1], 'r')
     file2 = open(sys.argv[2], 'r')
     str1 = file1.read()
     str2 = file2.read()
     json1 = json.loads(str1, object_hook=_decode_dict)
     json2 = json.loads(str2, object_hook=_decode_dict)
+
+   # # Load up the init file
+   # if len(sys.argv) is 4:
+   #     dslfile = open(sys.argv[3], 'r')
+   #     #for line in dslfile:
+   #     #    print line,
+   #     #    initdict 
+
+   #     patterns = ['(INIT\\w+)(=)(\\w+)(if)(\\w+)(=)(\\w+)', #INIT with a clause
+   #                 '(INIT\\w+)(=)(\\w+)',    #INIT with no caluse
+   #                 '(INIT\\w+)']    #INIT dbg
+
+   #     def extract_from_re(estr):
+   #         for p in patterns:
+   #             if re.match(p,estr) is not None:
+   #                 cmd_re = re.compile(p)
+   #                 cmd = cmd_re.search(estr)
+   #                 return cmd
+   #             else:
+   #                 print "FAIL"
+
+   #     for line in dslfile:
+   #         print line
+   #         curr = extract_from_re(line)
+   #         print curr
+
     print ("\nTHE KEYS ARE: (len " + str(len(json1.keys())) + ")") 
     print json1.keys() 
 
     thediff = diff(json1, json2)
     print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
-    #thediff = diff(dbg1, dbg2)
     print (thediff)
 
     print ("\nPATCHED FILE1 IS:")
-    #thepatch = patch(dbg1, thediff)
-    thepatch = patch(json1, thediff)
-    print thepatch
+    print patch(json1, thediff)
 
 
 if __name__ == '__main__':
