@@ -51,8 +51,6 @@ def diff(left_struc, right_struc, verbose=True, key=None):
     If set to a list, it will be prefixed to every keypath in the
     output.
     '''
-    print ("in diff with key")
-    print (key)
     if key is None:
         key = []
     common = commonality(left_struc, right_struc)
@@ -65,8 +63,6 @@ def diff(left_struc, right_struc, verbose=True, key=None):
         left_struc=left_struc[0]
         right_struc=right_struc[0]
     if common is True:
-        print ("a") 
-        print type(left_struc)
         # We don't care about values changing, just keys.
         # This will ignore the values and just continue processing if
         # the type has changed, or if it's a container (list/dict)
@@ -75,10 +71,7 @@ def diff(left_struc, right_struc, verbose=True, key=None):
             my_diff = this_level_diff(left_struc, right_struc, key, common)
         else:
             my_diff = []
-        print ("GOT THIS:")
-        print my_diff
     else:
-        print ("c")
         my_diff = keyset_diff(left_struc, right_struc, key)
 
     if key == []:
@@ -233,11 +226,11 @@ def compute_keysets(left_seq, right_seq):
     left_only = left_keyset - right_keyset
     right_only = right_keyset - left_keyset
 
-    print ("=========================================")
-    print (overlap)
-    print (left_only)
-    print (right_only)
-    print ("=========================================")
+    #print ("======= overlap / left / right ==========")
+    #print (overlap)
+    #print (left_only)
+    #print (right_only)
+    #print ("=========================================")
     return (overlap, left_only, right_only)
 
 def keyset_diff(left_struc, right_struc, key):
@@ -254,17 +247,11 @@ def keyset_diff(left_struc, right_struc, key):
     '''
     out = []
     (o, l, r) = compute_keysets(left_struc, right_struc)
-    print "11111111"
-    print out
     out.extend([[key + [k]] for k in l])
-    print "22222222"
-    print out
     out.extend([[key + [k], "INIT"] for k in r])
+    # TODO, pull INIT from db
     #out.extend([[key + [k], right_struc[k]] for k in r])
-    print "33333333"
-    print out
     for k in o:
-        print ("Processing: " + k)
         sub_key = key + [k]
         out.extend(diff(left_struc[k], right_struc[k],
                         False, sub_key))
@@ -274,12 +261,6 @@ def this_level_diff(left_struc, right_struc, key=None, common=None):
     '''Return a sequence of diff stanzas between the structures
     left_struc and right_struc, assuming that they are each at the
     key-path ``key`` within the overall structure.'''
-#==========
-
-    #print("LEFT AND RIGHT:")
-    #print(left_struc)
-    #print(right_struc)
-#==========
     out = []
     # Always compute the keysets, return the diff.
     (o, l, r) = compute_keysets(left_struc, right_struc)
@@ -287,12 +268,8 @@ def this_level_diff(left_struc, right_struc, key=None, common=None):
         if left_struc[okey] != right_struc[okey]:
             out.append([key[:] + [okey], right_struc[okey]])
     for okey in l:
-        print ("DELETE ME!!!")
-        print (okey)
         out.append([key[:] + [okey]])
     for okey in r:
-        print ("ADDD MEEE!!!")
-        print (right_struc[okey])
         out.append([key[:] + [okey], right_struc[okey]])
     return out
 
@@ -356,22 +333,21 @@ def patch_stanza(struc, diff):
         struc = list(struc)[:]
     key = diff[0]
     if not key:
-        print ("0")
-        print (diff[1])
         struc = diff[1]
         changeback = False
     elif len(key) == 1:
         if len(diff) == 1:
-            print ("1")
             del struc[key[0]]
         elif (type(struc) in (list, tuple)) and key[0] == len(struc):
-            print ("2")
             struc.append(diff[1])
         else:
-            print ("3")
-            struc[key[0]] = diff[1]
+            # From array truncation
+            if type(struc) is list:
+               for e in struc:
+                  e[key[0]] = diff[1]
+            else:
+                struc[key[0]] = diff[1]
     else:
-        print ("4")
         pass_key = key[:]
         pass_struc_key = pass_key.pop(0)
         pass_struc = struc[pass_struc_key]
@@ -384,57 +360,6 @@ def patch_stanza(struc, diff):
 # ----------------------------------------------------------------------
 
 # Basic script functionality
-
-dbg1 = {
-    "menu": {
-        "id": 1,
-        "live": True,
-        "deleteme": True,
-        "pointer": None,
-        "value": "File",
-        "popup": {
-            "menuitem": [
-                {
-                    "value": "New",
-                    "onclick": "CreateNewDoc()"
-                },
-                {
-                    "value": "Open",
-                    "onclick": "OpenDoc()"
-                },
-                {
-                    "value": "Close",
-                    "onclick": "CloseDoc()"
-                }
-            ]
-        }
-    }
-}
-dbg2 = {
-    "menu": {
-        "id": 1,
-        "delta": 9,
-        "live": False,
-        "pointer": None,
-        "value": "File",
-        "popup": {
-            "menuitem": [
-                {
-                    "value": "New",
-                    "onclick": "CreateNewDoc()"
-                },
-                {
-                    "value": "Open",
-                    "onclick": "OpenDoc()"
-                },
-                {
-                    "value": "Close",
-                    "onclick": "CloseDoc()"
-                }
-            ]
-        }
-    }
-}
 
 # These 2 de-unicoding hook functions from:
 # http://stackoverflow.com/questions/956867/
@@ -475,22 +400,18 @@ def main():
     file2 = open(sys.argv[2], 'r')
     str1 = file1.read()
     str2 = file2.read()
-    print (type(str1))
     json1 = json.loads(str1, object_hook=_decode_dict)
     json2 = json.loads(str2, object_hook=_decode_dict)
 
-    ###print ("\n\nTHE DELTA IS:")
+    print ("\n\nTHE DIFF IS:")
     thediff = diff(json1, json2)
     #thediff = diff(dbg1, dbg2)
     print (thediff)
 
-
-    #print (compute_keysets(json1, json2))
-    #print (compute_keysets(json2, json1))
-   
+    print ("\n\nPATCH IS:")
     #thepatch = patch(dbg1, thediff)
-    #thepatch = patch(json1, thediff)
-    #print thepatch
+    thepatch = patch(json1, thediff)
+    print thepatch
 
 
 if __name__ == '__main__':
