@@ -29,6 +29,7 @@
 *.hex
 jsondiff/jsondiff
 redis_schema_upd/dumpall_updall
+*.pyc
 
 # Dev artifacts
 *.swp
