@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*- 
+# -*- encoding: utf-8 -*-
 # json_delta.py: a library for computing deltas between
 # JSON-serializable structures.
 #
@@ -31,23 +31,19 @@ except NameError:
 
 TERMINALS = (str, int, float, bool, type(None)) + extra_terminals
 NONTERMINALS = (list, dict)
-SERIALIZABLE_TYPES = ((str, int, float, bool, type(None), 
+SERIALIZABLE_TYPES = ((str, int, float, bool, type(None),
                        list, tuple, dict) + extra_terminals)
 
 # ----------------------------------------------------------------------
 # Main entry points
 
-def diff(left_struc, right_struc, verbose=True, key=None):
+def diff(left_struc, right_struc, key=None):
     '''Compose a sequence of diff stanzas sufficient to convert the
     structure ``left_struc`` into the structure ``right_struc``.  (The
     goal is to add 'necessary and' to 'sufficient' above!).
 
-    Flags: 
-        ``verbose``: if this is set ``True`` (the default), a line of
-        compression statistics will be printed to stderr.
-
     The parameter ``key`` is present because this function is mutually
-    recursive with :py:func:`needle_diff` and :py:func:`keyset_diff`.
+    recursive with :py:func:`keyset_diff`.
     If set to a list, it will be prefixed to every keypath in the
     output.
     '''
@@ -59,7 +55,7 @@ def diff(left_struc, right_struc, verbose=True, key=None):
     # and that they will be patched symmetrically.
     if ((type(left_struc) is list) and (type(right_struc) is list) and
         (len(left_struc) >1) and (len(right_struc) >1) ):
-        print("Truncating Array....")
+        #print("Truncating Array....")
         left_struc=left_struc[0]
         right_struc=right_struc[0]
     if common is True:
@@ -77,15 +73,6 @@ def diff(left_struc, right_struc, verbose=True, key=None):
     if key == []:
         if len(my_diff) > 1:
             my_diff = sort_stanzas(my_diff)
-        if verbose:
-            size = len(compact_json_dumps(right_struc))
-            csize = float(len(compact_json_dumps(my_diff)))
-            msg = ('Size of delta %.3f%% size of original '
-                   '(original: %d chars, delta: %d chars)')
-            print(msg % (((csize / size) * 100), 
-                         size,
-                         int(csize)), 
-                  0)
     return my_diff
 
 def patch(struc, diff, in_place=True):
@@ -129,8 +116,8 @@ def compact_json_dumps(obj):
 
     >>> test = {
     ...             'foo': 'bar',
-    ...             'baz': 
-    ...                ['quux', 'spam', 
+    ...             'baz':
+    ...                ['quux', 'spam',
     ...       'eggs']
     ... }
     >>> compact_json_dumps(test)
@@ -171,7 +158,7 @@ def check_diff_structure(diff):
         if not isinstance(keypath, list):
             return False
         for key in keypath:
-            if not (type(key) is int or isinstance(key, _basestring)): 
+            if not (type(key) is int or isinstance(key, _basestring)):
                     # So, it turns out isinstance(False, int)
                     # evaluates to True!
                 return False
@@ -234,12 +221,12 @@ def compute_keysets(left_seq, right_seq):
     return (overlap, left_only, right_only)
 
 def keyset_diff(left_struc, right_struc, key):
-    '''Return a diff between ``left_struc`` and ``right_struc``.  
+    '''Return a diff between ``left_struc`` and ``right_struc``.
 
     It is assumed that ``left_struc`` and ``right_struc`` are both
     non-terminal types (serializable as arrays or objects).  Sequences
     are treated just like mappings by this function, so the diffs will
-    be correct but not necessarily minimal.  
+    be correct but not necessarily minimal.
 
     This function probably shouldn't be called directly.  Instead, use
     :func:`udiff`, which will call :func:`keyset_diff` if appropriate
@@ -254,7 +241,7 @@ def keyset_diff(left_struc, right_struc, key):
     for k in o:
         sub_key = key + [k]
         out.extend(diff(left_struc[k], right_struc[k],
-                        False, sub_key))
+                        sub_key))
     return out
 
 def this_level_diff(left_struc, right_struc, key=None, common=None):
@@ -304,7 +291,7 @@ def sort_stanzas(diff):
     [] and additions to sequences have to happen
     leftmost-node-first: [] -> ['foo'] -> ['foo', 'bar'] ->
     ['foo', 'bar', 'baz'].
-    
+
     Note that this will also sort changes to objects (dicts) so that
     they occur first of all, then modifications/additions on
     sequences, followed by deletions from sequences.
@@ -343,9 +330,11 @@ def patch_stanza(struc, diff):
         else:
             # From array truncation
             if type(struc) is list:
-               for e in struc:
-                  e[key[0]] = diff[1]
+                for e in struc:
+                    # check for init here in arrays
+                    e[key[0]] = diff[1]
             else:
+                # check for init here in non-arrays
                 struc[key[0]] = diff[1]
     else:
         pass_key = key[:]
@@ -415,4 +404,4 @@ def main():
 
 
 if __name__ == '__main__':
-     main()
+    main()
