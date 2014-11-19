@@ -56,8 +56,12 @@ def diff(left_struc, right_struc, key=None):
     # We are assuming for now that all elements have the same type,
     # and that they will be patched symmetrically.
     if ((type(left_struc) is list) and (type(right_struc) is list) and
-        (len(left_struc) >1) and (len(right_struc) >1) ):
-        #print("Truncating Array....")
+        (len(left_struc) >0) and (len(right_struc) >0) ):
+        d = {key[len(key)-1] : len(left_struc)}
+        print d
+        key[len(key)-1] = d
+
+        print("Truncating Array....")
         left_struc=left_struc[0]
         right_struc=right_struc[0]
     if common is True:
@@ -250,6 +254,8 @@ def this_level_diff(left_struc, right_struc, key=None, common=None):
     '''Return a sequence of diff stanzas between the structures
     left_struc and right_struc, assuming that they are each at the
     key-path ``key`` within the overall structure.'''
+    print "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLEVEL"
+    print left_struct
     out = []
     # Always compute the keysets, return the diff.
     (o, l, r) = compute_keysets(left_struc, right_struc)
@@ -257,9 +263,9 @@ def this_level_diff(left_struc, right_struc, key=None, common=None):
         if left_struc[okey] != right_struc[okey]:
             out.append([key[:] + [okey], right_struc[okey]])
     for okey in l:
-        out.append([key[:] + [okey]])
+        out.append("DEL"+[key[:] + [okey]])
     for okey in r:
-        out.append([key[:] + [okey], right_struc[okey]])
+        out.append("ADD"+[key[:] + [okey], right_struc[okey]])
     return out
 
 def commonality(left_struc, right_struc):
@@ -326,7 +332,13 @@ def patch_stanza(struc, diff):
         changeback = False
     elif len(key) == 1:
         if len(diff) == 1:
-            del struc[key[0]]
+            # From array truncation
+            if type(struc) is list:
+                for e in struc:
+                    # check for init here in arrays
+                    del e[key[0]]
+            else: 
+                del struc[key[0]]
         elif (type(struc) in (list, tuple)) and key[0] == len(struc):
             struc.append(diff[1])
         else:
@@ -382,6 +394,31 @@ def _decode_dict(data):
         rv[key] = value
     return rv
 
+def generate_upd(thediff):
+    print len(thediff)
+    function = ""
+    for l in thediff:
+        # l[0] is the key to where to modify the data
+        # l[1] is 'INIT' if adding, otherwise there is no l[1]
+        assert(len(l) in (1,2))
+        keys = l[0]
+        assert(len(keys)>0)
+        if (keys[0] != function):
+           print "\ndef update_" + keys[0] + "(jsonobj):"
+           function = keys[0]
+        # get the item to modify
+        path = "    e = jsonobj"
+        for s in keys[0:(len(keys)-1)]: 
+            if (type(s) is str):
+                path = path + ".get(" + s + ")"
+        print path
+        # adding
+        if (len(l) == 2):
+           print "    get from init..."
+        # deleting. 
+        else:
+           print "    del e[\'" + (keys[len(keys)-1]) + "\']"
+        
 
 def main():
     assert (len(sys.argv) in (3, 4)), '\n\nUsage is: \"python json_diff_to_patch.py <json1> <json2> (optional <initfile>)\".\n Ex: \"python json_diff_to_patch.py ../example_json/sample1.json ../example_json/sample2.json\"'
@@ -392,31 +429,40 @@ def main():
     str2 = file2.read()
     json1 = json.loads(str1, object_hook=_decode_dict)
     json2 = json.loads(str2, object_hook=_decode_dict)
+    print json1.keys()
+    print json1.get('menu').get('popup')
 
-   # # Load up the init file
-   # if len(sys.argv) is 4:
-   #     dslfile = open(sys.argv[3], 'r')
-   #     #for line in dslfile:
-   #     #    print line,
-   #     #    initdict 
-
-   #     patterns = ['(INIT\\w+)(=)(\\w+)(if)(\\w+)(=)(\\w+)', #INIT with a clause
-   #                 '(INIT\\w+)(=)(\\w+)',    #INIT with no caluse
-   #                 '(INIT\\w+)']    #INIT dbg
-
-   #     def extract_from_re(estr):
-   #         for p in patterns:
-   #             if re.match(p,estr) is not None:
-   #                 cmd_re = re.compile(p)
-   #                 cmd = cmd_re.search(estr)
-   #                 return cmd
-   #             else:
-   #                 print "FAIL"
-
-   #     for line in dslfile:
-   #         print line
-   #         curr = extract_from_re(line)
-   #         print curr
+#################################### MOVE THIS ###########################
+#    # Load up the init file
+#    if len(sys.argv) is 4:
+#        dslfile = open(sys.argv[3], 'r')
+#        #for line in dslfile:
+#        #    print line,
+#        #    initdict 
+#
+#        patterns =  ['(INIT\\s+)(\[.*\])\\s?=\\s?([a-zA-Z0-9]+)\\s?,\\s?if\\s?\'([a-zA-Z0-9]+)\'\\s?=\\s?\'(.*)\'',    #INIT [...] = val, if someclause
+#                     '(INIT\\s+)(\[.*\])\\s?=\\s?([a-zA-Z0-9]+)']     #INIT [...] = val
+#
+#        def extract_from_re(estr):
+#            for p in patterns:
+#                if re.match(p,estr) is not None:
+#                    cmd_re = re.compile(p)
+#                    cmd = cmd_re.search(estr)
+#                    print type(cmd_re) 
+#                    print type(cmd) 
+#                    print cmd_re.groups
+#                    for i in range(1,cmd_re.groups+1): 
+#                        print "Group " +str(i) + " = " +  cmd.group(i)
+#                    return cmd
+#                else:
+#                    print "FAIL"
+#
+#        for line in dslfile:
+#            print "=========================================\n\nline = " + line
+#            curr = extract_from_re(line)
+#            print "found " + str(len(curr.groups())) + " groups"
+#            print curr.group(1)
+#################################### MOVE THIS ###########################
 
     print ("\nTHE KEYS ARE: (len " + str(len(json1.keys())) + ")") 
     print json1.keys() 
@@ -424,9 +470,11 @@ def main():
     thediff = diff(json1, json2)
     print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
     print (thediff)
+    
+    generate_upd(thediff)
 
-    print ("\nPATCHED FILE1 IS:")
-    print patch(json1, thediff)
+    #print ("\nPATCHED FILE1 IS:")
+    #print patch(json1, thediff)
 
 
 if __name__ == '__main__':
