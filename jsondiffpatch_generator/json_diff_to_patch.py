@@ -416,7 +416,9 @@ def generate_upd(thediff):
             else: # arrays
                 # if array isn't the leaf 
                 nextpos = chr(ord(pos) + 1) # increment the variable name
-                codeline += ".get(\'" + s[0] + "\')\n    for " + nextpos +" in " + pos + ":"
+                codeline += ".get(\'" + s[0] + "\')\n"
+                codeline += tabstop + "assert(" + pos + " is not None)\n"
+                codeline += tabstop + "for " + nextpos +" in " + pos + ":"
                 tabstop = tabstop + "    "
                 pos = nextpos
                 if (s != keys[(len(keys)-2)]):
@@ -426,6 +428,7 @@ def generate_upd(thediff):
                 # TODO There are probably several scenarios this leaves out?
         if (getter != codeline):
             print codeline
+            print tabstop + "assert(" + pos + " is not None)"
             getter = codeline
 
         # adding
@@ -435,6 +438,36 @@ def generate_upd(thediff):
         else:
            print tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']"
         
+
+def regextime(dslf):
+    # Load up the init file
+    dslfile = open(dslf, 'r')
+    for line in dslfile:
+        print line,
+        initdict 
+
+    patterns =  ['(INIT\\s+)(\[.*\])\\s?=\\s?([a-zA-Z0-9]+)\\s?,\\s?if\\s?\'([a-zA-Z0-9]+)\'\\s?=\\s?\'(.*)\'',    #INIT [...] = val, if someclause
+                 '(INIT\\s+)(\[.*\])\\s?=\\s?([a-zA-Z0-9]+)']     #INIT [...] = val
+
+    def extract_from_re(estr):
+        for p in patterns:
+            if re.match(p,estr) is not None:
+                cmd_re = re.compile(p)
+                cmd = cmd_re.search(estr)
+                print type(cmd_re) 
+                print type(cmd) 
+                print cmd_re.groups
+                for i in range(1,cmd_re.groups+1): 
+                    print "Group " +str(i) + " = " +  cmd.group(i)
+                return cmd
+            else:
+                print "FAIL"
+
+    for line in dslfile:
+        print "=========================================\n\nline = " + line
+        curr = extract_from_re(line)
+        print "found " + str(len(curr.groups())) + " groups"
+        print curr.group(1)
 
 def main():
     assert (len(sys.argv) in (3, 4)), '\n\nUsage is: \"python json_diff_to_patch.py \
@@ -448,37 +481,9 @@ def main():
     json1 = json.loads(str1, object_hook=_decode_dict)
     json2 = json.loads(str2, object_hook=_decode_dict)
 
-#################################### MOVE THIS ###########################
-#    # Load up the init file
-#    if len(sys.argv) is 4:
-#        dslfile = open(sys.argv[3], 'r')
-#        #for line in dslfile:
-#        #    print line,
-#        #    initdict 
-#
-#        patterns =  ['(INIT\\s+)(\[.*\])\\s?=\\s?([a-zA-Z0-9]+)\\s?,\\s?if\\s?\'([a-zA-Z0-9]+)\'\\s?=\\s?\'(.*)\'',    #INIT [...] = val, if someclause
-#                     '(INIT\\s+)(\[.*\])\\s?=\\s?([a-zA-Z0-9]+)']     #INIT [...] = val
-#
-#        def extract_from_re(estr):
-#            for p in patterns:
-#                if re.match(p,estr) is not None:
-#                    cmd_re = re.compile(p)
-#                    cmd = cmd_re.search(estr)
-#                    print type(cmd_re) 
-#                    print type(cmd) 
-#                    print cmd_re.groups
-#                    for i in range(1,cmd_re.groups+1): 
-#                        print "Group " +str(i) + " = " +  cmd.group(i)
-#                    return cmd
-#                else:
-#                    print "FAIL"
-#
-#        for line in dslfile:
-#            print "=========================================\n\nline = " + line
-#            curr = extract_from_re(line)
-#            print "found " + str(len(curr.groups())) + " groups"
-#            print curr.group(1)
-#################################### MOVE THIS ###########################
+    dslfile = None 
+    if len(sys.argv) is 4:
+        dslfile = regextime(sys.argv[3])
 
     print ("\nTHE KEYS ARE: (len " + str(len(json1.keys())) + ")") 
     print json1.keys() 
