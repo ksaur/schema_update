@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*- 
+# -*- encoding: utf-8 -*-
 # json_delta.py: a library for computing deltas between
 # JSON-serializable structures.
 #
@@ -49,7 +49,7 @@ except NameError:
 
 TERMINALS = (str, int, float, bool, type(None)) + extra_terminals
 NONTERMINALS = (list, dict)
-SERIALIZABLE_TYPES = ((str, int, float, bool, type(None), 
+SERIALIZABLE_TYPES = ((str, int, float, bool, type(None),
                        list, tuple, dict) + extra_terminals)
 
 # ----------------------------------------------------------------------
@@ -60,7 +60,7 @@ def diff(left_struc, right_struc, minimal=True, verbose=True, key=None):
     structure ``left_struc`` into the structure ``right_struc``.  (The
     goal is to add 'necessary and' to 'sufficient' above!).
 
-    Flags: 
+    Flags:
         ``verbose``: if this is set ``True`` (the default), a line of
         compression statistics will be printed to stderr.
 
@@ -76,7 +76,7 @@ def diff(left_struc, right_struc, minimal=True, verbose=True, key=None):
     '''
     if key is None:
         key = []
-    if minimal: 
+    if minimal:
         dumbdiff = [[key[:], copy.copy(right_struc)]]
     common = commonality(left_struc, right_struc)
     if common < 0.5:
@@ -90,7 +90,7 @@ def diff(left_struc, right_struc, minimal=True, verbose=True, key=None):
         my_diff = keyset_diff(left_struc, right_struc, key, minimal)
 
     if minimal:
-        my_diff = min(dumbdiff, my_diff, 
+        my_diff = min(dumbdiff, my_diff,
                       key=lambda x: len(compact_json_dumps(x)))
 
     if key == []:
@@ -101,9 +101,9 @@ def diff(left_struc, right_struc, minimal=True, verbose=True, key=None):
             csize = float(len(compact_json_dumps(my_diff)))
             msg = ('Size of delta %.3f%% size of original '
                    '(original: %d chars, delta: %d chars)')
-            print(msg % (((csize / size) * 100), 
+            print(msg % (((csize / size) * 100),
                          size,
-                         int(csize)), 
+                         int(csize)),
                   file=sys.stderr)
     return my_diff
 
@@ -207,8 +207,8 @@ def compact_json_dumps(obj):
 
     >>> test = {
     ...             'foo': 'bar',
-    ...             'baz': 
-    ...                ['quux', 'spam', 
+    ...             'baz':
+    ...                ['quux', 'spam',
     ...       'eggs']
     ... }
     >>> compact_json_dumps(test)
@@ -240,12 +240,12 @@ def all_paths(struc):
     if isinstance(struc, dict):
         keys = struc.keys()
     elif isinstance(struc, list):
-        keys = range(len(struc))       
+        keys = range(len(struc))
     else:
         return
     for key in keys:
         for subkey in all_paths(struc[key]):
-            yield [key] + subkey    
+            yield [key] + subkey
 
 def follow_path(struc, path):
     '''Return the value found at the key-path ``path`` within ``struc``.'''
@@ -285,7 +285,7 @@ def check_diff_structure(diff):
         if not isinstance(keypath, list):
             return False
         for key in keypath:
-            if not (type(key) is int or isinstance(key, _basestring)): 
+            if not (type(key) is int or isinstance(key, _basestring)):
                     # So, it turns out isinstance(False, int)
                     # evaluates to True!
                 return False
@@ -301,7 +301,7 @@ def needle_penalty(left, right):
     return 1.
 
 def needle_diff(left_struc, right_struc, key, minimal=True):
-    '''Returns a diff between ``left_struc`` and ``right_struc``.  
+    '''Returns a diff between ``left_struc`` and ``right_struc``.
 
     If ``left_struc`` and ``right_struc`` are both serializable as
     arrays, this function will use Needleman-Wunsch sequence alignment
@@ -337,7 +337,7 @@ def needle_diff(left_struc, right_struc, key, minimal=True):
         elif isinstance(aright[k], needle.Gap):
             out.append([sub_key])
         else:
-            out.extend(diff(aleft[k], aright[k], key=sub_key, 
+            out.extend(diff(aleft[k], aright[k], key=sub_key,
                             minimal=minimal, verbose=False))
     return out
 
@@ -390,7 +390,7 @@ def compute_keysets(left_seq, right_seq):
     return (overlap, left_only, right_only)
 
 def keyset_diff(left_struc, right_struc, key, minimal=True):
-    '''Return a diff between ``left_struc`` and ``right_struc``.  
+    '''Return a diff between ``left_struc`` and ``right_struc``.
 
     It is assumed that ``left_struc`` and ``right_struc`` are both
     non-terminal types (serializable as arrays or objects).  Sequences
@@ -441,7 +441,7 @@ def this_level_diff(left_struc, right_struc, key=None, common=None):
 
 def commonality(left_struc, right_struc):
     '''Return a float between 0.0 and 1.0 representing the amount
-    that the structures left_struc and right_struc have in common.  
+    that the structures left_struc and right_struc have in common.
 
     If left_struc and right_struc are of the same type, this is
     computed as the fraction (elements in common) / (total elements).
@@ -486,7 +486,7 @@ def sort_stanzas(diff):
     [] and additions to sequences have to happen
     leftmost-node-first: [] -> ['foo'] -> ['foo', 'bar'] ->
     ['foo', 'bar', 'baz'].
-    
+
     Note that this will also sort changes to objects (dicts) so that
     they occur first of all, then modifications/additions on
     sequences, followed by deletions from sequences.
@@ -590,7 +590,7 @@ def udiff_dict(left, right, diff, indent=0):
                    - keys_in_diff)
     if common_keys:
         key = next(iter(common_keys))
-        value = next(udiff(left[key], right[key], [], 
+        value = next(udiff(left[key], right[key], [],
                            indent+1, entry=False)[0][0])
         line_matter = '"%s": %s' % (key, value.lstrip())
         add_common_matter(line_matter)
@@ -617,13 +617,13 @@ def udiff_dict(left, right, diff, indent=0):
         elif key not in left: # Handle additions
             dump_verbatim(right[key], 'right', right_comma)
         else: # Handle modifications
-            [left_side, right_side] = udiff(left[key], right[key], sub_diff, 
+            [left_side, right_side] = udiff(left[key], right[key], sub_diff,
                                             indent+1, entry=False)
             add_common_matter('"%s":' % key)
             add_differing_matter(left_side, right_side)
             commafy_last(left_comma, right_comma)
         if i != (len(keys_in_diff) - 1): add_common_matter('')
-                
+
     indent -= 1
     add_common_matter('}')
     return left_lines, right_lines
@@ -668,7 +668,7 @@ def udiff_list(left, right, diff, indent=0):
     def compute_commas(idx):
         out = []
         for seq in left_a, right_a:
-            out.append(any(((not isinstance(elem, Gap)) 
+            out.append(any(((not isinstance(elem, Gap))
                             for elem in seq[idx:])))
         return tuple(out)
 
@@ -681,7 +681,7 @@ def udiff_list(left, right, diff, indent=0):
         pos_diff = key - pos
 
         if pos_diff >= 1:
-            left_ext, right_ext = udiff(left_a[pos], right_a[pos], 
+            left_ext, right_ext = udiff(left_a[pos], right_a[pos],
                                         in_one_level(diff, pos),
                                         indent+1, entry=False)
             add_differing_matter(left_ext, right_ext)
@@ -715,7 +715,7 @@ def udiff_list(left, right, diff, indent=0):
                                         indent+1, entry=False)
             for ext, comma in (left_ext, left_comma), (right_ext, right_comma):
                 ext[-1] = commafy(ext[-1], comma)
-            add_differing_matter(left_ext, right_ext)            
+            add_differing_matter(left_ext, right_ext)
         pos = key + 1
 
     add_common_matter(']')
@@ -727,7 +727,7 @@ def patch_bands(indent, material, sigil=' '):
     indent = ' ' * indent
     out = []
     for line in material:
-        yield ('%(sigil)s%(indent)s%(line)s' % locals())        
+        yield ('%(sigil)s%(indent)s%(line)s' % locals())
 
 def single_patch_band(indent, line, sigil=' '):
     '''Convenience function returning an iterable that generates a
@@ -781,14 +781,14 @@ def _add_common_matter(matter, left_lines, right_lines, indent):
         add_matter(seq, matter, indent)
 
 def _add_differing_matter(left, right, left_lines, right_lines, indent):
-    for matter, seq, sigil in ((left, left_lines, '-'), 
+    for matter, seq, sigil in ((left, left_lines, '-'),
                                (right, right_lines, '+')):
-        if isinstance(matter, _basestring): 
+        if isinstance(matter, _basestring):
             matter = single_patch_band(indent, matter, sigil)
         add_matter(seq, matter, indent)
 
 def _commafy_last(left_lines, right_lines, left_comma, right_comma):
-    if right_comma is None: 
+    if right_comma is None:
         right_comma = left_comma
     left_lines[-1] = commafy(left_lines[-1], left_comma)
     right_lines[-1] = commafy(right_lines[-1], right_comma)
@@ -996,7 +996,7 @@ def _JSONObject(s_and_end, *args):
 
 ELLIPSIS = re.compile(r'\.\.\.(?:\((\d+)\))?')
 
-def _JSONArray(s_and_end, scan_once, _w=decoder.WHITESPACE.match, 
+def _JSONArray(s_and_end, scan_once, _w=decoder.WHITESPACE.match,
                _ws=decoder.WHITESPACE_STR):
     s, end = s_and_end
     values = []
@@ -1060,7 +1060,7 @@ def fill_in_ellipses(struc, left_part, right_part):
             for key in sd_keys:
                 if key not in left_sub_struc:
                     sub_path = path + [key]
-                    diff.append([path + [key], 
+                    diff.append([path + [key],
                                  copy.deepcopy(follow_path(struc, sub_path))])
     return patch(right_part, diff)
 
@@ -1072,7 +1072,7 @@ def split_udiff_parts(udiff):
     ``udiff`` is a string representing a valid udiff, then each member of
     the tuple will be a structure formatted in the superset of JSON that
     can be interpreted using :func:`extended_json_decoder()`.
-    
+
     The function itself works by stripping off the first character of
     every line in the udiff, and composing ``left_json`` out of those
     lines which begin with ``' '`` or ``'-'``, and ``right_json`` out
@@ -1083,18 +1083,18 @@ def split_udiff_parts(udiff):
     ...  {
     ...   "foo": "bar"
     ...   ...
-    ...   "baz": 
+    ...   "baz":
     ... -  "quux",
     ... +  "quordle",
-    ...  
+    ...
     ... - "bar": null
-    ...  
+    ...
     ... + "quux": false
     ...  }"""
     >>> left_json = """{
     ...  "foo": "bar"
     ...  ...
-    ...  "baz": 
+    ...  "baz":
     ...   "quux",
     ...
     ...  "bar": null
@@ -1103,7 +1103,7 @@ def split_udiff_parts(udiff):
     >>> right_json = """{
     ...  "foo": "bar"
     ...  ...
-    ...  "baz": 
+    ...  "baz":
     ...   "quordle",
     ...
     ...
@@ -1130,7 +1130,7 @@ def main():
 
     cmd = '%s%s' % ('u' if '-u' in sys.argv else '', sys.argv[1])
     cmd = eval(cmd) if cmd.lstrip('u') in ('patch', 'diff') else None
-    
+
     args = json.load(sys.stdin)
     if cmd == udiff:
         for line in cmd(*args):

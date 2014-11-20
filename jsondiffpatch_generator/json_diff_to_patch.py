@@ -244,19 +244,19 @@ def generate_upd(thediff):
         keys = l[0]
         assert(len(keys)>0)
         if (keys[0] != function):
-           print "\ndef update_" + keys[0] + "(jsonobj):"
-           function = keys[0]
-           generatedfunctions.append(keys[0])
+            print "\ndef update_" + keys[0] + "(jsonobj):"
+            function = keys[0]
+            generatedfunctions.append(keys[0])
         # get the item to modify
-        pos = 'e'  # for code generation. 
+        pos = 'e'  # for code generation.
                    # This is the first variable name and we'll increment it
         tabstop = "    "
         codeline = tabstop + pos + " = jsonobj"
-        for s in keys[0:(len(keys)-1)]: 
+        for s in keys[0:(len(keys)-1)]:
             if (type(s) is str):
                 codeline += ".get(\'" + s + "\')"
             else: # arrays
-                # if array isn't the leaf 
+                # if array isn't the leaf
                 nextpos = chr(ord(pos) + 1) # increment the variable name
                 codeline += ".get(\'" + s[0] + "\')\n"
                 codeline += tabstop + "assert(" + pos + " is not None)\n"
@@ -264,9 +264,9 @@ def generate_upd(thediff):
                 tabstop = tabstop + "    "
                 pos = nextpos
                 if (s != keys[(len(keys)-2)]):
-                   nextpos = chr(ord(pos) + 1)
-                   codeline += "\n" + tabstop + nextpos + " = " + pos
-                   pos = nextpos
+                    nextpos = chr(ord(pos) + 1)
+                    codeline += "\n" + tabstop + nextpos + " = " + pos
+                    pos = nextpos
                 # TODO There are probably several scenarios this leaves out?
         if (getter != codeline):
             print codeline
@@ -275,23 +275,23 @@ def generate_upd(thediff):
 
         # adding
         if (len(l) == 2):
-           try:
-               init = initdict[str(keys)]
-           except:
-               print "+----------------------------------------------------------+"
-               print "| Expected an INIT command for \'" + str(keys[(len(keys)-1)]) + "\'"
-               print "|   at \'"  + str(keys)  + "\'"
-               print "+----------------------------------------------------------+"
-               sys.exit(-1)
-           # Replace $out's with the variable to assign to 
-           vartoassign = tabstop + pos+"[\'" + keys[len(keys)-1] + "\']"
-           # whoa. where has this function been my whole life?
-           replacedout = init.replace("$out", vartoassign)
-           print replacedout
-        # deleting. 
+            try:
+                init = initdict[str(keys)]
+            except:
+                print "+----------------------------------------------------------+"
+                print "| Expected an INIT command for \'" + str(keys[(len(keys)-1)]) + "\'"
+                print "|   at \'"  + str(keys)  + "\'"
+                print "+----------------------------------------------------------+"
+                sys.exit(-1)
+            # Replace $out's with the variable to assign to
+            vartoassign = tabstop + pos+"[\'" + keys[len(keys)-1] + "\']"
+            # whoa. where has this function been my whole life?
+            replacedout = init.replace("$out", vartoassign)
+            print replacedout
+        # deleting.
         else:
-           print tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']"
-        
+            print tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']"
+
 
 def regextime(dslf):
     # Load up the init file
@@ -299,7 +299,7 @@ def regextime(dslf):
     ## DBG, but remember this eats the file.
     #for line in dslfile:
     #    print line,
-    #    initdict 
+    #    initdict
 
     patterns =  ['(INIT)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #INIT [...] : {...}
                  '(TODO\\s+)(\[.*\])\\s?:\\s?{\\s?([a-zA-Z0-9]+)\\s?}']  # -> syntax TODO
@@ -310,7 +310,7 @@ def regextime(dslf):
                 cmd_re = re.compile(p)
                 cmd = cmd_re.search(estr)
                 print cmd_re.groups
-                for i in range(1,cmd_re.groups+1): 
+                for i in range(1,cmd_re.groups+1):
                     print "Group " +str(i) + " = " +  cmd.group(i)
                 return cmd
             else:
@@ -343,7 +343,7 @@ def main():
     json1 = json.loads(str1, object_hook=decode.decode_dict)
     json2 = json.loads(str2, object_hook=decode.decode_dict)
 
-    dslfile = None 
+    dslfile = None
     if len(sys.argv) is 4:
         dslfile = regextime(sys.argv[3])
 
@@ -351,7 +351,7 @@ def main():
     thediff = diff(json1, json2)
     print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
     print (thediff)
-    
+
     # generate the functions for objects that needs modifying
     generate_upd(thediff)
 

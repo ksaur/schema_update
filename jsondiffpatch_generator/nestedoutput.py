@@ -22,10 +22,10 @@ def main():
     str1 = file1.read()
     json1 = json.loads(str1, object_hook=decode.decode_dict)
     for k in json1.keys():
-       # Create the function name and call it.
-       funcname = "update_"+k
-       # http://stackoverflow.com/questions/3061/calling-a-function-of-a-module-from-a-string-with-the-functions-name-in-python
-       globals()[funcname](json1)
+        # Create the function name and call it.
+        funcname = "update_"+k
+        # http://stackoverflow.com/questions/3061/calling-a-function-of-a-module-from-a-string-with-the-functions-name-in-python
+        globals()[funcname](json1)
     print json1
 
 if __name__ == '__main__':
