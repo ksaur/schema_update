@@ -433,7 +433,12 @@ def generate_upd(thediff):
 
         # adding
         if (len(l) == 2):
-           print tabstop + pos+"[\'" + keys[len(keys)-1] + "\'] = 'INIT..'"
+           init = initdict[str(keys)]
+           # Replace $out's with the variable to assign to 
+           vartoassign = tabstop + pos+"[\'" + keys[len(keys)-1] + "\']"
+           # whoa. where has this function been my whole life?
+           replacedout = init.replace("$out", vartoassign)
+           print replacedout
         # deleting. 
         else:
            print tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']"
@@ -442,20 +447,19 @@ def generate_upd(thediff):
 def regextime(dslf):
     # Load up the init file
     dslfile = open(dslf, 'r')
-    for line in dslfile:
-        print line,
-        initdict 
+    ## DBG, but remember this eats the file.
+    #for line in dslfile:
+    #    print line,
+    #    initdict 
 
-    patterns =  ['(INIT\\s+)(\[.*\])\\s?=\\s?([a-zA-Z0-9]+)\\s?,\\s?if\\s?\'([a-zA-Z0-9]+)\'\\s?=\\s?\'(.*)\'',    #INIT [...] = val, if someclause
-                 '(INIT\\s+)(\[.*\])\\s?=\\s?([a-zA-Z0-9]+)']     #INIT [...] = val
+    patterns =  ['(INIT)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #INIT [...] : {...}
+                 '(TODO\\s+)(\[.*\])\\s?:\\s?{\\s?([a-zA-Z0-9]+)\\s?}']  # -> syntax TODO
 
     def extract_from_re(estr):
         for p in patterns:
             if re.match(p,estr) is not None:
                 cmd_re = re.compile(p)
                 cmd = cmd_re.search(estr)
-                print type(cmd_re) 
-                print type(cmd) 
                 print cmd_re.groups
                 for i in range(1,cmd_re.groups+1): 
                     print "Group " +str(i) + " = " +  cmd.group(i)
@@ -466,8 +470,17 @@ def regextime(dslf):
     for line in dslfile:
         print "=========================================\n\nline = " + line
         curr = extract_from_re(line)
-        print "found " + str(len(curr.groups())) + " groups"
-        print curr.group(1)
+        if curr is not None:
+            print "found " + str(len(curr.groups())) + " groups"
+            # add to INIT dictionary if init
+            #print curr.group(1) #DBG
+            if (curr.group(1) == 'INIT'):
+                assert(len(curr.groups()) is 3)
+                initdict[curr.group(2)] = curr.group(3)
+
+
+    print "\nINIT dict is : "
+    print initdict
 
 def main():
     assert (len(sys.argv) in (3, 4)), '\n\nUsage is: \"python json_diff_to_patch.py \
