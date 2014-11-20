@@ -19,11 +19,19 @@
                 {
                     "value": "Open",
                     "onclick": "OpenDoc()",
+                    "test": {
+                        "adds": 9,
+                        "dont": 2
+                    },
                     "active": true
                 },
                 {
                     "value": "Close",
                     "onclick": "CloseDoc()",
+                    "test": {
+                        "adds": 9,
+                        "dont": 2
+                    },
                     "active": false
                 }
             ]
