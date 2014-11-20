@@ -57,7 +57,7 @@ def diff(left_struc, right_struc, key=None):
     # and that they will be patched symmetrically.
     if ((type(left_struc) is list) and (type(right_struc) is list) and
         (len(left_struc) >0) and (len(right_struc) >0) ):
-        d = {key[len(key)-1] : len(left_struc)}
+        d = [key[len(key)-1]]
         print d
         key[len(key)-1] = d
 
@@ -254,8 +254,6 @@ def this_level_diff(left_struc, right_struc, key=None, common=None):
     '''Return a sequence of diff stanzas between the structures
     left_struc and right_struc, assuming that they are each at the
     key-path ``key`` within the overall structure.'''
-    print "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLEVEL"
-    print left_struct
     out = []
     # Always compute the keysets, return the diff.
     (o, l, r) = compute_keysets(left_struc, right_struc)
@@ -397,6 +395,7 @@ def _decode_dict(data):
 def generate_upd(thediff):
     print len(thediff)
     function = ""
+    getter = ""
     for l in thediff:
         # l[0] is the key to where to modify the data
         # l[1] is 'INIT' if adding, otherwise there is no l[1]
@@ -407,21 +406,40 @@ def generate_upd(thediff):
            print "\ndef update_" + keys[0] + "(jsonobj):"
            function = keys[0]
         # get the item to modify
-        path = "    e = jsonobj"
+        pos = 'e'  # for code generation. 
+                   # This is the first variable name and we'll increment it
+        codeline = "    " + pos + " = jsonobj"
+        tabstop = ""
         for s in keys[0:(len(keys)-1)]: 
             if (type(s) is str):
-                path = path + ".get(" + s + ")"
-        print path
+                codeline = codeline + ".get(\'" + s + "\')"
+            else: # arrays
+                # if array isn't the leaf 
+                nextpos = chr(ord(pos) + 1) # increment the variable name
+                codeline += ".get(\'" + s[0] + "\')\n    for " + nextpos +" in " + pos + ":"
+                tabstop = tabstop + "    "
+                pos = nextpos
+                if (s != keys[(len(keys)-2)]):
+                   nextpos = chr(ord(pos) + 1)
+                   codeline += "\n" + tabstop +"    " + nextpos + " = " + pos
+                   pos = nextpos
+                # TODO There are probably several scenarios this leaves out?
+        if (getter != codeline):
+            print codeline
+            getter = codeline
+
         # adding
         if (len(l) == 2):
-           print "    get from init..."
+           print tabstop + "    "+pos+"[\'" + keys[len(keys)-1] + "\'] = 'INIT..'"
         # deleting. 
         else:
-           print "    del e[\'" + (keys[len(keys)-1]) + "\']"
+           print tabstop + "    del "+pos+"[\'" + (keys[len(keys)-1]) + "\']"
         
 
 def main():
-    assert (len(sys.argv) in (3, 4)), '\n\nUsage is: \"python json_diff_to_patch.py <json1> <json2> (optional <initfile>)\".\n Ex: \"python json_diff_to_patch.py ../example_json/sample1.json ../example_json/sample2.json\"'
+    assert (len(sys.argv) in (3, 4)), '\n\nUsage is: \"python json_diff_to_patch.py \
+    <json1> <json2> (optional <initfile>)\".\n Ex: \"python json_diff_to_patch.py \
+    ../example_json/sample1.json ../example_json/sample2.json\"'
 
     file1 = open(sys.argv[1], 'r')
     file2 = open(sys.argv[2], 'r')
@@ -429,8 +447,6 @@ def main():
     str2 = file2.read()
     json1 = json.loads(str1, object_hook=_decode_dict)
     json2 = json.loads(str2, object_hook=_decode_dict)
-    print json1.keys()
-    print json1.get('menu').get('popup')
 
 #################################### MOVE THIS ###########################
 #    # Load up the init file
