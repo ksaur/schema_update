@@ -408,11 +408,11 @@ def generate_upd(thediff):
         # get the item to modify
         pos = 'e'  # for code generation. 
                    # This is the first variable name and we'll increment it
-        codeline = "    " + pos + " = jsonobj"
-        tabstop = ""
+        tabstop = "    "
+        codeline = tabstop + pos + " = jsonobj"
         for s in keys[0:(len(keys)-1)]: 
             if (type(s) is str):
-                codeline = codeline + ".get(\'" + s + "\')"
+                codeline += ".get(\'" + s + "\')"
             else: # arrays
                 # if array isn't the leaf 
                 nextpos = chr(ord(pos) + 1) # increment the variable name
@@ -421,7 +421,7 @@ def generate_upd(thediff):
                 pos = nextpos
                 if (s != keys[(len(keys)-2)]):
                    nextpos = chr(ord(pos) + 1)
-                   codeline += "\n" + tabstop +"    " + nextpos + " = " + pos
+                   codeline += "\n" + tabstop + nextpos + " = " + pos
                    pos = nextpos
                 # TODO There are probably several scenarios this leaves out?
         if (getter != codeline):
@@ -430,10 +430,10 @@ def generate_upd(thediff):
 
         # adding
         if (len(l) == 2):
-           print tabstop + "    "+pos+"[\'" + keys[len(keys)-1] + "\'] = 'INIT..'"
+           print tabstop + pos+"[\'" + keys[len(keys)-1] + "\'] = 'INIT..'"
         # deleting. 
         else:
-           print tabstop + "    del "+pos+"[\'" + (keys[len(keys)-1]) + "\']"
+           print tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']"
         
 
 def main():
