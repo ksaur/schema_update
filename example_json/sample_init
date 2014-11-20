@@ -1,0 +1,3 @@
+INIT ['menu', 'popup', ['menuitem'], 'active']: {$out = False}
+INIT ['menu', 'delta']: {$out = 9}
+INIT ['soup', 'addmes']: {$out = 0}
