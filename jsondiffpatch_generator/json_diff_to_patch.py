@@ -35,10 +35,15 @@ NONTERMINALS = (list, dict)
 SERIALIZABLE_TYPES = ((str, int, float, bool, type(None),
                        list, tuple, dict) + extra_terminals)
 
+# Some globals...
+initdict = dict()   # parsed INITs
+generatedfunctions = []  # generated function list
+
+
+
 # ----------------------------------------------------------------------
 # Main entry points
 
-initdict = dict()
 
 def diff(left_struc, right_struc, key=None):
     '''Compose a sequence of diff stanzas sufficient to convert the
@@ -59,10 +64,10 @@ def diff(left_struc, right_struc, key=None):
     if ((type(left_struc) is list) and (type(right_struc) is list) and
         (len(left_struc) >0) and (len(right_struc) >0) ):
         d = [key[len(key)-1]]
-        print d
+        #print d
         key[len(key)-1] = d
 
-        print("Truncating Array....")
+        #print("Truncating Array....")
         left_struc=left_struc[0]
         right_struc=right_struc[0]
     if common is True:
@@ -82,94 +87,6 @@ def diff(left_struc, right_struc, key=None):
             my_diff = sort_stanzas(my_diff)
     return my_diff
 
-def patch(struc, diff, in_place=True):
-    '''Apply the sequence of diff stanzas ``diff`` to the structure
-    ``struc``.
-
-    By default, this function modifies ``struc`` in place; set
-    ``in_place`` to ``False`` to return a patched copy of struc
-    instead.
-    '''
-    if not in_place:
-        struc = copy.deepcopy(struc)
-    for stanza in diff:
-        struc = patch_stanza(struc, stanza)
-    return struc
-
-
-# ----------------------------------------------------------------------
-# Utility functions
-
-def in_one_level(diff, key):
-    '''Return the subset of ``diff`` whose key-paths begin with
-    ``key``, expressed relative to the structure at ``[key]``
-    (i.e. with the first element of each key-path stripped off).
-
-    >>> diff = [ [['bar'], None],
-    ...          [['baz', 3], 'cheese'],
-    ...          [['baz', 4, 'quux'], 'foo'] ]
-    >>> in_one_level(diff, 'baz')
-    [[[3], 'cheese'], [[4, 'quux'], 'foo']]
-
-    '''
-    oper_stanzas = [stanza[:] for stanza in diff if stanza[0][0] == key]
-    for stanza in oper_stanzas:
-        stanza[0] = stanza[0][1:]
-    return oper_stanzas
-
-def compact_json_dumps(obj):
-    '''Compute the most compact possible JSON representation of the
-    serializable object ``obj``.
-
-    >>> test = {
-    ...             'foo': 'bar',
-    ...             'baz':
-    ...                ['quux', 'spam',
-    ...       'eggs']
-    ... }
-    >>> compact_json_dumps(test)
-    '{"foo":"bar","baz":["quux","spam","eggs"]}'
-    >>>
-    '''
-    return json.dumps(obj, indent=None, separators=(',', ':'))
-
-
-def check_diff_structure(diff):
-    '''Return ``diff`` (or ``True``) if it is structured as a sequence
-    of ``diff`` stanzas.  Otherwise return ``False``.
-
-    ``[]`` is a valid diff, so if it is passed to this function, the
-    return value is ``True``, so that the return value is always True
-    in a Boolean context if ``diff`` is valid.
-
-    >>> check_diff_structure([])
-    True
-    >>> check_diff_structure([None])
-    False
-    >>> check_diff_structure([[["foo", 6, 12815316313, "bar"], None]])
-    [[['foo', 6, 12815316313, 'bar'], None]]
-    >>> check_diff_structure([[["foo", 6, 12815316313, "bar"], None],
-    ...                       [["foo", False], True]])
-    False
-    '''
-    if diff == []:
-        return True
-    if not isinstance(diff, list):
-        return False
-    for stanza in diff:
-        if not isinstance(stanza, list):
-            return False
-        if len(stanza) not in (1, 2):
-            return False
-        keypath = stanza[0]
-        if not isinstance(keypath, list):
-            return False
-        for key in keypath:
-            if not (type(key) is int or isinstance(key, _basestring)):
-                    # So, it turns out isinstance(False, int)
-                    # evaluates to True!
-                return False
-    return diff
 
 # ----------------------------------------------------------------------
 # Functions for computing normal diffs.
@@ -242,9 +159,8 @@ def keyset_diff(left_struc, right_struc, key):
     out = []
     (o, l, r) = compute_keysets(left_struc, right_struc)
     out.extend([[key + [k]] for k in l])
+    # The INIT gets pulled later. This is a placeholder for the next step.
     out.extend([[key + [k], "INIT"] for k in r])
-    # TODO, pull INIT from db
-    #out.extend([[key + [k], right_struc[k]] for k in r])
     for k in o:
         sub_key = key + [k]
         out.extend(diff(left_struc[k], right_struc[k],
@@ -312,52 +228,6 @@ def sort_stanzas(diff):
     # And recombine:
     return objs + mods + dels
 
-# ----------------------------------------------------------------------
-# Functions for applying normal patches
-
-def patch_stanza(struc, diff):
-    '''Applies the diff stanza ``diff`` to the structure ``struc`` as
-    a patch.
-
-    Note that this function modifies ``struc`` in-place into the
-    target of ``diff``.'''
-    changeback = False
-    if type(struc) is tuple:
-        changeback = True
-        struc = list(struc)[:]
-    key = diff[0]
-    if not key:
-        struc = diff[1]
-        changeback = False
-    elif len(key) == 1:
-        if len(diff) == 1:
-            # From array truncation
-            if type(struc) is list:
-                for e in struc:
-                    # check for init here in arrays
-                    del e[key[0]]
-            else: 
-                del struc[key[0]]
-        elif (type(struc) in (list, tuple)) and key[0] == len(struc):
-            struc.append(diff[1])
-        else:
-            # From array truncation
-            if type(struc) is list:
-                for e in struc:
-                    # check for init here in arrays
-                    e[key[0]] = diff[1]
-            else:
-                # check for init here in non-arrays
-                struc[key[0]] = diff[1]
-    else:
-        pass_key = key[:]
-        pass_struc_key = pass_key.pop(0)
-        pass_struc = struc[pass_struc_key]
-        pass_diff = [pass_key] + diff[1:]
-        struc[pass_struc_key] = patch_stanza(pass_struc, pass_diff)
-    if changeback:
-        struc = tuple(struc)
-    return struc
 
 # ----------------------------------------------------------------------
 
@@ -376,6 +246,7 @@ def generate_upd(thediff):
         if (keys[0] != function):
            print "\ndef update_" + keys[0] + "(jsonobj):"
            function = keys[0]
+           generatedfunctions.append(keys[0])
         # get the item to modify
         pos = 'e'  # for code generation. 
                    # This is the first variable name and we'll increment it
@@ -404,7 +275,14 @@ def generate_upd(thediff):
 
         # adding
         if (len(l) == 2):
-           init = initdict[str(keys)]
+           try:
+               init = initdict[str(keys)]
+           except:
+               print "+----------------------------------------------------------+"
+               print "| Expected an INIT command for \'" + str(keys[(len(keys)-1)]) + "\'"
+               print "|   at \'"  + str(keys)  + "\'"
+               print "+----------------------------------------------------------+"
+               sys.exit(-1)
            # Replace $out's with the variable to assign to 
            vartoassign = tabstop + pos+"[\'" + keys[len(keys)-1] + "\']"
            # whoa. where has this function been my whole life?
@@ -469,17 +347,19 @@ def main():
     if len(sys.argv) is 4:
         dslfile = regextime(sys.argv[3])
 
-    print ("\nTHE KEYS ARE: (len " + str(len(json1.keys())) + ")") 
-    print json1.keys() 
 
     thediff = diff(json1, json2)
     print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
     print (thediff)
     
+    # generate the functions for objects that needs modifying
     generate_upd(thediff)
 
-    #print ("\nPATCHED FILE1 IS:")
-    #print patch(json1, thediff)
+    # generate the functions as placeholders for objects that don't need mod
+    for k in json1.keys():
+        if k not in generatedfunctions:
+            print "\ndef update_" + k + "(jsonobj):\n    ()"
+
 
 
 if __name__ == '__main__':

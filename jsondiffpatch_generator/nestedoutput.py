@@ -4,27 +4,16 @@ import decode
 
 
 def update_menu(jsonobj):
-    e = jsonobj.get('menu')
-    print "\n1:"
-    print e
-    assert(e is not None)
-    del e['deleteme']
-    e['delta'] = 9
-    print "\n2:"
-    print e
     e = jsonobj.get('menu').get('popup').get('menuitem')
-    print "\n3:"
-    print e
     assert(e is not None)
     for f in e:
-        assert(f is not None)
-        f['active'] = False
+        g = f.get('test')
+        assert(g is not None)
+        g['adds'] = None
+
 
 def update_soup(jsonobj):
-    e = jsonobj.get('soup')
-    assert(e is not None)
-    del e['delme']
-    e['addmes'] = 0
+    ()
 
 
 def main():
