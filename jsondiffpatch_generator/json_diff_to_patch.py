@@ -38,7 +38,7 @@ SERIALIZABLE_TYPES = ((str, int, float, bool, type(None),
 # Some globals...
 initdict = dict()   # parsed INITs
 generatedfunctions = []  # generated function list
-
+outfile = open("dsu.py", 'w') # the output file...
 
 
 # ----------------------------------------------------------------------
@@ -244,7 +244,7 @@ def generate_upd(thediff):
         keys = l[0]
         assert(len(keys)>0)
         if (keys[0] != function):
-            print "\ndef update_" + keys[0] + "(jsonobj):"
+            outfile.write("\ndef update_" + keys[0] + "(jsonobj):\n")
             function = keys[0]
             generatedfunctions.append(keys[0])
         # get the item to modify
@@ -269,8 +269,8 @@ def generate_upd(thediff):
                     pos = nextpos
                 # TODO There are probably several scenarios this leaves out?
         if (getter != codeline):
-            print codeline
-            print tabstop + "assert(" + pos + " is not None)"
+            outfile.write(codeline+"\n")
+            outfile.write(tabstop + "assert(" + pos + " is not None)\n")
             getter = codeline
 
         # adding
@@ -287,10 +287,10 @@ def generate_upd(thediff):
             vartoassign = tabstop + pos+"[\'" + keys[len(keys)-1] + "\']"
             # whoa. where has this function been my whole life?
             replacedout = init.replace("$out", vartoassign)
-            print replacedout
+            outfile.write(replacedout+"\n")
         # deleting.
         else:
-            print tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']"
+            outfile.write(tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']\n")
 
 
 def regextime(dslf):
@@ -342,7 +342,7 @@ def main():
     str2 = file2.read()
     json1 = json.loads(str1, object_hook=decode.decode_dict)
     json2 = json.loads(str2, object_hook=decode.decode_dict)
-
+  
     dslfile = None
     if len(sys.argv) is 4:
         dslfile = regextime(sys.argv[3])
@@ -358,7 +358,7 @@ def main():
     # generate the functions as placeholders for objects that don't need mod
     for k in json1.keys():
         if k not in generatedfunctions:
-            print "\ndef update_" + k + "(jsonobj):\n    ()"
+            outfile.write("\ndef update_" + k + "(jsonobj):\n    ()\n")
 
 
 
