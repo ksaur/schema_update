@@ -3,7 +3,7 @@
         "id": 1,
         "delta": 9,
         "live": false,
-	"pointer": null,
+        "pointer": null,
         "value": "File",
         "popup": {
             "menuitem": [
