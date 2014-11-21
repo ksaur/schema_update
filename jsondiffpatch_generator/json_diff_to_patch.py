@@ -342,6 +342,7 @@ def main():
     str2 = file2.read()
     json1 = json.loads(str1, object_hook=decode.decode_dict)
     json2 = json.loads(str2, object_hook=decode.decode_dict)
+    
   
     dslfile = None
     if len(sys.argv) is 4:

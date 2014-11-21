@@ -1,11 +1,11 @@
 """
 
-Call all of the generated functions for the input file.
+Call all of the generated functions for the redis database.
 
-Usage: python runfunctions.py filetoupdate
+Usage: python doupd.py
 
-TODO: redis integration.....
- 
+This assumes the update functions are in a file called dsu.py (todo)
+
 With help from:
 http://stackoverflow.com/questions/3061/
 calling-a-function-of-a-module-from-a-string-with-the-functions-name-in-python
@@ -68,9 +68,12 @@ def main():
 
         # Make sure everything is loaded
         assert redisval is not None, ("could not find value for" + currkey)
+        print type(redisval)
         jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
         print "LOADED:",
         print jsonkey
+        print type(jsonkey)
+        print type(jsonkey.keys())
         # Looping in case the user puts more than one JSON entry per key
         for o in jsonkey.keys():
             # Create the function name 

@@ -1,0 +1,1 @@
+{  "menu": {  "id": 1,  "live": true,  "deleteme": true,  "pointer": null,  "value": "File",  "popup": {  "menuitem": [  {  "value": "New",  "onclick": "CreateNewDoc()"  },  {  "value": "Open",  "onclick": "OpenDoc()"  },  {  "value": "Close",  "onclick": "CloseDoc()"  }  ]  }  },  "soup": {  "delme": 9,  "dontmodmes": 4  } }
