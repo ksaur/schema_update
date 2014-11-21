@@ -16,6 +16,15 @@ Program:
 
 * redis_schema_upd/redis_source_/ - This contains a makefile to link with redis...not currently used...in progress..
 
+**Running  (quickly jotting down........):**
+Running  (quickly jotting down........):
+1) start redis
+2) jsondiffpatch_generator$ python json_diff_to_patch.py ../example_json/sample1.json ../example_json/sample2.json ../example_json/sample_init
+3) jsondiffpatch_generator$ python loadstuff.py ../example_jsonbulk/sample.txt
+4) jsondiffpatch_generator$ python doupd.py  
+
+
+
 .. _Jansson: http://www.digip.org/jansson/
 .. _HiRedis: https://github.com/redis/hiredis
 .. _Redis: http://redis.io/download
