@@ -331,6 +331,30 @@ def regextime(dslf):
     print "\nINIT dict is : "
     print initdict
 
+
+def bulkload(f, jsonarr):
+    for line in f:
+        # A file may contain mulitple JSON objects with unknown size.
+        # This code will load up all the JSON objects by reading from file
+        # until one is successfully parsed.  Continuges until EOF.
+        # http://stackoverflow.com/questions/20400818/
+        while line is not None:
+            try:
+                jfile = json.loads(line,object_hook=decode.decode_dict)
+                break
+            except ValueError:
+                # Not yet a complete JSON value
+                tmp = next(f, None)
+                if tmp is not None:
+                    line +=tmp
+                else: # EOF
+                    break
+        print "loaded:"
+        print jfile
+        jsonarr.append(jfile)
+
+
+
 def main():
     assert (len(sys.argv) in (3, 4)), '\n\nUsage is: \"python json_diff_to_patch.py \
     <json1> <json2> (optional <initfile>)\".\n Ex: \"python json_diff_to_patch.py \
@@ -338,28 +362,33 @@ def main():
 
     file1 = open(sys.argv[1], 'r')
     file2 = open(sys.argv[2], 'r')
-    str1 = file1.read()
-    str2 = file2.read()
-    json1 = json.loads(str1, object_hook=decode.decode_dict)
-    json2 = json.loads(str2, object_hook=decode.decode_dict)
-    
-  
+    jsonarray1 = []
+    jsonarray2 = []
+
+    bulkload(file1, jsonarray1)
+    bulkload(file2, jsonarray2)
+
+    assert len(jsonarray1) == len(jsonarray2), \
+     "Files should contain the same number of json templates..."
+
+
     dslfile = None
     if len(sys.argv) is 4:
         dslfile = regextime(sys.argv[3])
 
 
-    thediff = diff(json1, json2)
-    print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
-    print (thediff)
+    for json1, json2 in zip(jsonarray1, jsonarray2):
+        thediff = diff(json1, json2)
+        print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
+        print (thediff)
 
-    # generate the functions for objects that needs modifying
-    generate_upd(thediff)
+        # generate the functions for objects that needs modifying
+        generate_upd(thediff)
 
-    # generate the functions as placeholders for objects that don't need mod
-    for k in json1.keys():
-        if k not in generatedfunctions:
-            outfile.write("\ndef update_" + k + "(jsonobj):\n    ()\n")
+        # generate the functions as placeholders for objects that don't need mod
+        for k in json1.keys():
+            if k not in generatedfunctions:
+                outfile.write("\ndef update_" + k + "(jsonobj):\n    ()\n")
 
 
 
