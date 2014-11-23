@@ -90,7 +90,7 @@ def main():
                 # Now serialize it back, then write it back to redis.  
                 # (Note that the key was modified in place.)
                 modedkey = json.dumps(jsonkey)
-                r.set(currkey, jsonkey)
+                r.set(currkey, modedkey)
             
 
 if __name__ == '__main__':
