@@ -289,10 +289,11 @@ def generate_upd(thediff):
                 print "+----------------------------------------------------------+"
                 sys.exit(-1)
             # Replace $out's with the variable to assign to
-            vartoassign = tabstop + pos+"[\'" + keys[len(keys)-1] + "\']"
+            vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
             # whoa. where has this function been my whole life?
-            replacedout = init.replace("$out", vartoassign)
-            outfile.write(replacedout+"\n")
+            init = init.replace("$out", vartoassign)
+            init = init.replace("|", "\n"+tabstop)
+            outfile.write(tabstop + init+"\n")
         # deleting.
         else:
             outfile.write(tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']\n")
@@ -322,6 +323,14 @@ def regextime(dslf):
                 print "FAIL"
 
     for line in dslfile:
+        line = line.rstrip('\n')
+        # parse multiline cmds
+        while '}' not in line and line is not "":
+            tmp = next(dslfile, None)
+            if tmp is not None:
+                line += '|' + tmp.rstrip('\n')
+            else: # EOF
+                break
         print "=========================================\n\nline = " + line
         curr = extract_from_re(line)
         if curr is not None:
