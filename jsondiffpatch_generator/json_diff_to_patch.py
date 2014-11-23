@@ -58,14 +58,15 @@ def diff(left_struc, right_struc, key=None):
     if key is None:
         key = []
     common = commonality(left_struc, right_struc)
+
     # We only need to worry about the first element in the array.
     # We are assuming for now that all elements have the same type,
     # and that they will be patched symmetrically.
     if ((type(left_struc) is list) and (type(right_struc) is list) and
         (len(left_struc) >0) and (len(right_struc) >0) ):
-        d = [key[len(key)-1]]
-        #print d
-        key[len(key)-1] = d
+        if (len(key) != 0):
+            ## mark the last item in "[]" to signal that it is a list
+            key[len(key)-1] = [key[len(key)-1]]
 
         #print("Truncating Array....")
         left_struc=left_struc[0]
@@ -80,7 +81,11 @@ def diff(left_struc, right_struc, key=None):
         else:
             my_diff = []
     else:
-        my_diff = keyset_diff(left_struc, right_struc, key)
+        if type(left_struc) in NONTERMINALS:
+            my_diff = keyset_diff(left_struc, right_struc, key)
+        else:
+            print "RETURNING"
+            my_diff = [] # no objects here...
 
     if key == []:
         if len(my_diff) > 1:
@@ -367,6 +372,8 @@ def main():
 
     bulkload(file1, jsonarray1)
     bulkload(file2, jsonarray2)
+    print "ARRRAY IS:"
+    print jsonarray1
 
     assert len(jsonarray1) == len(jsonarray2), \
      "Files should contain the same number of json templates..."
@@ -378,6 +385,7 @@ def main():
 
 
     for json1, json2 in zip(jsonarray1, jsonarray2):
+
         thediff = diff(json1, json2)
         print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
         print (thediff)
@@ -385,10 +393,15 @@ def main():
         # generate the functions for objects that needs modifying
         generate_upd(thediff)
 
-        # generate the functions as placeholders for objects that don't need mod
-        for k in json1.keys():
-            if k not in generatedfunctions:
-                outfile.write("\ndef update_" + k + "(jsonobj):\n    ()\n")
+        # check for arrays containing objects. If so, grab the first inner obj
+        if (type(json1) is list) and (len(json1)>0) and (type(json1[0]) is dict):
+            json1 = json1[0]
+
+       # generate the functions as placeholders for outer objects if no diff
+        if type(json1) is dict:
+            for k in json1.keys():
+                if k not in generatedfunctions:
+                    outfile.write("\ndef update_" + k + "(jsonobj):\n    ()\n")
 
 
 
