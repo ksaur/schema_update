@@ -1,0 +1,3 @@
+INIT ['active']: {$out = True}
+INIT ['reverseid']: {$out = 0}
+INIT ['key3']: {$out = "val"}
