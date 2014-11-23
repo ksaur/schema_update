@@ -81,8 +81,8 @@ def main():
             func = getattr(m,funcname)
             assert func is not None, ("Could not find function for" + funcname)
 
-            # Call the function for the current key (but feed it all keys for structure)
-            func(jsonkey)
+            # Call the function for the current key and current jsonsubkey
+            func(currkey, jsonkey)
 
             # Now serialize it back, then write it back to redis.  
             # (Note that the key was modified in place.)

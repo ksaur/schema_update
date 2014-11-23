@@ -249,7 +249,7 @@ def generate_upd(thediff):
         keys = l[0]
         assert(len(keys)>0)
         if (keys[0] != function):
-            outfile.write("\ndef update_" + keys[0] + "(jsonobj):\n")
+            outfile.write("\ndef update_" + keys[0] + "(rediskey, jsonobj):\n")
             function = keys[0]
             generatedfunctions.append(keys[0])
         # get the item to modify
