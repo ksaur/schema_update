@@ -70,24 +70,27 @@ def main():
         assert redisval is not None, ("could not find value for" + currkey)
         print type(redisval)
         jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
+
+        # check for arrays containing objects. If so, grab the first inner obj
+        if (type(jsonkey) is list) and (len(jsonkey)>0) and (type(jsonkey[0]) is dict):
+            jsonkey = jsonkey[0]
         print "LOADED:",
         print jsonkey
-        print type(jsonkey)
-        print type(jsonkey.keys())
         # Looping in case the user puts more than one JSON entry per key
-        for o in jsonkey.keys():
-            # Create the function name 
-            funcname = "update_"+o
-            func = getattr(m,funcname)
-            assert func is not None, ("Could not find function for" + funcname)
+        if type(jsonkey) is dict:
+            for o in jsonkey.keys():
+                # Create the function name 
+                funcname = "update_"+o
+                func = getattr(m,funcname)
+                assert func is not None, ("Could not find function for" + funcname)
 
-            # Call the function for the current key and current jsonsubkey
-            func(currkey, jsonkey)
+                # Call the function for the current key and current jsonsubkey
+                func(currkey, jsonkey)
 
-            # Now serialize it back, then write it back to redis.  
-            # (Note that the key was modified in place.)
-            modedkey = json.dumps(jsonkey)
-            r.set(currkey, jsonkey)
+                # Now serialize it back, then write it back to redis.  
+                # (Note that the key was modified in place.)
+                modedkey = json.dumps(jsonkey)
+                r.set(currkey, jsonkey)
             
 
 if __name__ == '__main__':
