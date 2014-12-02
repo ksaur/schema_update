@@ -292,6 +292,7 @@ def generate_upd(thediff):
             vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
             # whoa. where has this function been my whole life?
             init = init.replace("$out", vartoassign)
+            init = init.replace("$dbkey", "rediskey")
             init = init.replace("|", "\n"+tabstop)
             outfile.write(tabstop + init+"\n")
         # deleting.
