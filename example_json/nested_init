@@ -1,1 +1,1 @@
-INIT ['menu', 'popup', ['menuitem'], 'test', 'adds']: {$out = None}
+INIT ["menu", "popup", ["menuitem"], "test", "adds"]: {$out = None}

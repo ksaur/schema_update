@@ -1,34 +1,44 @@
 schema_update
 =============
 
-Requires:
-Jansson_  (jansson.h), HiRedis_ (hiredis.h)
+**Requires:**
 
-You'll also need to be able to run Redis_.
+- You'll need to be able to run Redis_.
+- 'pip install redis'
+- 'pip install json'
 
-Program: 
+**Program:**
 
-* jsondiff_/ - This directory has the code to diff two .json schemas.  It generates a C source code file using calls to jansson to perform the diff to the json schema.
+- example_json_/ - This directory contains test JSON files
+- jsondiffpatch_generator_/ 
+   * decode.py  - A helper library to get rid of unicode (may be deleted later?)
+   * do_upd.py - A non-lazy update for redis
+   * json_delta_diff.py  - Some nice json diff functions I borrowed from jsondelta_, (thank you Philip J. Roberts)
+   * json_patch_creator.py - This is the main file to create the init dsl file and then generate the update functions
+- util_/
+   * loadstuff.py - Load up some test data in redis
 
-* example_json_/ - This directory contains test JSON files
 
-* redis_schema_upd_/ - This directory has the code to take the diff file you generate with jsondiff, connect to redis, and perform the diff over all the keys
-
-* redis_schema_upd/redis_source_/ - This contains a makefile to link with redis...not currently used...in progress..
 
 **Running  (quickly jotting down........):**
-1) start redis
-2) jsondiffpatch_generator$ python json_diff_to_patch.py ../example_json/sample1.json ../example_json/sample2.json ../example_json/sample_init
-3) jsondiffpatch_generator$ python loadstuff.py ../example_jsonbulk/sample.txt
-4) jsondiffpatch_generator$ python doupd.py  
+
+1. **start redis:**   (your_redis_dir)/src$ ./redis-server
+
+2. **load some data:** util$ python loadstuff.py ../example_jsonbulk/sample.txt
+
+3. **make the DSL template file:** jsondiffpatch_generator$ python json_patch_creator.py --t ../example_json/sample1.json ../example_json/sample2.json  (This will generate the DSL template file 'generated_dsl_init' for you to fill out)
+
+4. **(fill out the 'generated_dsl_init' file, or just use example_json_/\*init\*)**
+
+5. **create dsu.py**: jsondiffpatch_generator$ python json_patch_creator.py --d ../example_json/sample_init
+
+6. **run the update:** jsondiffpatch_generator$ python do_upd.py
 
 
 
-.. _Jansson: http://www.digip.org/jansson/
-.. _HiRedis: https://github.com/redis/hiredis
 .. _Redis: http://redis.io/download
-.. _jsondiff: https://github.com/plum-umd/schema_update/tree/master/jsondiff
-.. _redis_schema_upd: https://github.com/plum-umd/schema_update/tree/master/redis_schema_upd
-.. _redis_source: https://github.com/plum-umd/schema_update/tree/master/redis_schema_upd/redis_source
+.. _jsondiffpatch_generator: https://github.com/plum-umd/schema_update/tree/master/jsondiffpatch_generator
 .. _example_json: https://github.com/plum-umd/schema_update/tree/master/example_json
+.. _util: https://github.com/plum-umd/schema_update/tree/master/util
+.. _jsondelta: http://www.phil-roberts.name/json_delta/
 

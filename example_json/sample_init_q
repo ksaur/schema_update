@@ -1,5 +1,0 @@
-DEL ["menu", "deleteme"]
-INIT ["menu", "popup", ["menuitem"], "active"]: {$out = False}
-INIT ["menu", "delta"]: {$out = 9}
-DEL ["soup", "delme"]
-INIT ["soup", "addmes"]: {$out = 0}
