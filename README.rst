@@ -9,7 +9,8 @@ schema_update
 
 **Program:**
 
-- example_json_/ - This directory contains test JSON files
+- example_json_/ 
+   * This directory contains test JSON files
 - jsondiffpatch_generator_/ 
    * decode.py  - A helper library to get rid of unicode (may be deleted later?)
    * do_upd.py - A non-lazy update for redis
