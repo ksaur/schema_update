@@ -76,6 +76,7 @@ def generate_upd(dslfile, outfile):
             # whoa. where has this function been my whole life?
             if (cmd == "INIT"):
                 usercode = usercode.replace("$out", vartoassign)
+                usercode = usercode.replace("$base", pos)
                 usercode = usercode.replace("$dbkey", "rediskey")
                 usercode = usercode.replace("|", "\n"+tabstop)
                 outfile.write(tabstop + usercode+"\n")

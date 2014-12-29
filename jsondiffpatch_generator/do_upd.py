@@ -81,8 +81,13 @@ def main():
             for o in jsonkey.keys():
                 # Create the function name 
                 funcname = "update_"+o
-                func = getattr(m,funcname)
-                assert func is not None, ("Could not find function for" + funcname)
+                try:
+                    func = getattr(m,funcname)
+                except AttributeError as e:
+                    print "No changes for key: " + o
+                    continue
+                print "updating key " + o + "with function at: ",
+                print func
 
                 # Call the function for the current key and current jsonsubkey
                 func(currkey, jsonkey)
