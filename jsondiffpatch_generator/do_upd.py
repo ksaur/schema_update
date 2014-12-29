@@ -51,9 +51,8 @@ def connect(host=None, port=None):
         #    print r.lrange(key, 0, -1)
         #print "---"
 
-def main():
 
-    r = connect()
+def do_upd(r):
     # load up the file to get all functions (like dlsym with Kitsune)
     m = __import__ ('dsu')
     # Get all the keys for redis
@@ -96,6 +95,10 @@ def main():
                 # (Note that the key was modified in place.)
                 modedkey = json.dumps(jsonkey)
                 r.set(currkey, modedkey)
+
+def main():
+    r = connect()
+    do_upd(r)
             
 
 if __name__ == '__main__':
