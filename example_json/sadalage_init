@@ -1,2 +1,2 @@
+INIT ["order", ["orderItems"], "discountedPrice"]: {$out = round($base['price']*.7,2)}
 REN ["order", ["orderItems"], "price"]->["order", ["orderItems"], "fullprice"]
-INIT ["order", ["orderItems"], "discountedPrice"]: {$out=round($base['price']*.7,2)}

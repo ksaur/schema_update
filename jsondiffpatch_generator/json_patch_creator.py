@@ -35,15 +35,19 @@ def generate_upd(dslfile, outfile):
             cmd =  l.group(1)
             keys = json.loads(l.group(2),object_hook=decode.decode_dict)
             usercode = ""
-            # Currently only INIT has group 3 (usercode)
+            newpath = ""
+            # load usercode for INIT
             if (cmd == "INIT"):
-                print "group 3"
                 usercode = l.group(3)
+            # load newpath if REN
+            if (cmd == "REN"):
+                newpath = json.loads(l.group(3),object_hook=decode.decode_dict) 
             assert(len(keys)>0)
             if (entry != function):
                 outfile.write("\ndef update_" + entry + "(rediskey, jsonobj):\n")
                 function = entry
-            # get the item to modify
+
+            # This next block prints the function sig/decls
             pos = 'e'  # for code generation.
                        # This is the first variable name and we'll increment it
             tabstop = "    "
@@ -82,6 +86,10 @@ def generate_upd(dslfile, outfile):
                 outfile.write(tabstop + usercode+"\n")
             elif (cmd == "DEL"):
                 outfile.write(tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']\n")
+            elif (cmd == "REN"):
+                outfile.write(tabstop + pos+"[\'" + (newpath[len(newpath)-1]) + "\'] = "\
+                + pos + ".pop("+ "\'" + (keys[len(keys)-1]) + "\'"     + ")\n")
+             
 
 
 def generate_dsltemplate(thediff, outfile):
@@ -112,7 +120,8 @@ def startingtoken(l):
 def parsedslfile(dslfile):
 
     patterns =  ['(INIT)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #INIT [...] : {...}
-                 '(DEL)\\s+(\[.*\])']  # -> syntax TODO
+                 '(REN)\\s+(\[.*\])\\s?->\\s?(\[.*\])',     #REN [...]->[...]
+                 '(DEL)\\s+(\[.*\])']
 
     dsldict = dict()
     def extract_from_re(estr):
