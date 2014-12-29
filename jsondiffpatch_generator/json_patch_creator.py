@@ -36,8 +36,8 @@ def generate_upd(dslfile, outfile):
             keys = json.loads(l.group(2),object_hook=decode.decode_dict)
             usercode = ""
             newpath = ""
-            # load usercode for INIT
-            if (cmd == "INIT"):
+            # load usercode for INIT and UPD
+            if (cmd == "INIT" or cmd == "UPD"):
                 usercode = l.group(3)
             # load newpath if REN
             if (cmd == "REN"):
@@ -78,7 +78,9 @@ def generate_upd(dslfile, outfile):
             # Replace $out's with the variable to assign to
             vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
             # whoa. where has this function been my whole life?
-            if (cmd == "INIT"):
+            if (cmd == "UPD"):
+                usercode = usercode.replace("$in", vartoassign) #TODO um...is in really ever different than out?
+            if (cmd == "INIT" or cmd == "UPD"):
                 usercode = usercode.replace("$out", vartoassign)
                 usercode = usercode.replace("$base", pos)
                 usercode = usercode.replace("$dbkey", "rediskey")
@@ -108,18 +110,10 @@ def generate_dsltemplate(thediff, outfile):
             outfile.write("DEL "+ (str(keys).replace("\'","\"")) + "\n")
 
 
-# TODO, library call for this?
-def startingtoken(l):
-    tokens = ['INIT', 'DEL', 'REN', 'UPD']
-    for t in tokens:
-        if t in l:
-            return True
-    return False
-
-
 def parsedslfile(dslfile):
 
     patterns =  ['(INIT)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #INIT [...] : {...}
+                 '(UPD)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #UPD [...] : {...}
                  '(REN)\\s+(\[.*\])\\s?->\\s?(\[.*\])',     #REN [...]->[...]
                  '(DEL)\\s+(\[.*\])']
 
@@ -137,14 +131,19 @@ def parsedslfile(dslfile):
                 print "FAIL"
 
     for line in dslfile:
+        print "first line" + line
         line = line.rstrip('\n')
+        print "next line" + line
+        
         # parse multiline cmds
-        while startingtoken(line) is False:
-            tmp = next(dslfile, None)
-            if tmp is not None:
-                line += '|' + tmp.rstrip('\n')
-            else: # EOF
-                break
+        if (("INIT" in line) or ("UPD" in line)): 
+            while ("}" not in line):
+                tmp = next(dslfile, None)
+                if tmp is not None:
+                    line += '|' + tmp.rstrip('\n')
+                    print line
+                else: # EOF
+                    break
         print "=========================================\n\nline = " + line
         curr = extract_from_re(line)
         if curr is not None:
