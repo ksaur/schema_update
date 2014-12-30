@@ -5,14 +5,17 @@ Load some test data in the database, update, and test for expected results.
 import json
 import redis
 import sys
+import shutil
 sys.path.append("../jsondiffpatch_generator") #TODO separate directory?
 import decode
 import do_upd
+import json_patch_creator
 
 
 def test1():
     # create the update file
-    # TODO
+    json_patch_creator.process_dsl("../example_json/sadalage_init")
+    shutil.move("dsu.py", "../jsondiffpatch_generator/dsu.py") #TODO params...but how to call __import__ ('dsu')?
 
     r = do_upd.connect()
     # clear out old data
