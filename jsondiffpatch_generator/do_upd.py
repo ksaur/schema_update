@@ -83,9 +83,9 @@ def do_upd(r):
                 try:
                     func = getattr(m,funcname)
                 except AttributeError as e:
-                    print "No changes for key: " + o
+                    print "(No changes for key: " + o + ")"
                     continue
-                print "updating key " + o + "with function at: ",
+                print "updating key " + o + " with function at: ",
                 print func
 
                 # Call the function for the current key and current jsonsubkey

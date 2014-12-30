@@ -46,12 +46,14 @@ def generate_upd(dslfile, outfile):
             if (entry != function):
                 outfile.write("\ndef update_" + entry + "(rediskey, jsonobj):\n")
                 function = entry
+                getter = ""
 
             # This next block prints the function sig/decls
             pos = 'e'  # for code generation.
                        # This is the first variable name and we'll increment it
             tabstop = "    "
             codeline = tabstop + pos + " = jsonobj"
+            
             print keys
             for s in keys[0:(len(keys)-1)]:
                 print type(s)

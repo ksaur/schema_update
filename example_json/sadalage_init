@@ -2,3 +2,4 @@ INIT ["order", ["orderItems"], "discountedPrice"]: {$out = round($base['price']*
 REN ["order", ["orderItems"], "price"]->["order", ["orderItems"], "fullprice"]
 UPD ["_id"]: {if any(c.isalpha() for c in $in): 
     $out=int($in, 16)}
+DEL ["category"]

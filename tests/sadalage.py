@@ -21,7 +21,7 @@ def test1():
     # clear out old data
     r.flushall()
     # add an entry
-    s = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [   {   \"product\": \"Fortune Cookies\",   \"price\": 19.99   } ] } }"
+    s = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"A\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [   {   \"product\": \"Fortune Cookies\",   \"price\": 19.99   } ] } }"
     r.set("test1", s)
     # make sure data added
     e = r.get("test1")
@@ -30,6 +30,7 @@ def test1():
     assert(jsone["_id"] == "4bd8ae97c47016442af4a580")
     assert(((jsone["order"].get("orderItems"))[0]).get("price") == 19.99)
     assert("fullprice" not in jsone)
+    assert("category" in jsone)
 
     # perform the update and grab the updated value 
     do_upd.do_upd(r)
@@ -44,6 +45,9 @@ def test1():
     assert("price" not in jsone)
     # test INIT
     assert(((jsone["order"].get("orderItems"))[0]).get("discountedPrice") == 13.99)
+    # test DEL
+    assert("category" not in jsone)
+    
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 

@@ -3,6 +3,7 @@
     "customerid": 99999,
     "name": "Foo Sushi Inc",
     "since": "12/12/2001",
+    "category": "A",
     "order": {
         "orderid": "UXWE-122012",
         "orderdate": "12/12/2001",
