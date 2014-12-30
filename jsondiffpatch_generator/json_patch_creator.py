@@ -183,6 +183,43 @@ def bulkload(f, jsonarr):
         jsonarr.append(jfile)
 
 
+# This function creates a file called "generated_dsl_init" from
+# the diff of two json templates.
+def make_template(file1, file2):
+    f1 = open(file1, 'r')
+    f2 = open(file2, 'r')
+    outfile = open("generated_dsl_init", 'w') #TODO params
+    jsonarray1 = []
+    jsonarray2 = []
+
+    bulkload(f1, jsonarray1)
+    bulkload(f2, jsonarray2)
+    print "ARRRAY IS:"
+    print jsonarray1
+
+    assert len(jsonarray1) == len(jsonarray2), \
+     "Files should contain the same number of json templates..."
+
+    for json1, json2 in zip(jsonarray1, jsonarray2):
+        thediff = json_delta_diff.diff(json1, json2)
+        print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
+        print (thediff)
+
+    # generate the template file here
+    generate_dsltemplate(thediff, outfile)
+
+# This funciton processes the template file and generates the
+# update file "dsu.py" to update the json entries in the databse
+def process_dsl(file1):
+
+        # Load up the init file
+        dslfile = open(file1, 'r')
+
+        # Open the output file
+        outfile = open("dsu.py", 'w') #TODO params
+
+        # Generate the functions based on the DSL file contents
+        generate_upd(dslfile, outfile)
 
 def main():
 
@@ -193,40 +230,11 @@ def main():
 
     # Template option
     if (args.t) is not None:
-        file1 = open(args.t[0], 'r')
-        file2 = open(args.t[1], 'r')
-        outfile = open("generated_dsl_init", 'w')
-        jsonarray1 = []
-        jsonarray2 = []
-
-        bulkload(file1, jsonarray1)
-        bulkload(file2, jsonarray2)
-        print "ARRRAY IS:"
-        print jsonarray1
-
-        assert len(jsonarray1) == len(jsonarray2), \
-         "Files should contain the same number of json templates..."
-
-        for json1, json2 in zip(jsonarray1, jsonarray2):
-            thediff = json_delta_diff.diff(json1, json2)
-            print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
-            print (thediff)
-
-        # generate the template file here
-        generate_dsltemplate(thediff, outfile)
+        make_template(args.t[0], args.t[1])
 
     # Process DSL file option
     if (args.d) is not None:
-
-        # Load up the init file
-        dslfile = open(args.d[0], 'r')
-
-        # Open the output file
-        outfile = open("dsu.py", 'w')
-
-        # Generate the functions based on the DSL file contents
-        generate_upd(dslfile, outfile)
-
+        process_dsl(args.d[0])
 
 
 if __name__ == '__main__':
