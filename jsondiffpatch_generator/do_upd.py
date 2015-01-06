@@ -52,9 +52,11 @@ def connect(host=None, port=None):
         #print "---"
 
 
-def do_upd(r):
+def do_upd(r, updfile="dsu"):
+    #strip off extention, if provided
+    updfile = updfile.replace(".py", "")
     # load up the file to get all functions (like dlsym with Kitsune)
-    m = __import__ ('dsu')
+    m = __import__ (updfile)
     # Get all the keys for redis
     keys = r.keys('*');
     print "Printing \'" + str(len(keys)) + "\' keys:"

@@ -1,0 +1,7 @@
+UPD ["order", ["order_items"], "percent_full_price"]: {
+$out = 1.0
+# blatantly demonstrate usage of $in, 
+# (although could swap the next line with the prev)
+$base['price'] = round($base["price"]/$in,2)
+print $base["price"]}
+

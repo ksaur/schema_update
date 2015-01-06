@@ -81,10 +81,12 @@ def generate_upd(dslfile, outfile):
             vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
             # whoa. where has this function been my whole life?
             if (cmd == "UPD"):
-                usercode = usercode.replace("$in", vartoassign) #TODO um...is in really ever different than out?
+                outfile.write(tabstop + "tmp = " + vartoassign)
+                usercode = usercode.replace("$in", "tmp") 
             if (cmd == "INIT" or cmd == "UPD"):
                 usercode = usercode.replace("$out", vartoassign)
                 usercode = usercode.replace("$base", pos)
+                usercode = usercode.replace("$root", "jsonobj")
                 usercode = usercode.replace("$dbkey", "rediskey")
                 usercode = usercode.replace("|", "\n"+tabstop)
                 outfile.write(tabstop + usercode+"\n")
@@ -212,13 +214,13 @@ def make_template(file1, file2):
 
 # This funciton processes the template file and generates the
 # update file "dsu.py" to update the json entries in the databse
-def process_dsl(file1):
+def process_dsl(file1, outfile="dsu.py"):
 
         # Load up the init file
         dslfile = open(file1, 'r')
 
         # Open the output file
-        outfile = open("dsu.py", 'w') #TODO params
+        outfile = open(outfile, 'w')
 
         # Generate the functions based on the DSL file contents
         generate_upd(dslfile, outfile)

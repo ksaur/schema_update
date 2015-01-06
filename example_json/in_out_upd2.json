@@ -6,13 +6,13 @@
         "order_items": [
             {
                 "product": "Foo Bar Ball",
-                "percent_original": 0.7,
-                "price": 13.99
+                "percent_full_price": 1.0,
+                "price": 19.99
             },
             {
                 "product": "Foo Bar Stool",
-                "percent_original": 0.7,
-                "price": 13.99
+                "percent_full_price": 1.0,
+                "price": 19.99
             }
         ]
     }
