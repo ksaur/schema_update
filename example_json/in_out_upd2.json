@@ -3,15 +3,15 @@
     "orderdate": "12/12/2014",
     "order": {
         "orderid": "UUU122014",
-        "order_items": [
+        "orderitems": [
             {
                 "product": "Foo Bar Ball",
-                "percent_full_price": 1.0,
+                "percentfullprice": 1.0,
                 "price": 19.99
             },
             {
                 "product": "Foo Bar Stool",
-                "percent_full_price": 1.0,
+                "percentfullprice": 1.0,
                 "price": 19.99
             }
         ]

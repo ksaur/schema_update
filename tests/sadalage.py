@@ -103,7 +103,7 @@ def test2(r):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  (TEST2)  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
-# Demonstrate the usages of $in and $out
+# Demonstrate the usages of $in $out $root $base
 def test3(r):
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  TEST3  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
     reset(r)
@@ -112,15 +112,16 @@ def test3(r):
     json_patch_creator.process_dsl("../example_json/in_out_upd", "test3.py")
     shutil.move("test3.py", "../jsondiffpatch_generator/generated_test3.py")
 
-    v = "{ \"name\": \"Foo Bar Industries\", \"orderdate\": \"12/12/2014\", \"order\": { \"orderid\": \"UUU122014\", \"order_items\": [ { \"product\": \"Foo Bar Ball\", \"percent_full_price\": 0.7, \"price\": 13.99 }, { \"product\": \"Foo Bar Stool\", \"percent_full_price\": 0.7, \"price\": 13.99 } ] } }"
+    v = "{ \"name\": \"Foo Bar Industries\", \"orderdate\": \"12/12/2014\", \"order\": { \"orderid\": \"UUUXBSI\", \"orderitems\": [ { \"product\": \"Foo Bar Ball\", \"percentfullprice\": 0.7, \"price\": 13.99 }, { \"product\": \"Foo Bar Stool\", \"percentfullprice\": 0.7, \"price\": 13.99 } ] } }"
     r.set("key1", v)
     # make sure data added
     e = r.get("key1")
     assert (e) is not None
     jsone = json.loads(e,object_hook=decode.decode_dict)
-    print jsone.get("order").get("order_items")[0]
-    assert(jsone.get("order").get("order_items")[0].get("percent_full_price") == 0.7)
-    assert(jsone.get("order").get("order_items")[0].get("price") == 13.99)
+    print jsone.get("order").get("orderitems")[0]
+    assert(jsone.get("order").get("orderitems")[0].get("percentfullprice") == 0.7)
+    assert(jsone.get("order").get("orderitems")[0].get("price") == 13.99)
+    assert(jsone.get("order").get("orderid") == "UUUXBSI")
 
     # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
     do_upd.do_upd(r, "generated_test3")
@@ -130,8 +131,9 @@ def test3(r):
     # test for expected values
     # test UPD
     print jsone
-    assert(jsone.get("order").get("order_items")[0].get("percent_full_price") == 1.0)
-    assert(jsone.get("order").get("order_items")[0].get("price") == 19.99)
+    assert(jsone.get("order").get("orderitems")[0].get("percentfullprice") == 1.0)
+    assert(jsone.get("order").get("orderitems")[0].get("price") == 19.99)
+    assert(jsone.get("order").get("orderid") == "UUUXBSI_12122014")
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  (TEST3)  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"

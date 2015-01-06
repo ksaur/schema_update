@@ -1,7 +1,12 @@
-UPD ["order", ["order_items"], "percent_full_price"]: {
+UPD ["order", ["orderitems"], "percentfullprice"]: {
 $out = 1.0
-# blatantly demonstrate usage of $in, 
+# blatantly demonstrate usage of $\in, 
 # (although could swap the next line with the prev)
 $base['price'] = round($base["price"]/$in,2)
-print $base["price"]}
+print $base["price"]
+}
 
+UPD ["order", "orderid"]: {
+# demonstrate $\root
+$out= $out + "_" + $root.get("orderdate").replace("/","")
+}
