@@ -81,7 +81,7 @@ def generate_upd(dslfile, outfile):
             vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
             # whoa. where has this function been my whole life?
             if (cmd == "UPD"):
-                outfile.write(tabstop + "tmp = " + vartoassign)
+                outfile.write(tabstop + "tmp = " + vartoassign +"\n")
                 usercode = usercode.replace("$in", "tmp") 
             if (cmd == "INIT" or cmd == "UPD"):
                 usercode = usercode.replace("$out", vartoassign)
