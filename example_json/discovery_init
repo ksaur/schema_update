@@ -1,3 +1,4 @@
+for keys * {
 INIT ["reverseid"]: {edge = $dbkey.split("@")  
 in_node = str(edge[0]).replace("edgeattr:", "")
 out_node = str(edge[1])  
@@ -5,3 +6,4 @@ $out = out_node + "@" + in_node}
 
 INIT ["active"]: {$out = 0}
 INIT ["key3"]: {$out = "val"}
+};

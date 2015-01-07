@@ -109,7 +109,7 @@ def test3(r):
     reset(r)
 
     # create the update file
-    json_patch_creator.process_dsl("../example_json/in_out_upd", "test3.py")
+    json_patch_creator.process_dsl("../example_json/in_out_upd_init", "test3.py")
     shutil.move("test3.py", "../jsondiffpatch_generator/generated_test3.py")
 
     v = "{ \"name\": \"Foo Bar Industries\", \"orderdate\": \"12/12/2014\", \"order\": { \"orderid\": \"UUUXBSI\", \"orderitems\": [ { \"product\": \"Foo Bar Ball\", \"percentfullprice\": 0.7, \"price\": 13.99 }, { \"product\": \"Foo Bar Stool\", \"percentfullprice\": 0.7, \"price\": 13.99 } ] } }"

@@ -26,6 +26,9 @@ __VERSION__ = '0.1'
 def generate_upd(dslfile, outfile):
     # parse DSL file
     dsldict = parse_dslfile(dslfile)
+  
+    #TODO START HEREEEEE
+    dsldict = dsldict.get("*")
     function = ""
     getter = ""
     for entry in dsldict:
@@ -174,10 +177,39 @@ def parse_dslfile_inner(dslfile):
 # Returns a dictionary of keys corresponding to dictonaries of rules that match
 # the expected regular expressions
 def parse_dslfile(dslfile):
-    l = list()
+    def extract_from_re(estr):
+        p = 'for keys\\s?(.*)\\s?{'
+        if re.match(p,estr) is not None:
+            cmd_re = re.compile(p)
+            cmd = cmd_re.search(estr)
+            print "Group " + str(1) + " = " +  cmd.group(1)
+            return cmd.group(1).strip()
+        else:
+            return None
+
+    l = list() # list of all the readin dsl lines
+    d = dict() # mapping of "keys *" phrases to enclosed lines
     for line in dslfile:
-        l.append(line)
-    return parse_dslfile_inner(iter(l))
+        # skip blank lines in between "for key *{...};" stanzas
+        if line == "\n":
+           continue
+        keys = extract_from_re(line)
+        if keys is None:
+            print "ERROR: Should start with '{'" #TODO errors
+            return None
+        print "keys = ",
+        print  keys
+        curr = next(dslfile, None)
+        while curr != "};\n":
+            l.append(curr)
+            curr = next(dslfile, None)
+            print "   |"+curr+"|  "
+        print l
+        #TODO looping .....reset these...
+        inner = parse_dslfile_inner(iter(l))
+        d[keys] = inner
+    print d
+    return d
 
 
 def bulkload(f, jsonarr):
