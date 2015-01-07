@@ -25,7 +25,7 @@ __VERSION__ = '0.1'
 
 def generate_upd(dslfile, outfile):
     # parse DSL file
-    dsldict = parsedslfile(dslfile)
+    dsldict = parse_dslfile(dslfile)
     function = ""
     getter = ""
     for entry in dsldict:
@@ -114,12 +114,16 @@ def generate_dsltemplate(thediff, outfile):
             outfile.write("DEL "+ (str(keys).replace("\'","\"")) + "\n")
 
 
-def parsedslfile(dslfile):
+# parses the inner portion of dsl funtions:
+# {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
+#
+# Returns a dictionary of rules that match the expected regular expressions
+def parse_dslfile_inner(dslfile):
 
     patterns =  ['(INIT)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #INIT [...] : {...}
-                 '(UPD)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #UPD [...] : {...}
+                 '(UPD)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',      #UPD [...] : {...}
                  '(REN)\\s+(\[.*\])\\s?->\\s?(\[.*\])',     #REN [...]->[...]
-                 '(DEL)\\s+(\[.*\])']
+                 '(DEL)\\s+(\[.*\])']                       #DEL [...]
 
     dsldict = dict()
     def extract_from_re(estr):
@@ -139,7 +143,7 @@ def parsedslfile(dslfile):
         line = line.rstrip('\n')
         print "next line" + line
         
-        # parse multiline cmds
+        # parse multiline cmds. INIT and UPD have usercode, DEL and REN do not.
         if (("INIT" in line) or ("UPD" in line)): 
             while ("}" not in line):
                 tmp = next(dslfile, None)
@@ -163,6 +167,17 @@ def parsedslfile(dslfile):
                 dsldict[keys[0]].append(curr)
     print dsldict
     return dsldict
+
+# Takes as input the DSL file in the format of: 
+# for keys * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
+#
+# Returns a dictionary of keys corresponding to dictonaries of rules that match
+# the expected regular expressions
+def parse_dslfile(dslfile):
+    l = list()
+    for line in dslfile:
+        l.append(line)
+    return parse_dslfile_inner(iter(l))
 
 
 def bulkload(f, jsonarr):
