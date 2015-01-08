@@ -61,12 +61,15 @@ def do_upd(r, updfile="dsu"):
     print "importing from " + updfile
     m = __import__ (updfile)
 
-    update_pairs = getattr(m, "update_pairs")
+    get_update_pairs = getattr(m, "get_update_pairs")
+    update_pairs = get_update_pairs()
+    print update_pairs
+    print len(update_pairs)
 
     num_upd = 0
     # Loop over the "for key __  " glob stanzas
     for glob in update_pairs:
-        print glob
+        print "GLOB = " + glob
         print update_pairs[glob]
         keys = r.keys(glob)
         print "Printing \'" + str(len(keys)) + "\' keys:"

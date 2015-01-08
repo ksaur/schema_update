@@ -164,12 +164,11 @@ def parse_dslfile_inner(dslfile):
             print "found " + str(len(curr.groups())) + " groups"
             print curr.group(2)
             keys = json.loads(curr.group(2),object_hook=decode.decode_dict)
-            print keys[0]
-            if(keys[0] not in dsldict.keys()):
+            if (type(keys[0]) is list): #TODO other cases?? What if mid-list?  more testing needed.
+                dsldict[keys[0][0]] = [curr]
+            elif(keys[0] not in dsldict.keys()):
                 dsldict[keys[0]] = [curr]
             else:
-                print dsldict[keys[0]]
-                print type(dsldict[keys[0]])
                 dsldict[keys[0]].append(curr)
     print dsldict
     return dsldict
@@ -190,9 +189,9 @@ def parse_dslfile(dslfile):
         else:
             return None
 
-    l = list() # list of all the readin dsl lines
     d = dict() # mapping of "keys *" phrases to enclosed lines
     for line in dslfile:
+        l = list() # list of all the readin dsl lines
         # skip blank lines in between "for key *{...};" stanzas
         if line == "\n":
            continue
@@ -286,7 +285,7 @@ def process_dsl(file1, outfile="dsu.py"):
         kv_update_pairs[key] = generate_upd(dsldict[key], outfile, "group_"+str(idx))
 
     # write the name of the key globs and corresponding functions
-    outfile.write("\nupdate_pairs = " + str(kv_update_pairs))
+    outfile.write("\ndef get_update_pairs():\n    return " + str(kv_update_pairs))
 
     # cleanup
     outfile.close()
