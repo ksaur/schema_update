@@ -23,16 +23,14 @@ import json_delta_diff
 __VERSION__ = '0.1'
 
 
-def generate_upd(dslfile, outfile):
-    # parse DSL file
-    dsldict = parse_dslfile(dslfile)
-  
-    #TODO START HEREEEEE
-    dsldict = dsldict.get("*")
+# Generate the update functions for each keyset
+# Return a dictionary of ( key blob command -> functions to call)
+def generate_upd(cmddict, outfile):
     function = ""
     getter = ""
-    for entry in dsldict:
-        list_of_groups = dsldict.get(entry)
+    funname_list = list()
+    for entry in cmddict:
+        list_of_groups = cmddict.get(entry)
         for l in list_of_groups:
             # All commands will have group 1 (command) and group 2 (path)
             cmd =  l.group(1)
@@ -47,7 +45,10 @@ def generate_upd(dslfile, outfile):
                 newpath = json.loads(l.group(3),object_hook=decode.decode_dict) 
             assert(len(keys)>0)
             if (entry != function):
+                # write the function signature to file
                 outfile.write("\ndef update_" + entry + "(rediskey, jsonobj):\n")
+                # store the name of the function to call
+                funname_list.append(str("update_" + entry))
                 function = entry
                 getter = ""
 
@@ -98,9 +99,10 @@ def generate_upd(dslfile, outfile):
             elif (cmd == "REN"):
                 outfile.write(tabstop + pos+"[\'" + (newpath[len(newpath)-1]) + "\'] = "\
                 + pos + ".pop("+ "\'" + (keys[len(keys)-1]) + "\'"     + ")\n")
+    return funname_list
              
 
-
+# Compute a diff and generate some stubs of INIT/DEL for the user to get started with
 def generate_dsltemplate(thediff, outfile):
     print len(thediff)
     for l in thediff:
@@ -193,6 +195,7 @@ def parse_dslfile(dslfile):
         # skip blank lines in between "for key *{...};" stanzas
         if line == "\n":
            continue
+        # get the "for keys..." line
         keys = extract_from_re(line)
         if keys is None:
             print "ERROR: Should start with '{'" #TODO errors
@@ -203,9 +206,9 @@ def parse_dslfile(dslfile):
         while curr != "};\n":
             l.append(curr)
             curr = next(dslfile, None)
-            print "   |"+curr+"|  "
         print l
         #TODO looping .....reset these...
+        # parse the stuff inside the "for" stanza
         inner = parse_dslfile_inner(iter(l))
         d[keys] = inner
     print d
@@ -259,18 +262,35 @@ def make_template(file1, file2):
     # generate the template file here
     generate_dsltemplate(thediff, outfile)
 
-# This funciton processes the template file and generates the
-# update file "dsu.py" to update the json entries in the databse
+# This function processes the dsl file and generates the update file "dsu.py"
+# (or other name as specified) to update the json entries in the databse
 def process_dsl(file1, outfile="dsu.py"):
 
-        # Load up the init file
-        dslfile = open(file1, 'r')
+    # Open the init file
+    dslfile = open(file1, 'r')
 
-        # Open the output file
-        outfile = open(outfile, 'w')
+    # Open the output file
+    outfile = open(outfile, 'w')
 
-        # Generate the functions based on the DSL file contents
-        generate_upd(dslfile, outfile)
+    # parse DSL file
+    dsldict = parse_dslfile(dslfile)
+
+    # create a dict to store the parsed dsl output
+    kv_update_pairs = dict()
+
+    # Generate the functions based on the DSL file contents
+    for key in dsldict: 
+        #TODO, maybe use key as the namespace or something?
+        #TODO key collisions!!!!!!!!!!!!1
+        kv_update_pairs[key] = generate_upd(dsldict[key], outfile)
+
+    # write the name of the key globs and corresponding functions
+    outfile.write("\nupdate_pairs = " + str(kv_update_pairs))
+
+    # cleanup
+    outfile.close()
+    dslfile.close()
+         
 
 def main():
 

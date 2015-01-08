@@ -58,7 +58,7 @@ def do_upd(r, updfile="dsu"):
     # load up the file to get all functions (like dlsym with Kitsune)
     m = __import__ (updfile)
     # Get all the keys for redis
-    keys = r.keys('*');
+    keys = r.keys('*')
     print "Printing \'" + str(len(keys)) + "\' keys:"
     for currkey in keys:
         redisval = None
