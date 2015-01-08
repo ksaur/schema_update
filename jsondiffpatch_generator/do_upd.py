@@ -52,14 +52,18 @@ def connect(host=None, port=None):
         #print "---"
 
 
+# perform the update
+# return the number of keys updated
 def do_upd(r, updfile="dsu"):
     #strip off extention, if provided
     updfile = updfile.replace(".py", "")
     # load up the file to get all functions (like dlsym with Kitsune)
+    print "importing from " + updfile
     m = __import__ (updfile)
 
     update_pairs = getattr(m, "update_pairs")
 
+    num_upd = 0
     # Loop over the "for key __  " glob stanzas
     for glob in update_pairs:
         print glob
@@ -92,6 +96,9 @@ def do_upd(r, updfile="dsu"):
                 # (Note that the key was modified in place.)
                 modedkey = json.dumps(jsonkey)
                 r.set(currkey, modedkey)
+                num_upd+=1
+
+    return num_upd
 
 
 def main():

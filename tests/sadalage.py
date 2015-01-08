@@ -66,14 +66,15 @@ def test2(r):
     reset(r)
 
     # create the update file
-#    json_patch_creator.process_dsl("../example_json/keys_init")
-#    shutil.move("dsu.py", "../jsondiffpatch_generator/dsu.py")
+    json_patch_creator.process_dsl("../example_json/keys_init", "test2.py")
+    shutil.move("test2.py", "../jsondiffpatch_generator/generated_test2.py")
 
     # add an entry (http://www.sitepoint.com/customer-form-json-file-example/)
     v = "{ \"firstName\": \"John\", \"lastName\": \"Smith\", \"age\": 25, \"address\": { \"streetAddress\": \"21 2nd Street\", \"city\": \"New York\", \"state\": \"NY\", \"postalCode\": \"10021\" }, \"phoneNumber\": [ { \"type\": \"home\", \"number\": \"212 555-1234\" }, { \"type\": \"fax\", \"number\": \"646 555-4567\" } ] }"
     r.set("key1", v)
     v= v.replace("5","7")
     r.set("key2", v)
+    r.set("ignoreme", v)
     # make sure data added
     e = r.get("key1")
     assert (e) is not None
@@ -84,22 +85,23 @@ def test2(r):
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone.get("phoneNumber")[0].get("number") == "212 777-1234")
 
-#    # perform the update and grab the updated value
-#    do_upd.do_upd(r)
-#    e = r.get("key1")
-#    assert (e) is not None
-#    jsone = json.loads(e,object_hook=decode.decode_dict)
-#    # test for expected values
-#    # test UPD
-#    assert(jsone["_id"] == 23473328205018852615364322688) #hex to dec
-#    # test REN
-#    assert(((jsone["order"].get("orderItems"))[0]).get("fullprice") == 19.99)
-#    assert("price" not in jsone)
-#    # test INIT
-#    assert(((jsone["order"].get("orderItems"))[0]).get("discountedPrice") == 13.99)
-#    # test DEL
-#    assert("category" not in jsone)
-
+    # perform the update and grab the updated value
+    numupd = do_upd.do_upd(r, "generated_test2.py")
+    assert(len(r.keys("*")) == 3)
+    # test for expected number of updated keys
+    assert(numupd == 2)
+    # test for expected values
+    e = r.get("key1")
+    assert (e) is not None
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert("dob" in jsone) #make sure added
+    assert(jsone["dob"] == "01/01/1970") #test added value
+    # test for non-expected values
+    e = r.get("ignoreme")
+    assert (e) is not None
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert("dob" not in jsone) #make sure not added
+    assert(jsone.get("phoneNumber")[0].get("number") == "212 777-1234")
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  (TEST2)  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 

@@ -1,0 +1,4 @@
+for keys key* {
+INIT ["dob"]: {$out = "01/01/1970"}
+};
+

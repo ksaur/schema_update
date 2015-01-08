@@ -25,7 +25,7 @@ __VERSION__ = '0.1'
 
 # Generate the update functions for each keyset
 # Return a dictionary of ( key blob command -> functions to call)
-def generate_upd(cmddict, outfile):
+def generate_upd(cmddict, outfile, prefix):
     function = ""
     getter = ""
     funname_list = list()
@@ -46,9 +46,10 @@ def generate_upd(cmddict, outfile):
             assert(len(keys)>0)
             if (entry != function):
                 # write the function signature to file
-                outfile.write("\ndef update_" + entry + "(rediskey, jsonobj):\n")
+                name = str(prefix +"_update_" + entry)
+                outfile.write("\ndef "+ name + "(rediskey, jsonobj):\n")
                 # store the name of the function to call
-                funname_list.append(str("update_" + entry))
+                funname_list.append(name)
                 function = entry
                 getter = ""
 
@@ -279,10 +280,10 @@ def process_dsl(file1, outfile="dsu.py"):
     kv_update_pairs = dict()
 
     # Generate the functions based on the DSL file contents
-    for key in dsldict: 
-        #TODO, maybe use key as the namespace or something?
-        #TODO key collisions!!!!!!!!!!!!1
-        kv_update_pairs[key] = generate_upd(dsldict[key], outfile)
+    # (Use the index as the namespace, as the keystring has too many special chars) 
+    for idx, key in enumerate(dsldict):
+        #TODO key collisions!!!!!!!!!!!!
+        kv_update_pairs[key] = generate_upd(dsldict[key], outfile, "group_"+str(idx))
 
     # write the name of the key globs and corresponding functions
     outfile.write("\nupdate_pairs = " + str(kv_update_pairs))
