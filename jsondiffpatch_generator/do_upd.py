@@ -57,39 +57,34 @@ def do_upd(r, updfile="dsu"):
     updfile = updfile.replace(".py", "")
     # load up the file to get all functions (like dlsym with Kitsune)
     m = __import__ (updfile)
-    # Get all the keys for redis
-    keys = r.keys('*')
-    print "Printing \'" + str(len(keys)) + "\' keys:"
-    for currkey in keys:
-        redisval = None
-        print "key: " + currkey
-        redisval = r.get(currkey)
-        print "value: |" + redisval + "|"
 
+    update_pairs = getattr(m, "update_pairs")
 
-        # Make sure everything is loaded
-        assert redisval is not None, ("could not find value for" + currkey)
-        print type(redisval)
-        jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
+    # Loop over the "for key __  " glob stanzas
+    for glob in update_pairs:
+        print glob
+        print update_pairs[glob]
+        keys = r.keys(glob)
+        print "Printing \'" + str(len(keys)) + "\' keys:"
+        # Loop over the keys matching the current glob
+        for currkey in keys:
+            redisval = None
+            print "key: " + currkey
+            redisval = r.get(currkey)
+            print "value: |" + redisval + "|"
 
-        # check for arrays containing objects. If so, grab the first inner obj
-        if (type(jsonkey) is list) and (len(jsonkey)>0) and (type(jsonkey[0]) is dict):
-            jsonkey = jsonkey[0]
-        print "LOADED:",
-        print jsonkey
-        # Looping in case the user puts more than one JSON entry per key
-        if type(jsonkey) is dict:
-            for o in jsonkey.keys():
-                # Create the function name 
-                funcname = "update_"+o
+            # Make sure everything is loaded
+            assert redisval is not None, ("could not find value for" + currkey)
+            print type(redisval)
+            jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
+            
+            # Loop over the set of functions that apply to the keys
+            for funcname in update_pairs[glob]:
                 try:
                     func = getattr(m,funcname)
                 except AttributeError as e:
-                    print "(No changes for key: " + o + ")"
+                    print "(Could not find function: " + funcname + ")"
                     continue
-                print "updating key " + o + " with function at: ",
-                print func
-
                 # Call the function for the current key and current jsonsubkey
                 func(currkey, jsonkey)
 
@@ -97,6 +92,7 @@ def do_upd(r, updfile="dsu"):
                 # (Note that the key was modified in place.)
                 modedkey = json.dumps(jsonkey)
                 r.set(currkey, modedkey)
+
 
 def main():
     r = connect()
