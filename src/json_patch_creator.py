@@ -1,17 +1,12 @@
-# -*- encoding: utf-8 -*-
-# json_delta.py: a library for computing deltas between
-# JSON-serializable structures.
-#
-# Copyright 2012‒2014 Philip J. Roberts <himself@phil-roberts.name>.
-# BSD License applies; see the LICENSE file, or
-# http://opensource.org/licenses/BSD-2-Clause
-#
-# ###################################################
-#
-# Modified/Repurposed 2014 by KSaur (ksaur@umd.edu)
-#
 '''
-Requires Python 2.7 or newer (including Python 3).
+
+This is the main file for generating the update code.
+
+Two modes: 
+  1. generate a template to fill out from two (old and new) json test data files
+  2. generate the python code to perform the update using the template file
+
+Requires Python 2.7.
 '''
 import bisect, copy, sys, re
 import json
@@ -23,9 +18,11 @@ import json_delta_diff
 __VERSION__ = '0.1'
 
 
-# Generate the update functions for each keyset
-# Return a dictionary of ( key blob command -> functions to call)
 def generate_upd(cmddict, outfile, prefix):
+    """
+    Generate the update functions for each keyset.
+    @return: a dictionary of ( key blob command -> functions to call)
+    """
     function = ""
     getter = ""
     funname_list = list()
@@ -103,8 +100,10 @@ def generate_upd(cmddict, outfile, prefix):
     return funname_list
              
 
-# Compute a diff and generate some stubs of INIT/DEL for the user to get started with
 def generate_dsltemplate(thediff, outfile):
+    """
+    Compute a diff and generate some stubs of INIT/DEL for the user to get started with
+    """
     print len(thediff)
     for l in thediff:
         assert(len(l) in (1,2))
@@ -120,11 +119,13 @@ def generate_dsltemplate(thediff, outfile):
             outfile.write("DEL "+ (str(keys).replace("\'","\"")) + "\n")
 
 
-# parses the inner portion of dsl funtions:
-# {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
-#
-# Returns a dictionary of rules that match the expected regular expressions
 def parse_dslfile_inner(dslfile):
+    """
+    parses the inner portion of dsl funtions:
+    {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
+    
+    @return: a dictionary of rules that match the expected regular expressions
+    """
 
     patterns =  ['(INIT)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #INIT [...] : {...}
                  '(UPD)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',      #UPD [...] : {...}
@@ -173,12 +174,15 @@ def parse_dslfile_inner(dslfile):
     print dsldict
     return dsldict
 
-# Takes as input the DSL file in the format of: 
-# for keys * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
-#
-# Returns a dictionary of keys corresponding to dictonaries of rules that match
-# the expected regular expressions
 def parse_dslfile(dslfile):
+    """
+    Takes as input the DSL file in the format of: 
+    for keys * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
+    
+    @return: a dictionary of keys corresponding to dictonaries of rules that match
+    the expected regular expressions
+    """
+
     def extract_from_re(estr):
         p = 'for keys\\s?(.*)\\s?{'
         if re.match(p,estr) is not None:
@@ -237,9 +241,18 @@ def bulkload(f, jsonarr):
         jsonarr.append(jfile)
 
 
-# This function creates a file called "generated_dsl_init" from
-# the diff of two json templates.
 def make_template(file1, file2):
+    """
+    This function is the entry point for generating the template
+  
+    This function creates a file called "generated_dsl_init" from
+    the diff of two json templates.
+
+    @param file1: the original 'schema' sample json file
+    @type file1: string
+    @param file2: the new 'schema' sample json file
+    @type file2: string
+    """
     f1 = open(file1, 'r')
     f2 = open(file2, 'r')
     outfile = open("generated_dsl_init", 'w') #TODO params
@@ -262,9 +275,13 @@ def make_template(file1, file2):
     # generate the template file here
     generate_dsltemplate(thediff, outfile)
 
-# This function processes the dsl file and generates the update file "dsu.py"
-# (or other name as specified) to update the json entries in the databse
 def process_dsl(file1, outfile="dsu.py"):
+    """
+    This function is the entry point for generating the update code.
+
+    This function processes the dsl file and generates the update file "dsu.py"
+    (or other name as specified) to update the json entries in the databse
+    """
 
     # Open the init file
     dslfile = open(file1, 'r')
@@ -294,6 +311,16 @@ def process_dsl(file1, outfile="dsu.py"):
 
 def main():
 
+    """
+    To generate a template to fill out (containing the added/deleted fields between 2 json files):
+  
+    >>> python json_patch_creator.py --t ../tests/data/example_json/sample1.json ../tests/data/example_json/sample2.json
+
+    To generate the update code from the template:
+
+    >>> python json_patch_creator.py --d ../tests/data/example_json/sample_init
+
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--t', nargs=2, help='generate the template dsl file from 2 json template files')
     parser.add_argument('--d', nargs=1, help='process the dsl file and generate the update file')

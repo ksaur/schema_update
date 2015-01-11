@@ -1,4 +1,6 @@
 """
+This file is used in generating test data.
+
 Load up some test data from a file into the database for testing.
 
 Usage: python runfunctions.py filetoupdate
@@ -10,6 +12,7 @@ import sys
 import redis
 
 
+#TODO: link with other libraries, or make stand-alone?
 def connect(host=None, port=None):
     """ Connect to redis. Default is localhost, port 6379.
         (Redis must be running.)

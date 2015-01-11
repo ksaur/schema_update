@@ -1,0 +1,19 @@
+{
+    "name": "Foo Bar Industries",
+    "orderdate": "12/12/2014",
+    "order": {
+        "orderid": "UUU122014",
+        "orderitems": [
+            {
+                "product": "Foo Bar Ball",
+                "percentfullprice": 1.0,
+                "price": 19.99
+            },
+            {
+                "product": "Foo Bar Stool",
+                "percentfullprice": 1.0,
+                "price": 19.99
+            }
+        ]
+    }
+}

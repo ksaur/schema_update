@@ -1,5 +1,5 @@
 """
- Prints all the values of redis.
+ Prints all the values (keys, types, and data) of everything currently stored in redis.
 
  Usage: python print_redis.py
 

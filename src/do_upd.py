@@ -1,25 +1,26 @@
 """
-
-Call all of the generated functions for the redis database.
+Call all of the generated functions for the specified key stanzas 
+in the redis database.
 
 Usage: python doupd.py
-
-This assumes the update functions are in a file called dsu.py (todo)
-
-With help from:
-http://stackoverflow.com/questions/3061/
-calling-a-function-of-a-module-from-a-string-with-the-functions-name-in-python
 
 """
 import sys
 import json
 import decode
 import redis
+import sys
+sys.path.append("../generated")
 
-
+# TODO move this into some sort of util library
 def connect(host=None, port=None):
-    """ Connect to redis. Default is localhost, port 6379.
-        (Redis must be running.)
+    """ 
+    Connect to redis. Default is localhost, port 6379.
+    (Redis must be running.)
+
+    @param host: the address of redis, defaults to 'localhost
+    @param port: the port for redis, defaults to 6379
+        
     """
     if host is None:
         host = 'localhost'
@@ -52,9 +53,16 @@ def connect(host=None, port=None):
         #print "---"
 
 
-# perform the update
-# return the number of keys updated
 def do_upd(r, updfile="dsu"):
+    """
+    Perform the update.
+
+    @param r: The instance of redis to update (already connected)
+    @type updfile: string
+    @param updfile: The file with the update functions.  Defaults to "dsu".
+    @return: the number of keys updated
+    
+    """
     #strip off extention, if provided
     updfile = updfile.replace(".py", "")
     # load up the file to get all functions (like dlsym with Kitsune)

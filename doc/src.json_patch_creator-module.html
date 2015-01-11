@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>src.json_patch_creator</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">TBD</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        Package&nbsp;src ::
+        Module&nbsp;json_patch_creator
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="src.json_patch_creator-module.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== MODULE DESCRIPTION ==================== -->
+<h1 class="epydoc">Module json_patch_creator</h1><p class="nomargin-top"><span class="codelink"><a href="src.json_patch_creator-pysrc.html">source&nbsp;code</a></span></p>
+<p>This is the main file for generating the update code.</p>
+  <p>Two modes:</p>
+  <ol start="1">
+    <li>
+      generate a template to fill out from two (old and new) json test data
+      files
+    </li>
+    <li>
+      generate the python code to perform the update using the template 
+      file
+    </li>
+  </ol>
+  <p>Requires Python 2.7.</p>
+
+<!-- ==================== FUNCTIONS ==================== -->
+<a name="section-Functions"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Functions</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Functions"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#generate_upd" class="summary-sig-name">generate_upd</a>(<span class="summary-sig-arg">cmddict</span>,
+        <span class="summary-sig-arg">outfile</span>,
+        <span class="summary-sig-arg">prefix</span>)</span><br />
+      Generate the update functions for each keyset.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_upd">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="generate_dsltemplate"></a><span class="summary-sig-name">generate_dsltemplate</span>(<span class="summary-sig-arg">thediff</span>,
+        <span class="summary-sig-arg">outfile</span>)</span><br />
+      Compute a diff and generate some stubs of INIT/DEL for the user to 
+      get started with</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_dsltemplate">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#parse_dslfile_inner" class="summary-sig-name">parse_dslfile_inner</a>(<span class="summary-sig-arg">dslfile</span>)</span><br />
+      parses the inner portion of dsl funtions: {  .....(Rules beginning 
+      with INIT, UPD, REN, DEL).....</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile_inner">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#parse_dslfile" class="summary-sig-name">parse_dslfile</a>(<span class="summary-sig-arg">dslfile</span>)</span><br />
+      Takes as input the DSL file in the format of: for keys * {  
+      .....(Rules beginning with INIT, UPD, REN, DEL).....</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="bulkload"></a><span class="summary-sig-name">bulkload</span>(<span class="summary-sig-arg">f</span>,
+        <span class="summary-sig-arg">jsonarr</span>)</span></td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#bulkload">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#make_template" class="summary-sig-name">make_template</a>(<span class="summary-sig-arg">file1</span>,
+        <span class="summary-sig-arg">file2</span>)</span><br />
+      This function is the entry point for generating the template</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#make_template">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#process_dsl" class="summary-sig-name">process_dsl</a>(<span class="summary-sig-arg">file1</span>,
+        <span class="summary-sig-arg">outfile</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">dsu.py</code><code class="variable-quote">'</code></span>)</span><br />
+      This function is the entry point for generating the update code.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#process_dsl">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#main" class="summary-sig-name">main</a>()</span><br />
+      To generate a template to fill out (containing the added/deleted 
+      fields between 2 json files):</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#main">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
+<!-- ==================== VARIABLES ==================== -->
+<a name="section-Variables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Variables</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Variables"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__VERSION__"></a><span class="summary-name">__VERSION__</span> = <code title="'0.1'"><code class="variable-quote">'</code><code class="variable-string">0.1</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'src'"><code class="variable-quote">'</code><code class="variable-string">src</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+</table>
+<!-- ==================== FUNCTION DETAILS ==================== -->
+<a name="section-FunctionDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Function Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-FunctionDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="generate_upd"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">generate_upd</span>(<span class="sig-arg">cmddict</span>,
+        <span class="sig-arg">outfile</span>,
+        <span class="sig-arg">prefix</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_upd">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Generate the update functions for each keyset.</p>
+  <dl class="fields">
+    <dt>Returns:</dt>
+        <dd>a dictionary of ( key blob command -&gt; functions to call)</dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="parse_dslfile_inner"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">parse_dslfile_inner</span>(<span class="sig-arg">dslfile</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile_inner">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>parses the inner portion of dsl funtions: {  .....(Rules beginning 
+  with INIT, UPD, REN, DEL).....}</p>
+  <dl class="fields">
+    <dt>Returns:</dt>
+        <dd>a dictionary of rules that match the expected regular expressions</dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="parse_dslfile"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">parse_dslfile</span>(<span class="sig-arg">dslfile</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Takes as input the DSL file in the format of: for keys * {  
+  .....(Rules beginning with INIT, UPD, REN, DEL).....}</p>
+  <dl class="fields">
+    <dt>Returns:</dt>
+        <dd>a dictionary of keys corresponding to dictonaries of rules that 
+          match the expected regular expressions</dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="make_template"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">make_template</span>(<span class="sig-arg">file1</span>,
+        <span class="sig-arg">file2</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#make_template">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>This function is the entry point for generating the template</p>
+  <p>This function creates a file called &quot;generated_dsl_init&quot; 
+  from the diff of two json templates.</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>file1</code></strong> (string) - the original 'schema' sample json file</li>
+        <li><strong class="pname"><code>file2</code></strong> (string) - the new 'schema' sample json file</li>
+    </ul></dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="process_dsl"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">process_dsl</span>(<span class="sig-arg">file1</span>,
+        <span class="sig-arg">outfile</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">dsu.py</code><code class="variable-quote">'</code></span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#process_dsl">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>This function is the entry point for generating the update code.</p>
+  <p>This function processes the dsl file and generates the update file 
+  &quot;dsu.py&quot; (or other name as specified) to update the json 
+  entries in the databse</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="main"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">main</span>()</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#main">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>To generate a template to fill out (containing the added/deleted 
+  fields between 2 json files):</p>
+<pre class="py-doctest">
+<span class="py-prompt">&gt;&gt;&gt; </span>python json_patch_creator.py --t ../tests/data/example_json/sample1.json ../tests/data/example_json/sample2.json</pre>
+  <p>To generate the update code from the template:</p>
+<pre class="py-doctest">
+<span class="py-prompt">&gt;&gt;&gt; </span>python json_patch_creator.py --d ../tests/data/example_json/sample_init</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">TBD</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Sun Jan 11 15:39:45 2015
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

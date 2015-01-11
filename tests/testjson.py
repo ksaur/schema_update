@@ -3,10 +3,9 @@ Load some test data in the database, update, and test for expected results.
 
 """
 import json
-import redis
 import sys
 import shutil
-sys.path.append("../jsondiffpatch_generator") #TODO separate directory?
+sys.path.append("../src")
 import decode
 import do_upd
 import json_patch_creator
@@ -23,8 +22,8 @@ def test1(r):
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
     reset(r)
     # create the update file
-    json_patch_creator.process_dsl("../example_json/sadalage_init", tname +".py")
-    shutil.move(tname +".py", "../jsondiffpatch_generator/generated_"+tname+".py")
+    json_patch_creator.process_dsl("data/example_json/sadalage_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
 
     # add an entry
     s = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"A\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [ { \"product\": \"Fortune Cookies\",   \"price\": 19.99 },{ \"product\": \"Edamame\",   \"price\": 29.99 } ] } }"
@@ -69,8 +68,8 @@ def test2(r):
     reset(r)
 
     # create the update file
-    json_patch_creator.process_dsl("../example_json/keys_init", tname +".py")
-    shutil.move(tname +".py", "../jsondiffpatch_generator/generated_"+tname+".py")
+    json_patch_creator.process_dsl("data/example_json/keys_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
 
     # add an entry (http://www.sitepoint.com/customer-form-json-file-example/)
     v = "{ \"firstName\": \"John\", \"lastName\": \"Smith\", \"age\": 25, \"address\": { \"streetAddress\": \"21 2nd Street\", \"city\": \"New York\", \"state\": \"NY\", \"postalCode\": \"10021\" }, \"phoneNumber\": [ { \"type\": \"home\", \"number\": \"212 555-1234\" }, { \"type\": \"fax\", \"number\": \"646 555-4567\" } ] }"
@@ -116,8 +115,8 @@ def test2b(r):
     reset(r)
 
     # create the update file
-    json_patch_creator.process_dsl("../example_json/keys2_init", tname +".py")
-    shutil.move(tname +".py", "../jsondiffpatch_generator/generated_"+tname+".py")
+    json_patch_creator.process_dsl("data/example_json/keys2_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
 
     # add an entry (http://www.sitepoint.com/customer-form-json-file-example/)
     v = "{ \"firstName\": \"John\", \"lastName\": \"Smith\", \"age\": 25, \"address\": { \"streetAddress\": \"21 2nd Street\", \"city\": \"New York\", \"state\": \"NY\", \"postalCode\": \"10021\" }, \"phoneNumber\": [ { \"type\": \"home\", \"number\": \"212 555-1234\" }, { \"type\": \"fax\", \"number\": \"646 555-4567\" } ] }"
@@ -166,8 +165,8 @@ def test3(r):
     reset(r)
 
     # create the update file
-    json_patch_creator.process_dsl("../example_json/in_out_upd_init", tname +".py")
-    shutil.move(tname +".py", "../jsondiffpatch_generator/generated_"+tname+".py")
+    json_patch_creator.process_dsl("data/example_json/in_out_upd_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
 
     v = "{ \"name\": \"Foo Bar Industries\", \"orderdate\": \"12/12/2014\", \"order\": { \"orderid\": \"UUUXBSI\", \"orderitems\": [ { \"product\": \"Foo Bar Ball\", \"percentfullprice\": 0.7, \"price\": 13.99 }, { \"product\": \"Foo Bar Stool\", \"percentfullprice\": 0.7, \"price\": 13.99 } ] } }"
     r.set("key1", v)
@@ -202,7 +201,7 @@ def main():
 
     # test basic INIT, ADD, REN, UPD for fullpaths
     test1(r)
-    # tests for keys
+    # tests for key-glob matching
     test2(r)
     test2b(r)
     # tests for $out and $in

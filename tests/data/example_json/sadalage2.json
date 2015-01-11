@@ -1,0 +1,17 @@
+{
+    "_id": "5db8ae97c47016442af4a580",
+    "customerid": 99999,
+    "name": "India House",
+    "since": "12/12/2012",
+    "order": {
+        "orderid": "4821-UXWE-222012",
+        "orderdate": "12/12/2001",
+        "orderItems": [
+            {
+                "product": "Fortune Cookies",
+                "fullprice": 29.99,
+                "discountedPrice": 26.99
+            }
+        ]
+    }
+}
