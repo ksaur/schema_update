@@ -17,7 +17,7 @@ schema_update
 - tests_/
    * Examples of loading the db and performing the update
    * example_json_/ 
-     + This directory contains test JSON files
+      + This directory contains test JSON files
 - util_/
    * loadstuff.py - Load up some test data in redis
 
