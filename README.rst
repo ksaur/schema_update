@@ -9,8 +9,6 @@ schema_update
 
 **Program:**
 
-- example_json_/ 
-   * This directory contains test JSON files
 - src_/ 
    * decode.py  - A helper library to get rid of unicode (may be deleted later?)
    * do_upd.py - A non-lazy update for redis
@@ -18,6 +16,8 @@ schema_update
    * json_patch_creator.py - This is the main file to create the init dsl file and then generate the update functions
 - tests_/
    * Examples of loading the db and performing the update
+   * example_json_/ 
+     + This directory contains test JSON files
 - util_/
    * loadstuff.py - Load up some test data in redis
 
@@ -42,7 +42,7 @@ schema_update
 .. _Redis: http://redis.io/download
 .. _src: https://github.com/plum-umd/schema_update/tree/master/src
 .. _tests: https://github.com/plum-umd/schema_update/tree/master/tests
-.. _example_json: https://github.com/plum-umd/schema_update/tree/master/example_json
+.. _example_json: https://github.com/plum-umd/schema_update/tree/master/tests/data/example_json
 .. _util: https://github.com/plum-umd/schema_update/tree/master/util
 .. _jsondelta: http://www.phil-roberts.name/json_delta/
 
