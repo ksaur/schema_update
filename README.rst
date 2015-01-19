@@ -69,6 +69,7 @@ See this_example_ for the full example.  Briefly:
                                       // initialized to "01/01/1970"
  };
 
+Basically, the commmands consist of a "for keys" stanza, followed by some commands inclosed in "{...};" (ending with a semicolon).
 
 The 3rd token after "for keys" is a keyglob that matches your keys.  For example, if I have keys:
 
@@ -81,7 +82,7 @@ Then the way to get edges only from nodes n1-n3 to n5 would be:
 
 ::
 
- for keys edgeattr:(n[1-3]@n5) {...}
+ for keys edgeattr:(n[1-3]@n5) {...};
 
 
 
