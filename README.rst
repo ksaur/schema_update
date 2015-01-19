@@ -30,30 +30,64 @@ This is how you tell the patch generator what to generate.  There are 4 commands
 +-------------+-----------------------+-----------+
 | Directive   | Pattern               | code      |
 +=============+=======================+===========+
-| INIT        | key->value, or value  | (yes)     |
+| INIT        |                value  | (yes)     |
 +-------------+-----------------------+-----------+
-| DEL         | key->value, or value  | (no)      |
+| DEL         |                value  | (no)      |
 +-------------+-----------------------+-----------+
 | REN         | oldpath->newpath      | (no)      |
 +-------------+-----------------------+-----------+
-| UPD         | key->value, or value  | (yes)     |
+| UPD         |                value  | (yes)     |
 +-------------+-----------------------+-----------+
 
 * The "directive" column is the action to be performed: initializing a new field, deleting a field, renaming a field, or updating the value contained in a field.
 * The "pattern" column consists of a "key" which is a keyglob_ (basically, a regular expression matching the key format), and a "value", which is a json path to the value to be updated.
-* The "code" column consists of python code.
+* The "code" column consists of python code.  The INIT and UPD commands expect the user to write what the values should be initialized or updated to.  The DEL and REN do not need additional code to delete or rename keys.
 
-See an example_.  Briefly:
+
+In addition to the 4 commands above, there are some tokens that automatically expand to generated code.
+ 
++-------------+---------------------------------------------------+
+| Directive   | Meaning                                           |
++=============+===================================================+
+| $out        | the value they key will be set to                 |
++-------------+---------------------------------------------------+
+| $in         | the original value of the key                     |
++-------------+---------------------------------------------------+
+| $base       | the same JSON structure, used to address siblings |
++-------------+---------------------------------------------------+
+| $root       | the root of the JSON structure.                   |
++-------------+---------------------------------------------------+
+| $dbkey      | the key currently being processed                 |
++-------------+---------------------------------------------------+
+
+See this_example_ for the full example.  Briefly:
 
 ::
 
  for keys key* {  // For all keys in redis beginning with "key"
- INIT ["dob"]: {$out = "01/01/1970"}  // add a top-level JSON field named "DOB" 
+ INIT ["dob"]: {$out = "01/01/1970"}  // add a top-level JSON field named "DOB".
                                       // initialized to "01/01/1970"
  };
 
 
-**Running  (quickly jotting down........):**
+The 3rd token after "for keys" is a keyglob that matches your keys.  For example, if I have keys:
+
+::
+
+ edgeattr:(n4@n5)
+ edgeattr:(n3@n5)
+
+Then the way to get edges only from nodes n1-n3 to n5 would be:
+
+::
+
+ for keys edgeattr:(n[1-3]@n5) {...}
+
+
+
+
+**Running:**
+============================================
 
 1. **start redis:**   (your_redis_dir)/src$ ./redis-server
 
@@ -71,7 +105,7 @@ See an example_.  Briefly:
 
 .. _Redis: http://redis.io/download
 .. _keyglob: http://redis.io/commands/keys
-.. _example:    https://github.com/plum-umd/schema_update/blob/master/tests/data/example_json/sadalage_init
+.. _this_example:    https://github.com/plum-umd/schema_update/blob/master/tests/data/example_json/sadalage_init
 .. _src: https://github.com/plum-umd/schema_update/tree/master/src
 .. _doc: https://github.com/plum-umd/schema_update/tree/master/doc
 .. _tests: https://github.com/plum-umd/schema_update/tree/master/tests
