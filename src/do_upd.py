@@ -76,9 +76,9 @@ def do_upd(r, updfile="dsu"):
 
     num_upd = 0
     # Loop over the "for key __  " glob stanzas
-    for glob in update_pairs:
+    for (glob, funcs) in update_pairs:
         print "GLOB = " + glob
-        print update_pairs[glob]
+        print "FUNCS = " + str(funcs)
         keys = r.keys(glob)
         print "Printing \'" + str(len(keys)) + "\' keys:"
         # Loop over the keys matching the current glob
@@ -94,7 +94,7 @@ def do_upd(r, updfile="dsu"):
             jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
             
             # Loop over the set of functions that apply to the keys
-            for funcname in update_pairs[glob]:
+            for funcname in funcs:
                 try:
                     func = getattr(m,funcname)
                 except AttributeError as e:

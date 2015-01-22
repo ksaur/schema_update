@@ -179,11 +179,10 @@ def parse_dslfile(dslfile):
     Takes as input the DSL file in the format of: 
     for keys * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
     
-    @return: a dictionary of keys corresponding to dictonaries of rules that match
-    the expected regular expressions
+    @return: a list of tuples (key:string (if any), commands:dictionary)
     """
 
-    def extract_from_re(estr):
+    def extract_for_keys(estr):
         p = 'for keys\\s?(.*)\\s?{'
         if re.match(p,estr) is not None:
             cmd_re = re.compile(p)
@@ -193,30 +192,31 @@ def parse_dslfile(dslfile):
         else:
             return None
 
-    d = dict() # mapping of "keys *" phrases to enclosed lines
+    tups = list() # for returning
     for line in dslfile:
         l = list() # list of all the readin dsl lines
+
         # skip blank lines in between "for key *{...};" stanzas
         if line == "\n":
            continue
-        # get the "for keys..." line
-        keys = extract_from_re(line)
-        if keys is None:
-            print "ERROR: Should start with '{'" #TODO errors
-            return None
-        print "keys = ",
-        print  keys
+
+        # get the "for keys..." line, if that's next
+        for_keys = extract_for_keys(line)
+        if for_keys is not None:
+            print "for keys = ",
+            print  for_keys
+        else:
+            for_keys = None #TODO start here!!!
         curr = next(dslfile, None)
         while curr != "};\n":
             l.append(curr)
             curr = next(dslfile, None)
         print l
-        #TODO looping .....reset these...
         # parse the stuff inside the "for" stanza
         inner = parse_dslfile_inner(iter(l))
-        d[keys] = inner
-    print d
-    return d
+        tups.append((for_keys, inner))
+    print tups
+    return tups
 
 
 def bulkload(f, jsonarr):
@@ -290,16 +290,15 @@ def process_dsl(file1, outfile="dsu.py"):
     outfile = open(outfile, 'w')
 
     # parse DSL file
-    dsldict = parse_dslfile(dslfile)
+    dsllist = parse_dslfile(dslfile)
 
-    # create a dict to store the parsed dsl output
-    kv_update_pairs = dict()
+    # create a list to store the parsed dsl output
+    kv_update_pairs = list()
 
     # Generate the functions based on the DSL file contents
     # (Use the index as the namespace, as the keystring has too many special chars) 
-    for idx, key in enumerate(dsldict):
-        #TODO key collisions!!!!!!!!!!!!
-        kv_update_pairs[key] = generate_upd(dsldict[key], outfile, "group_"+str(idx))
+    for idx, curr_tup in enumerate(dsllist):
+        kv_update_pairs.append((curr_tup[0], generate_upd(curr_tup[1], outfile, "group_"+str(idx))))
 
     # write the name of the key globs and corresponding functions
     outfile.write("\ndef get_update_pairs():\n    return " + str(kv_update_pairs))
