@@ -1,67 +1,67 @@
 <html>
 <title> NoSQL Implicit Schema Update</title>
-<h1>Questions</h1>
+<h1>NoSQL DSL v2.0</h1>
+<h2>Questions</h2>
 
-On commands:
-<ul>
-<li style="padding-bottom:10px"><code>INIT</code> and <code>UPD</code> are the same except that <code>UPD</code> allows the use of <code>$in</code>.  Would it make sense to combine them?</font>
-<ul>
-<li style="padding-top:10px"> Do we need <a href="#in"><code>$in</code></a>?  The issue is in <code>UPD</code> for keys...what to set <code>$in</code> to in the temporary variable in the generated code?  Usually this is whatever is stored in the path, Ex: <code>UPD ["_id"]:...</code> automatically inserts <code>tmp = e['_id']</code> for <code>$in</code> in the generated code (whether or not the user uses <code>$in</code> in their DSL).
-</ul>
-</ul>
-On key change:
-<ul>
-<li style="padding-bottom:10px"> I tried to unify the key syntax with the JSON Value syntax.  Globs/regex's work with strings rather than numbers, which makes things a bit complicated. (See <a href="#globs">DEL for keys</a></a>.) Maybe there is something better to use?  Maybe the user should just write code for the key as we orginally discussed. 
-<li>  I feel like the commdands <code> INIT, UPD, DEL</code> become a bit confused, especially as the user writes more code...  What is the best balance between DSL code and user-written python?
-</ul>
-
+<li> Too many <code>for</code>'s in multiple json change?
 
 <br>
 <HR COLOR="DarkOliveGreen" SIZE=6>
 <br>
 <h1> DSL Commands</h1>
-<b><u>There are 4 directive commands:</u></b>
+<b><u>The basic format for the DSL:</u></b><br><br>
+<i>For existing keys:</i><br><br>
+<code>
+&nbsp;&nbsp;<b>for [</b>redis keyglob<b>, </b>JSON path separated by commas (if any)<b>]{</b><br>
+&nbsp;&nbsp;&nbsp;&nbsp;CMD (directive (the path, if INIT)<b> {</b>code<b>}</b><br>
+&nbsp;&nbsp;&nbsp;&nbsp;(more commands if necessary)<br>
+&nbsp;&nbsp;<b>};</b><br>
+</code>
+<br>
+<i>For new keys:</i><br><br>
+<code>
+&nbsp;&nbsp;<b>INIT </b>limited redis keyglob (no '*' or '?')<b>, </b>JSON path separated by commas (if any)<b> {</b>code<b>};</b><br>
+</code>
+<font color=red>TODO Are <code>[]</code> OK here when <code>INIT</code> isn't inside <code>for</code> and has a path list (Ex: <code>INIT [n[1-3], foo, bar]</code>?   If not, should we also remove <code>[]</code> on <code>for</code> above?</font>
+<br>
+<br>
+<b><u>There are 3 directive commands that can be used:</u></b>
 <br>
 <br>
 <table border=1>
-<tr><td><b>Directive </td></b><td><b>	Pattern </td></b><td><b>	code</td></b></tr>
-<tr><td>INIT</td><td> 	value 	</td><td>(yes)</td></tr>
-<tr><td>DEL </td><td>	value 	</td><td>(no)</td></tr>
-<tr><td>REN </td><td>	oldpath&rarr;newpath </td><td>	(no)</td></tr>
-<tr><td>UPD </td><td>	value 	</td><td>(yes)</td></tr>
+<tr><td><b>Directive </td></b><td><b>	Contents </td></b><td><b>	Must Return </td></b><td><b>Where Used</b></td></tr>
+<tr><td>INIT</td><td> 	limited key glob (ranges but no '*' or '?') {$out= ..code..} 	</td><td>None</td><td>both inside <code>for</code> and stand-alone for non-existing keys </td></tr>
+<tr><td>DEL </td><td>	 {..code to determine what to delete.. return True/False..}	</td><td>Bool</td><td>inside <code>for</code></td></tr>
+<tr><td>UPD </td><td>	 {$out = ..code..}	</td><td>None</td><td>inside <code>for</code></td></tr>
 </table>
 
 <ul>
-   <li> The "directive" column is the action to be performed: initializing a new field, deleting a field, renaming a field, or updating the value contained in a field.
-   <li> The "pattern" column consists of a "key" which is a keyglob (basically, a regular expression matching the key format), and a "value", which is a json path to the value to be updated.
-   <li>The "code" column consists of python code. The INIT and UPD commands expect the user to write what the values should be initialized or updated to. The DEL and REN do not need additional code to delete or rename keys.
+   <li> The "directive" column is the action to be performed: initializing a new field, deleting a field, or updating the value contained in a field.
+   <li> For <code>INIT</code>, the "contents" column includes a keyglob, which may contain ranges but no wildcards.
+   <li> The <code>DEL</code> command must return a boolean indicating whether or not to delete the item.
 </ul>
-<b><u>In addition to the 4 commands above, there are some tokens that automatically expand to generated code:</u></b>
+<b><u>In addition to the directive commands above, there are some tokens that automatically expand to generated code:</u></b>
 
 <br>
 <br>
 <table border=1>
 <tr><b><td><b>Directive </td></b><td><b>	Meaning</td></b></b></tr>
 <tr><td>$out </td><td>	the value they key will be set to</td></tr>
-<tr><td>$in  </td><td>  the original value of the key</td></tr>
+<tr><td>$in <font color=red>TODO: remove??</font> </td><td>  the original value of the key</td></tr>
 <tr><td>$base</td><td> 	the same JSON structure, used to address siblings</td></tr>
 <tr><td>$root</td><td> 	the root of the JSON structure.</td></tr>
-<tr><td>$dbkey</td><td> the key currently being processed</td></tr>
+<tr><td>$dbkey</td><td> the data basekey currently being processed</td></tr>
+<tr><td>$inkey</td><td> the key <i>list</i> provided in the <code>for</code> or <code>INIT</code> clause</td></tr>
+<tr><td>$outkey</td><td> the key <i>list</i>, to be written to</td></tr>
 </table>
 
 <br>
 <br>
-<b><u>The (tentative) basic format for the DSL:</u></b><br><br>
-<code>
-<b>for keys</b> (keyglob : the redis database key) <b>{</b><br>
-&nbsp;&nbsp;(CMD: directive) <b>[</b>(JSON path as an index into the value, if any)<b>]</b> (<b>:{</b>code if applicable<b>}</b>)<br>
-&nbsp;&nbsp;(more commands if necessary)<br>
-<b>};</b><br>
-</code>
 
 
 <br>
 <HR COLOR="DarkOliveGreen" SIZE=6>
+<h2>============ Changing JSON Values ===========</h2>
 <br>
 <h2> JSON Value Change Example 1: <i>INIT, REN, UPD, DEL</i></h2>
 
@@ -89,6 +89,25 @@ On key change:
 </code>
 <h4>DSL:</h4>
 <code>
+for  [*, "order", ["orderItems"]] { <font color=blue># "orderItems" is itself a list</font><br>
+ &nbsp;&nbsp; INIT "discountedPrice" {$out = round($base['price']*.7,2)}<br>
+};<br>
+<br>
+<font color=blue># doing a rename of price &rarr; fullprice</font><br>
+for  [*, "order", ["orderItems"], "price"] {<br>
+ &nbsp;&nbsp; UPD {$outkey = [$dbkey, "order", ["orderItems"], "fullprice"] }  <br>
+};<br>
+for  [*, "_id"] {<br>
+ &nbsp;&nbsp; UPD {if any(c.isalpha() for c in $in):<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;           $out=int($in, 16)}<br>
+};<br>
+for  [*, "category"] {<br>
+ &nbsp;&nbsp; DEL {return True}<br>
+};<br>
+</code>
+
+
+<!--<code>
 for keys * {<br>
 &nbsp;&nbsp;INIT ["order", ["orderItems"], "discountedPrice"]: {<b>$out</b> = round(<b>$base</b>['price']*.7,2)}<br>
 &nbsp;&nbsp;REN ["order", ["orderItems"], "price"]->["order", ["orderItems"], "fullprice"]<br>
@@ -149,7 +168,7 @@ for keys * {<br>
 <h4>DSL:</h4>
 <code>
 for keys * {
-&nbsp;&nbsp;INIT ["reverseid"]: {<br>
+&nbsp;&nbsp;INIT "reverseid": {<br>
 &nbsp;&nbsp;edge = <b>$dbkey</b>.split("@")  <br>
 &nbsp;&nbsp;&nbsp;&nbsp;in_node = str(edge[0]).replace("edgeattr_", "")<br>
 &nbsp;&nbsp;&nbsp;&nbsp;out_node = str(edge[1])  <br>
@@ -158,9 +177,13 @@ for keys * {
 };
 </code>
 
+-->
 <br>
 <br>
 <HR COLOR="DarkOliveGreen" SIZE=6>
+
+<h2>============ Changing KEYS ===========</h2>
+
 <br>
 
 <h2> Key Change Example 1: <i>INIT</i></h2>
@@ -175,13 +198,8 @@ Say we want to initialize (add new entries to redis for) a set of edges from nod
 <br>
 <br>
 <code>
-for keys edgeattr_n4@n[1-3,5] {  <br>
-&nbsp;&nbsp;INIT []: {$out = {"outport": None, "inport": None}}
- <font color=green>#Does the "[]" make sense for "the entire value should be this"?</font> <br>
-};<br>
-for keys edgeattr_n5@n[1-3] { <br> 
-&nbsp;&nbsp;INIT []: {$out = {"outport": None, "inport": None}}<br>
-};<br>
+INIT edgeattr_n4@n[1-3,5] {$out = {"outport": None, "inport": None}};<br>
+INIT edgeattr_n5@n[1-3]  {$out = {"outport": None, "inport": None}};<br>
 </code>
 
 <br>
@@ -192,18 +210,16 @@ for keys edgeattr_n5@n[1-3] { <br>
 Say we want to delete all edges that are from or to nodes with names greater than <code>n4</code>.  
 <br>
 <br>
-<font color=green><a name="globs"></a> <b>Question:</b> Would it be easier if we allow the user to write code to do this rather than a regex?
-</font>
-<br>
-<br>
-<font color="red">TODO, this is kinda broken...</font><br>
-<code>
-for keys edgeattr_n*@n* {<font color=green> # It would be ideal if this phrase was code (so we could say something like "for "node*" &gt;4", but how to keep the format?</font><br>
-&nbsp;&nbsp;nodes = <b>$dbkey</b>.split("_")[1].split("@")<br>
-&nbsp;&nbsp;if (nodes[0]>"n4" or nodes[1]>"n4")<br>
-&nbsp;&nbsp;&nbsp;&nbsp;DEL *   <font color=green> # This should be something else....because this is a top-level command...</font><br>
-};<br>
-</code>
+<pre>
+for [edgeattr_n*@n*] { 
+  DEL {nodes = $dbkey.split("_")[1].split("@")
+  if (nodes[0]>"n4" or nodes[1]>"n4")
+    return True
+  else
+    return False 
+  }
+};
+</pre>
 <br>
 <h2> Key Change Example 3: <i>UPD</i></h2>
 <b>Key Format:</b><br>  
@@ -212,21 +228,12 @@ for keys edgeattr_n*@n* {<font color=green> # It would be ideal if this phrase w
 Say we want to add a namespace "graph1" onto the keyname, such as "<code>edgeattr_n4@n5</code>" &rarr; "<code>edgeattr_n4@n5_graph1</code>"
 <br>
 <br>
-<font color=green>Ideally, this would almost be like <code>REN</code>...and then the "key" preamble could handle everything, but that takes code...</font>
-<br>
-<br>
-<font color=green>Another benefit of <code>REN</code> rather than <code>UPD</code>...seems to fit in better with the Redis "rename" command...</font>
-<br>
-<font color=red>(TODO, also need to figure out how to treat the generated placeholder code for <code>$in</code> here, since we have "[]" for the key. I guess we could drop <code>$in</code> for "[]".)</font>
-<br>
-<br>
-<code>
-for keys edgeattr* {<br>
-&nbsp;&nbsp;UPD[]: {$dbkey = $dbkey+"_graph"}<br>
-};<br>
-</code>
+<pre>
+for [edgeattr*] {
+  UPD {$outkey = $outkey+"_graph"}
+};
+</pre>
 
-<br>
 <br>
 <br>
 </html>
