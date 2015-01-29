@@ -61,7 +61,7 @@ def test1(r):
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 
-# tests for keys 
+# tests very basic keyglob matching
 def test2(r):
     tname = "test2"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
@@ -108,7 +108,7 @@ def test2(r):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
-# tests for keys 
+# tests that keyglob matching ("for key* ",  "for o*") is correct
 def test2b(r):
     tname = "test2b"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
@@ -195,6 +195,31 @@ def test3(r):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+
+# Demonstrate adding new database keys
+def test4(r):
+    tname = "test4"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(r)
+
+    # create the update file
+    json_patch_creator.process_dsl("data/example_json/add_keys_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
+
+
+    # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
+    print "Performing update for " + tname
+    numupd = do_upd.do_upd(r, "generated_" + tname)
+    e = r.get("edgeattr_n4@n1")
+    assert (e) is not None
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    # test for expected values
+    # test UPD
+    print jsone
+
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
 def main():
     # connect to Redis
     r = do_upd.connect()
@@ -206,6 +231,8 @@ def main():
     test2b(r)
     # tests for $out and $in
     test3(r)
+    # tests adding new keys to db
+    test4(r)
 
     r.execute_command('QUIT')
 

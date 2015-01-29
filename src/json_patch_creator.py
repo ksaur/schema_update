@@ -18,9 +18,36 @@ import json_delta_diff
 __VERSION__ = '0.1'
 
 
+def generate_add_key(keyglob, usercode, outfile, prefix):
+    """
+    Generate code to add databasekeys
+
+    @param keyglob: the limited keyglob of keys to add. (ranges but no wildcards)
+    @param usercode: the code to initialize the new key 
+    @type usercode: string
+    @param outfile: the file to write the generated function to
+    @param prefix: a string to ensure function name uniqueness
+    @return: a dictionary of ( key blob command -> functions to call)
+    """
+    # write the function signature to file
+    #print "USERCODE"
+    #print str(type(usercode)) + usercode
+    funname = re.sub(r'\W+', '', str(prefix +"_update_" + keyglob))
+    outfile.write("\ndef "+ funname + "(rediskey, jsonobj):\n")
+    tabstop = "    "
+    usercode = usercode.replace("$out", 'rediskey') #We'll assume the user meant this..
+    usercode = usercode.replace("$dbkey", "rediskey")
+    usercode = usercode.replace("|", "\n"+tabstop)
+    outfile.write(tabstop + usercode+"\n")
+    return [funname]
+
+
 def generate_upd(cmddict, outfile, prefix):
     """
     Generate the update functions for each keyset.
+    @param cmddict: a dictionary of commands mapped to regex (INIT, UPD, etc) 
+    @param outfile: the file to write the generated function to
+    @param prefix: a string to ensure function name uniqueness
     @return: a dictionary of ( key blob command -> functions to call)
     """
     function = ""
@@ -43,7 +70,7 @@ def generate_upd(cmddict, outfile, prefix):
             assert(len(keys)>0)
             if (entry != function):
                 # write the function signature to file
-                name = str(prefix +"_update_" + entry)
+                name = re.sub(r'\W+', '', str(prefix +"_update_" + entry))
                 outfile.write("\ndef "+ name + "(rediskey, jsonobj):\n")
                 # store the name of the function to call
                 funname_list.append(name)
@@ -127,8 +154,8 @@ def parse_dslfile_inner(dslfile):
     @return: a dictionary of rules that match the expected regular expressions
     """
 
-    patterns =  ['(INIT)\\s+(\[.*\])\\s?\\s?\{(.*)\}',     #INIT [...] : {...}
-                 '(UPD)\\s+(\[.*\])\\s?\\s?\{(.*)\}',      #UPD [...] : {...}
+    patterns =  ['(INIT)\\s+(\[.*\])\\s?\\s?\{(.*)\}',     #INIT [...] {...}
+                 '(UPD)\\s+(\[.*\])\\s?\\s?\{(.*)\}',      #UPD [...] {...}
                  '(REN)\\s+(\[.*\])\\s?->\\s?(\[.*\])',     #REN [...]->[...]
                  '(DEL)\\s+(\[.*\])']                       #DEL [...]
 
@@ -140,7 +167,7 @@ def parse_dslfile_inner(dslfile):
                 cmd = cmd_re.search(estr)
                 print cmd_re.groups
                 for i in range(1,cmd_re.groups+1):
-                    print "Group " +str(i) + " = " +  cmd.group(i)
+                    print "inner Group " +str(i) + " = " +  cmd.group(i)
                 return cmd
             else:
                 print "FAIL"
@@ -181,16 +208,18 @@ def parse_dslfile(dslfile):
     
     @return: a list of tuples (key:string (if any), commands:dictionary)
     """
+    patterns =  ['(for) \\s?(.*)\\s?{',
+                 '(add) \\s?(.*)\\s?{']
 
     def extract_for_keys(estr):
-        p = 'for \\s?(.*)\\s?{'
-        if re.match(p,estr) is not None:
-            cmd_re = re.compile(p)
-            cmd = cmd_re.search(estr)
-            print "Group " + str(1) + " = " +  cmd.group(1)
-            return cmd.group(1).strip()
-        else:
-            return None
+        for p in patterns:
+            if re.match(p,estr) is not None:
+                cmd_re = re.compile(p)
+                cmd = cmd_re.search(estr)
+                print "outer Group 2  = " +  cmd.group(2)
+                return cmd
+            else:
+                print "FAIL (for/add)"
 
     tups = list() # for returning
     for line in dslfile:
@@ -200,21 +229,27 @@ def parse_dslfile(dslfile):
         if line == "\n":
            continue
 
-        # get the "for ..." line, if that's next
-        for_keys = extract_for_keys(line)
-        if for_keys is not None:
-            print "for = ",
-            print  for_keys
-        else:
-            for_keys = None #TODO start here!!!
+        # get the "for/add ..." line,
+
+        parsed = extract_for_keys(line)
+        if parsed is None:
+            sys.exit("\n\nFatal - Parse error near line containing: " + line)
+        cmd = parsed.group(1)
+        keyglob = parsed.group(2).strip()
         curr = next(dslfile, None)
-        while curr != "};\n":
+        while curr and "};" not in curr:
             l.append(curr)
             curr = next(dslfile, None)
-        print l
+        print "LIST=" + str(l)
         # parse the stuff inside the "for" stanza
-        inner = parse_dslfile_inner(iter(l))
-        tups.append((for_keys, inner))
+        if (cmd == "for"):
+            inner = parse_dslfile_inner(iter(l))
+            print "for INNER = " + str(inner)
+        else: #guaranteed cmd == "add", else would have failed in 'extract'
+            if "*" in keyglob or "?" in keyglob:
+                sys.exit("\n\nFatal - Cannot use wildcards in keyglob for adding keys.\n")
+            inner =  '|'.join(l)
+        tups.append((cmd, keyglob, inner))
     print tups
     return tups
 
@@ -298,7 +333,10 @@ def process_dsl(file1, outfile="dsu.py"):
     # Generate the functions based on the DSL file contents
     # (Use the index as the namespace, as the keystring has too many special chars) 
     for idx, curr_tup in enumerate(dsllist):
-        kv_update_pairs.append((curr_tup[0], generate_upd(curr_tup[1], outfile, "group_"+str(idx))))
+        if (curr_tup[0] == "for"):
+            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx))))
+        elif (curr_tup[0] == "add"):
+            kv_update_pairs.append((curr_tup[1], generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx))))
 
     # write the name of the key globs and corresponding functions
     outfile.write("\ndef get_update_pairs():\n    return " + str(kv_update_pairs))
