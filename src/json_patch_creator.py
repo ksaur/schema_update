@@ -15,7 +15,7 @@ import argparse
 import json_delta_diff
 
 
-__VERSION__ = '0.1'
+__VERSION__ = '0.2'
 
 
 def generate_upd(cmddict, outfile, prefix):
