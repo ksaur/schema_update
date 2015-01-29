@@ -16,7 +16,6 @@ import json_delta_diff
 
 
 __VERSION__ = '0.2'
-<<<<<<< HEAD
 
 
 def generate_add_key(keyglob, usercode, outfile, prefix):
@@ -41,9 +40,6 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
     usercode = usercode.replace("|", "\n"+tabstop)
     outfile.write(tabstop + usercode+"\n")
     return [funname]
-=======
->>>>>>> master
-
 
 def generate_upd(cmddict, outfile, prefix):
     """
