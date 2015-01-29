@@ -1,5 +1,5 @@
-for keys * {
-UPD ["order", ["orderitems"], "percentfullprice"]: {
+for * {
+UPD ["order", ["orderitems"], "percentfullprice"] {
 $out = 1.0
 # blatantly demonstrate usage of $\in, 
 # (although could swap the next line with the prev)
@@ -7,7 +7,7 @@ $base['price'] = round($base["price"]/$in,2)
 print $base["price"]
 }
 
-UPD ["order", "orderid"]: {
+UPD ["order", "orderid"] {
 # demonstrate $\root
 $out= $out + "_" + $root.get("orderdate").replace("/","")
 }

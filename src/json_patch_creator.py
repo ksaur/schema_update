@@ -127,8 +127,8 @@ def parse_dslfile_inner(dslfile):
     @return: a dictionary of rules that match the expected regular expressions
     """
 
-    patterns =  ['(INIT)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',     #INIT [...] : {...}
-                 '(UPD)\\s+(\[.*\])\\s?:\\s?\{(.*)\}',      #UPD [...] : {...}
+    patterns =  ['(INIT)\\s+(\[.*\])\\s?\\s?\{(.*)\}',     #INIT [...] : {...}
+                 '(UPD)\\s+(\[.*\])\\s?\\s?\{(.*)\}',      #UPD [...] : {...}
                  '(REN)\\s+(\[.*\])\\s?->\\s?(\[.*\])',     #REN [...]->[...]
                  '(DEL)\\s+(\[.*\])']                       #DEL [...]
 
@@ -177,13 +177,13 @@ def parse_dslfile_inner(dslfile):
 def parse_dslfile(dslfile):
     """
     Takes as input the DSL file in the format of: 
-    for keys * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
+    for * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
     
     @return: a list of tuples (key:string (if any), commands:dictionary)
     """
 
     def extract_for_keys(estr):
-        p = 'for keys\\s?(.*)\\s?{'
+        p = 'for \\s?(.*)\\s?{'
         if re.match(p,estr) is not None:
             cmd_re = re.compile(p)
             cmd = cmd_re.search(estr)
@@ -200,10 +200,10 @@ def parse_dslfile(dslfile):
         if line == "\n":
            continue
 
-        # get the "for keys..." line, if that's next
+        # get the "for ..." line, if that's next
         for_keys = extract_for_keys(line)
         if for_keys is not None:
-            print "for keys = ",
+            print "for = ",
             print  for_keys
         else:
             for_keys = None #TODO start here!!!

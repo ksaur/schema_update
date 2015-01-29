@@ -1,7 +1,7 @@
-for keys key* {
-INIT ["dob"]: {$out = "01/01/1970"}
+for key* {
+INIT ["dob"] {$out = "01/01/1970"}
 };
-for keys o* {
-UPD [["phoneNumber"], "number"]: {$out = "(+1) "+$out}
+for o* {
+UPD [["phoneNumber"], "number"] {$out = "(+1) "+$out}
 };
 
