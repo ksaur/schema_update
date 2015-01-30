@@ -2,6 +2,10 @@ add edgeattr_n[1-2]@n[1-3,5] {
 $dbkey = {"outport": None, "inport": None}
 };
 
+add n {
+$dbkey = {"type" : "server"}
+};
+
 for edgeattr_n2@n5 {
 UPD ["outport"] {$out = 777}
 };

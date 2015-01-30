@@ -67,9 +67,12 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
         # use this library call to grab all the ranges (not actually nested)
         ranges = nestedExpr('[',']').parseString("[" + keyglob + "]").asList()[0]
         print "RANGES" + str(ranges) + " len " + str(len(ranges))
+        # We'll need nested appends for multiple ranges
         app = list()
         for r in ranges:
             print  "r = " + str(r) + str(type(r))
+            # (ermm, it's not ideal to use type to see if it's a range or not...)
+            # no range here, just apppend
             if type(r) is str:
                 print "STRRRR" + r
                 if len(app) == 0:
@@ -77,17 +80,19 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
                     print "app" + str(app)
                 else:
                     app = [x+r for x in app]
+            # contains range.  loopy time.
             if type(r) is list:
                 curr_range = mixrange(r[0])
                 combo = list()
+                # add new substrings to all existing substrings....yuck.
                 for i in app:
                     for j in curr_range:
                         combo.append(str(i)+str(j))
                 app = combo
         print app
-
-    #TODO START HERE!!!!   keyglobs without ranges??
-    
+    # not sure why anyone would use this update function to add a single key, but whatever
+    else:
+        app = list(keyglob)
       
     outfile.write("\ndef "+ funname + "():\n")
     tabstop = "    "

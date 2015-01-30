@@ -211,18 +211,22 @@ def test4(r):
     print "Performing update for " + tname
     numupd = do_upd.do_upd(r, "generated_" + tname)
     e = r.get("edgeattr_n2@n1")
-    assert (e) is not None
+    assert(e is not None)
+    # should have skipped n4
     e = r.get("edgeattr_n1@n4")
-    assert (e) is None
+    assert(e is None)
     e = r.get("edgeattr_n1@n5")
-    assert (e) is not None
+    assert(e is not None)
     print e
     jsone = json.loads(e,object_hook=decode.decode_dict)
-    assert jsone.get("inport") is None
-    assert jsone.get("outport") is None
+    assert(jsone.get("inport") is None)
+    assert(jsone.get("outport") is None)
     e = r.get("edgeattr_n2@n5")
     jsone = json.loads(e,object_hook=decode.decode_dict)
-    assert jsone.get("outport") == 777
+    assert(jsone.get("outport") == 777)
+    e = r.get("n")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone.get("type") == "server")
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
