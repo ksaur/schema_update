@@ -13,6 +13,8 @@ import json
 import decode
 import argparse
 import json_delta_diff
+import ast
+from pyparsing import nestedExpr
 
 
 __VERSION__ = '0.2'
@@ -20,7 +22,8 @@ __VERSION__ = '0.2'
 
 def generate_add_key(keyglob, usercode, outfile, prefix):
     """
-    Generate code to add databasekeys
+    Generate code to add databasekeys.  Handles range nastiness.
+    Ex: ea_n[1-2]@n[1-3,5] becomes ['ea_n1@n1', 'ea_n1@n2', ...'ea_n2@n5']
 
     @param keyglob: the limited keyglob of keys to add. (ranges but no wildcards)
     @param usercode: the code to initialize the new key 
@@ -29,16 +32,77 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
     @param prefix: a string to ensure function name uniqueness
     @return: a dictionary of ( key blob command -> functions to call)
     """
-    # write the function signature to file
-    #print "USERCODE"
-    #print str(type(usercode)) + usercode
+
+    # Expand ranges, ex: [1-3,5] returns [1,2,3,5]
+    # http://stackoverflow.com/questions/18759512/
+    def mixrange(s):
+        r = []
+        for i in s.split(','):
+            if '-' not in i:
+                r.append(int(i))
+            else:
+                l,h = map(int, i.split('-'))
+                r+= range(l,h+1)
+        return r
+
+    # TODO what did we decide the keywords are?
+    patterns =  ['\\$dbkey\\s?=\\s?({.*})\\s?',
+                '\\$outkey\\s?=\\s?({.*})\\s?']
+
+    # get the value to initialize the keys to
+    def extract_for_keys(estr):
+        for p in patterns:
+            if re.match(p,estr) is not None:
+                cmd_re = re.compile(p)
+                cmd = cmd_re.search(estr)
+                print "outer Group 1  = " +  cmd.group(1)
+                return cmd.group(1)
+            else:
+                print sys.exit("No output command ($dbkey, $outkey) specified for dbkey" + keyglob)
+
+
+    # remove weird chars from keyglob to use as function name
     funname = re.sub(r'\W+', '', str(prefix +"_update_" + keyglob))
-    outfile.write("\ndef "+ funname + "(rediskey, jsonobj):\n")
+    if "[" in keyglob:
+        # use this library call to grab all the ranges (not actually nested)
+        ranges = nestedExpr('[',']').parseString("[" + keyglob + "]").asList()[0]
+        print "RANGES" + str(ranges) + " len " + str(len(ranges))
+        app = list()
+        for r in ranges:
+            print  "r = " + str(r) + str(type(r))
+            if type(r) is str:
+                print "STRRRR" + r
+                if len(app) == 0:
+                    app.append(r)
+                    print "app" + str(app)
+                else:
+                    app = [x+r for x in app]
+            if type(r) is list:
+                curr_range = mixrange(r[0])
+                combo = list()
+                for i in app:
+                    for j in curr_range:
+                        combo.append(str(i)+str(j))
+                app = combo
+        print app
+
+    #TODO START HERE!!!!   keyglobs without ranges??
+    
+      
+    outfile.write("\ndef "+ funname + "():\n")
     tabstop = "    "
-    usercode = usercode.replace("$out", 'rediskey') #We'll assume the user meant this..
-    usercode = usercode.replace("$dbkey", "rediskey")
-    usercode = usercode.replace("|", "\n"+tabstop)
-    outfile.write(tabstop + usercode+"\n")
+    #TODO additional tabstop?
+    valstring = str(extract_for_keys(usercode))
+    # Make sure the user provided a valid dictionary
+    try:
+        print ast.literal_eval(valstring)  #str to dict
+    except ValueError:
+        sys.exit("You must provide a valid json string as a python dict: " + valstring)
+    #barf. json to python and back ' vs " nastiness.
+    #valstring = (cmd.replace("\"", "\\\"")).replace("\'", "\\\'")
+    outfile.write(tabstop + "rediskeylist = " + str(app) + "\n")
+    outfile.write(tabstop + "valstring = " + valstring + "\n")
+    outfile.write(tabstop + "return (rediskeylist, valstring)\n")
     return [funname]
 
 def generate_upd(cmddict, outfile, prefix):
@@ -333,12 +397,12 @@ def process_dsl(file1, outfile="dsu.py"):
     # (Use the index as the namespace, as the keystring has too many special chars) 
     for idx, curr_tup in enumerate(dsllist):
         if (curr_tup[0] == "for"):
-            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx))))
+            kv_update_pairs.append(("for", curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx))))
         elif (curr_tup[0] == "add"):
-            kv_update_pairs.append((curr_tup[1], generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx))))
+            kv_update_pairs.append(("add", curr_tup[1], generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder")))
 
     # write the name of the key globs and corresponding functions
-    outfile.write("\ndef get_update_pairs():\n    return " + str(kv_update_pairs))
+    outfile.write("\ndef get_update_tuples():\n    return " + str(kv_update_pairs))
 
     # cleanup
     outfile.close()

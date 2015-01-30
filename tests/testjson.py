@@ -210,12 +210,19 @@ def test4(r):
     # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
     print "Performing update for " + tname
     numupd = do_upd.do_upd(r, "generated_" + tname)
-    e = r.get("edgeattr_n4@n1")
+    e = r.get("edgeattr_n2@n1")
     assert (e) is not None
+    e = r.get("edgeattr_n1@n4")
+    assert (e) is None
+    e = r.get("edgeattr_n1@n5")
+    assert (e) is not None
+    print e
     jsone = json.loads(e,object_hook=decode.decode_dict)
-    # test for expected values
-    # test UPD
-    print jsone
+    assert jsone.get("inport") is None
+    assert jsone.get("outport") is None
+    e = r.get("edgeattr_n2@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert jsone.get("outport") == 777
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
@@ -224,7 +231,7 @@ def main():
     # connect to Redis
     r = do_upd.connect()
 
-    # test basic INIT, ADD, REN, UPD for fullpaths
+    ## test basic INIT, ADD, REN, UPD for fullpaths
     test1(r)
     # tests for key-glob matching
     test2(r)

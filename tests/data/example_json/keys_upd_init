@@ -1,0 +1,12 @@
+UPD ["bday[0-2]"]: {$dbkey = $dbkey[:4] + '-' + $dbkey[4:]};
+
+for keys key* {
+INIT ["dob"]: {$out = "01/01/1970"}
+};
+
+DEL ["bday2"];
+
+for keys o* {
+UPD [["phoneNumber"], "number"]: {$out = "(+1) "+$out}
+};
+
