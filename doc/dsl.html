@@ -1,10 +1,10 @@
-# <html>
+<html>
 <title> NoSQL Implicit Schema Update</title>
-<h1>NoSQL DSL v3.1</h1>
+<h1>NoSQL DSL v0.3.1</h1>
 <h2>Questions (see below for code examples)</h2>
 <font color=red>
 <ol>
-<li> Should we change <code>REN</code> to instead be <code>UPD</code> with something like <code>$outname</code> to set the name of the path in <code>[]</code>?
+<li> Should we change <code>REN</code> to instead be <code>UPD</code> with something like <code>$outname</code> to set the name of the path in <code>[]</code>?  For keys, UPD acts as REN because the JSON path isn't required....this is sloppy.
 <br>
 </ol>
 </font>
@@ -227,7 +227,7 @@ return False}
 };
 </pre>
 <br>
-<h2> Key Change Example 3: <i>UPD</i></h2>
+<h2> Key Change Example 3: <i>UPD</i> <font color = red>(TODO:...Q1...this is also REN basically...)</font></h2>
 <b>Key Format:</b><br>  
 <code>&nbsp;&nbsp; edgeattr_n4@n5</code>, where <code>n4</code> and <code>n5</code> are names of the nodes that form a "from@to" directed edge. These entries store the attributes for the edge.<br><br>
 <b>DSL:</b><br>

@@ -95,6 +95,26 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
+          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#generate_add_key" class="summary-sig-name">generate_add_key</a>(<span class="summary-sig-arg">keyglob</span>,
+        <span class="summary-sig-arg">usercode</span>,
+        <span class="summary-sig-arg">outfile</span>,
+        <span class="summary-sig-arg">prefix</span>)</span><br />
+      Generate code to add databasekeys.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_add_key">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
           <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#generate_upd" class="summary-sig-name">generate_upd</a>(<span class="summary-sig-arg">cmddict</span>,
         <span class="summary-sig-arg">outfile</span>,
         <span class="summary-sig-arg">prefix</span>)</span><br />
@@ -152,8 +172,8 @@
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#parse_dslfile" class="summary-sig-name">parse_dslfile</a>(<span class="summary-sig-arg">dslfile</span>)</span><br />
-      Takes as input the DSL file in the format of: for keys * {  
-      .....(Rules beginning with INIT, UPD, REN, DEL).....</td>
+      Takes as input the DSL file in the format of: for * {  .....(Rules 
+      beginning with INIT, UPD, REN, DEL).....</td>
           <td align="right" valign="top">
             <span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile">source&nbsp;code</a></span>
             
@@ -256,7 +276,7 @@
     <td width="15%" align="right" valign="top" class="summary">
       <span class="summary-type">&nbsp;</span>
     </td><td class="summary">
-        <a name="__VERSION__"></a><span class="summary-name">__VERSION__</span> = <code title="'0.1'"><code class="variable-quote">'</code><code class="variable-string">0.1</code><code class="variable-quote">'</code></code>
+        <a name="__VERSION__"></a><span class="summary-name">__VERSION__</span> = <code title="'0.3.1'"><code class="variable-quote">'</code><code class="variable-string">0.3.1</code><code class="variable-quote">'</code></code>
     </td>
   </tr>
 <tr>
@@ -285,6 +305,38 @@
   </td>
 </tr>
 </table>
+<a name="generate_add_key"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">generate_add_key</span>(<span class="sig-arg">keyglob</span>,
+        <span class="sig-arg">usercode</span>,
+        <span class="sig-arg">outfile</span>,
+        <span class="sig-arg">prefix</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_add_key">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Generate code to add databasekeys.  Handles range nastiness. Ex: 
+  ea_n[1-2]@n[1-3,5] becomes ['ea_n1@n1', 'ea_n1@n2', ...'ea_n2@n5']</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>keyglob</code></strong> - the limited keyglob of keys to add. (ranges but no wildcards)</li>
+        <li><strong class="pname"><code>usercode</code></strong> (string) - the code to initialize the new key</li>
+        <li><strong class="pname"><code>outfile</code></strong> - the file to write the generated function to</li>
+        <li><strong class="pname"><code>prefix</code></strong> - a string to ensure function name uniqueness</li>
+    </ul></dd>
+    <dt>Returns:</dt>
+        <dd>a dictionary of ( key blob command -&gt; functions to call)</dd>
+  </dl>
+</td></tr></table>
+</div>
 <a name="generate_upd"></a>
 <div>
 <table class="details" border="1" cellpadding="3"
@@ -303,6 +355,12 @@
   
   <p>Generate the update functions for each keyset.</p>
   <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>cmddict</code></strong> - a dictionary of commands mapped to regex (INIT, UPD, etc)</li>
+        <li><strong class="pname"><code>outfile</code></strong> - the file to write the generated function to</li>
+        <li><strong class="pname"><code>prefix</code></strong> - a string to ensure function name uniqueness</li>
+    </ul></dd>
     <dt>Returns:</dt>
         <dd>a dictionary of ( key blob command -&gt; functions to call)</dd>
   </dl>
@@ -344,12 +402,11 @@
     </td>
   </tr></table>
   
-  <p>Takes as input the DSL file in the format of: for keys * {  
-  .....(Rules beginning with INIT, UPD, REN, DEL).....}</p>
+  <p>Takes as input the DSL file in the format of: for * {  .....(Rules 
+  beginning with INIT, UPD, REN, DEL).....}</p>
   <dl class="fields">
     <dt>Returns:</dt>
-        <dd>a dictionary of keys corresponding to dictonaries of rules that 
-          match the expected regular expressions</dd>
+        <dd>a list of tuples (key:string (if any), commands:dictionary)</dd>
   </dl>
 </td></tr></table>
 </div>
@@ -457,7 +514,7 @@
 <table border="0" cellpadding="0" cellspacing="0" width="100%%">
   <tr>
     <td align="left" class="footer">
-    Generated by Epydoc 3.0.1 on Sun Jan 11 15:39:45 2015
+    Generated by Epydoc 3.0.1 on Sat Jan 31 13:50:07 2015
     </td>
     <td align="right" class="footer">
       <a target="mainFrame" href="http://epydoc.sourceforge.net"

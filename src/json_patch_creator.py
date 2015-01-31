@@ -17,7 +17,7 @@ import ast
 from pyparsing import nestedExpr
 
 
-__VERSION__ = '0.2'
+__VERSION__ = '0.3.1'
 
 
 def generate_add_key(keyglob, usercode, outfile, prefix):
