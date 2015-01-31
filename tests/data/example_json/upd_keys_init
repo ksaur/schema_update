@@ -1,0 +1,3 @@
+for edgeattr* {
+UPD [] {$dbkey = $dbkey+"_graph"}
+};
