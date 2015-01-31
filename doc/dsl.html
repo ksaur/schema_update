@@ -1,17 +1,11 @@
-<html>
+# <html>
 <title> NoSQL Implicit Schema Update</title>
-<h1>NoSQL DSL v3.0</h1>
+<h1>NoSQL DSL v3.1</h1>
 <h2>Questions (see below for code examples)</h2>
 <font color=red>
 <ol>
-<li> Should we restore <code>REN</code> or provide something like <code>$outkey</code> which means the name of the last item in the JSON path list (or the entire list)?
-<ul><li> If we make <code>$outkey</code>, for <code>["order", ["orderItems"], "price"]</code>, is <code>$outkey</code> just <code>price</code>, or the whole list?</ul>
+<li> Should we change <code>REN</code> to instead be <code>UPD</code> with something like <code>$outname</code> to set the name of the path in <code>[]</code>?
 <br>
-<li> Should <code>DEL</code> still return T/F?  It makes sense for keys, but not for values....
-<ul><li>I think it works ok to just return True in the 'value' case</ul>
-<br>
-<li> For <code>UPD</code> in the keys, what to do with the path?  If we leave off [], should we just assume it's for the entire entry?
-<ul><li>I think if the user provides no path in [], it sort of works but is a bit clunky.</ul>
 </ol>
 </font>
 <br>
@@ -40,9 +34,10 @@
 <br>
 <table border=1>
 <tr><td><b>Directive </td></b><td><b>	Contents </td></b><td><b>	Must Return </td></b></tr>
-<tr><td>INIT</td><td> 	[json path] {$out= ..code..}  &nbsp; &nbsp; <i>Note: does not allow $in</i>	</td><td>None</td></tr>
-<tr><td>DEL </td><td>   [json path] {..code to determine what to delete.. return True/False..}	</td><td>Bool</td></tr>
-<tr><td>UPD </td><td>	[json path] {$out = ..code..}  &nbsp; &nbsp; <i>Note: allows use of $in</i>	</td><td>None</td></tr>
+<tr><td>INIT</td><td> 	[json path, or empty for entire value] {$out= ..code..}  &nbsp; &nbsp; <i>Note: does not allow $in</i>	</td><td>None</td></tr>
+<tr><td>DEL </td><td>   [json path, or empty for entire value] {..code to determine what to delete.. return True/False..}	</td><td>Bool</td></tr>
+<tr><td>UPD </td><td>	[json path, or empty for entire value] {$out = ..code..}  &nbsp; &nbsp; <i>Note: allows use of $in</i>	</td><td>None</td></tr>
+<tr><td>REN (tentative)</font> </td><td>	[json path]->[json path]   &nbsp; &nbsp; <font color=blue><i>Note: no code. this function may change...</i></font>	</td><td>None</td></tr>
 </table>
 
 <ul>
@@ -58,10 +53,10 @@
 <tr><td><b>Directive </b></td><td><b>	Meaning</td></b></tr>
 <tr><td>$base</td><td> 	the same JSON structure, used to address siblings</td></tr>
 <tr><td>$root</td><td> 	the root of the JSON structure.</td></tr>
-<tr><td>$out </td><td>	the value that key will be set to</td></tr>
+<tr><td>$out </td><td>	the value of the path inside the <code>[]</code> in the directive (this is the value to be updated, initialized, deleted, etc)</td></tr>
 <tr><td>$in  </td><td>  the original value stored in the key (same as $out, but not written to)</td></tr>
-<tr><td>$dbkeyout</td><td> the database key name currently being processed, written to if key change</td></tr>
-<tr><td>$dbkeyin <font color=red>TODO: better name?</font></td><td> the original database key name currently being processed (same as $dbkeyout but not written to)</td></tr>
+<tr><td>$dbkey</td><td> the database key name currently being processed, written to if key change</td></tr>
+<!--<tr><td>$dbkeyin <font color=red>TODO: better name?</font></td><td> the original database key name currently being processed (same as $dbkey but not written to)</td></tr>-->
 </table>
 
 <br>
@@ -82,7 +77,7 @@
 &nbsp;&nbsp;    "customerid": 99999,<br>
 &nbsp;&nbsp;    "name": "Foo Sushi Inc",<br>
 &nbsp;&nbsp;    "since": "12/12/2001",<br>
-&nbsp;&nbsp;    "category": "A",<font color = blue> # delete this field</font><br>
+&nbsp;&nbsp;    "category": "A",<font color = blue> # delete this field only if it is an "A"</font><br>
 &nbsp;&nbsp;    "order": {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;        "orderid": "UXWE-122012",<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;        "orderdate": "12/12/2001",<br>
@@ -104,7 +99,7 @@ for  [*, "order", ["orderItems"]] { <font color=blue># "orderItems" is itself a 
 <br>
 <font color=blue># doing a rename of price &rarr; fullprice</font><br>
 for  [*, "order", ["orderItems"], "price"] {<br>
- &nbsp;&nbsp; UPD {$outkey = [$dbkey, "order", ["orderItems"], "fullprice"] }  <br>
+ &nbsp;&nbsp; UPD {$dbkey = [$dbkey, "order", ["orderItems"], "fullprice"] }  <br>
 };<br>
 for  [*, "_id"] {<br>
  &nbsp;&nbsp; UPD {if any(c.isalpha() for c in $in):<br>
@@ -119,12 +114,16 @@ for  [*, "category"] {<br>
 <code>
 for * {<br>
 &nbsp;&nbsp;INIT ["order", ["orderItems"], "discountedPrice"] {<b>$out</b> = round(<b>$base</b>['price']*.7,2)}<br>
-&nbsp;&nbsp;UPD ["order", ["orderItems"], "price"] {<font color=blue>#want to rename to fullprice...</font><font color=red>Q1: TODO, restore REN? Or provide something like $outname (since $out only does $outval)</font> }<br>
+&nbsp;&nbsp;REN ["order", ["orderItems"], "price"]->["order", ["orderItems"], "fullprice"] <font color=red># Q1: TODO, restore REN? Or provide something like $outname (since $out only does $outval)</font> <br>
 &nbsp;&nbsp;UPD ["_id"] {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;if any(c.isalpha() for c in <b>$in</b>): <a name="in"></a><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    <b>$out</b>=int(<b>$in</b>, 16) <font color = green> # could actually just use <b>$out</b> here (because <b>$out=$in</b> and <b>out</b> not overwritten)</font><br>
 &nbsp;&nbsp;}<br>
-&nbsp;&nbsp;DEL ["category"] {return True <font color=red># Q2: TODO, do we still need T/F in the 'values' (not keys) case?</font>}<br>
+&nbsp;&nbsp;DEL ["category"] {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if $out == "A": <br>
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;   return True <br>
+&nbsp;&nbsp;&nbsp;&nbsp;else: <br>
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;   return False}<br>
 };<br>
 </code>
 <!--
@@ -215,19 +214,16 @@ add  edgeattr_n5@n[1-3]  {$out = {"outport": None, "inport": None}};<br>
 <br>
 <h2> Key Change Example 2: <i>DEL</i></h2>
 <b>Key Format:</b><br>  
-<code>&nbsp;&nbsp; edgeattr_n4@n5</code>, where <code>n4</code> and <code>n5</code> are names of the nodes that form a "from@to" directed edge. These entries store the attributes for the edge.<br><br>
+<code>&nbsp;&nbsp; oldn4</code>, where <code>n4</code> is the name of nodes named as <code>oldn*</code><br><br>
 <b>DSL:</b><br>
-Say we want to delete all edges that are from or to nodes with names greater than <code>n4</code>.  
+Say we want to delete all edges that are from or to nodes with names greater than <code>oldn4</code>.  
 <br>
 <br>
 <pre>
-for [edgeattr_n*@n*] { 
-  DEL {nodes = $dbkey.split("_")[1].split("@") <font color=red> # Q2: TODO, need to reconcile with DEL above....[]</font>
-  if (nodes[0]>"n4" or nodes[1]>"n4")
+for oldn* {
+DEL [] {if $dbkey > "oldn4":
     return True
-  else
-    return False 
-  }
+return False}
 };
 </pre>
 <br>
@@ -239,8 +235,8 @@ Say we want to add a namespace "graph1" onto the keyname, such as "<code>edgeatt
 <br>
 <br>
 <pre>
-for [edgeattr*] {
-  UPD {$outkey = $outkey+"_graph"} <font color=red># Q3: TODO, what to do for [] path here?  If we leave it off, can we just assume <code>$out</code> means the entire value?</font>
+for edgeattr* {
+  UPD [] {$dbkey = $dbkey+"_graph"}
 };
 </pre>
 

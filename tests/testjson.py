@@ -26,11 +26,14 @@ def test1(r):
     shutil.move(tname +".py", "../generated/generated_"+tname+".py")
 
     # add an entry
-    s = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"A\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [ { \"product\": \"Fortune Cookies\",   \"price\": 19.99 },{ \"product\": \"Edamame\",   \"price\": 29.99 } ] } }"
-    r.set("key1", s)
+    cat_a = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"A\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [ { \"product\": \"Fortune Cookies\",   \"price\": 19.99 },{ \"product\": \"Edamame\",   \"price\": 29.99 } ] } }"
+    cat_b = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"B\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [ { \"product\": \"Fortune Cookies\",   \"price\": 19.99 },{ \"product\": \"Edamame\",   \"price\": 29.99 } ] } }"
+    r.set("key1", cat_a)
+    r.set("key2", cat_b)
     # make sure data added
     e = r.get("key1")
     assert (e) is not None
+    assert(r.get("key2") is not None)
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone["_id"] == "4bd8ae97c47016442af4a580")
     assert(((jsone["order"].get("orderItems"))[0]).get("price") == 19.99)
@@ -57,6 +60,10 @@ def test1(r):
     # test DEL
     assert("category" not in jsone)
 
+    e = r.get("key2")
+    assert (e) is not None
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert("category" in jsone)
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
@@ -247,12 +254,12 @@ def test5(r):
     r.set("edgeattr_n2@n5", "{ \"_id\": 4}")
     r.set("edgeattr_n5@n8", "{ \"_id\": 4}")
     r.set("decoy", "{ \"_id\": 4}")
-    r.set("oldn3", "{ \"_id\": 4}")
+    r.set("oldn5", "{ \"_id\": 4}")
     r.set("oldn4", "{ \"_id\": 4}")
     assert(r.get("edgeattr_n2@n5") is not None)
     assert(r.get("edgeattr_n5@n8") is not None)
     assert(r.get("decoy") is not None)
-    assert(r.get("oldn3") is not None)
+    assert(r.get("oldn5") is not None)
     assert(r.get("oldn4") is not None)
 
 
@@ -264,6 +271,9 @@ def test5(r):
     assert(r.get("edgeattr_n5@n8_graph") is not None)
     assert(r.get("decoy_graph") is None)
     assert(r.get("decoy") is not None)
+    assert(r.get("oldn5") is None)
+    assert(r.get("oldn4") is not None)
+    assert(len(r.keys("*")) == 4)
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"

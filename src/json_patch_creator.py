@@ -129,8 +129,8 @@ def generate_upd(cmddict, outfile, prefix):
             keys = json.loads(l.group(2),object_hook=decode.decode_dict)
             usercode = ""
             newpath = ""
-            # load usercode for INIT and UPD
-            if (cmd == "INIT" or cmd == "UPD"):
+            # load usercode for INIT/UPD/DEL
+            if (cmd == "INIT" or cmd == "UPD" or cmd == "DEL"):
                 usercode = l.group(3)
             # load newpath if REN
             if (cmd == "REN"):
@@ -183,15 +183,26 @@ def generate_upd(cmddict, outfile, prefix):
             if (cmd == "UPD"):
                 outfile.write(tabstop + "tmp = " + vartoassign +"\n")
                 usercode = usercode.replace("$in", "tmp") 
-            if (cmd == "INIT" or cmd == "UPD"):
+            if (cmd == "INIT" or cmd == "UPD" or cmd == "DEL"):
                 usercode = usercode.replace("$out", vartoassign)
                 usercode = usercode.replace("$base", pos)
                 usercode = usercode.replace("$root", "jsonobj")
                 usercode = usercode.replace("$dbkey", "rediskey")
+            if (cmd == "INIT" or cmd == "UPD"):
                 usercode = usercode.replace("|", "\n"+tabstop)
                 outfile.write(tabstop + usercode+"\n")
             elif (cmd == "DEL"):  #TODO Implement DEL[]
-                outfile.write(tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']\n")
+                if(len(keys)==0):
+                    keys.append("ALL_VALUES")
+                usercodetabstop = tabstop +  "    "
+                usercode = usercode.replace("|", "\n"+usercodetabstop)
+                outfile.write(tabstop + "def test_del_" +(keys[len(keys)-1]) +"():\n")
+                outfile.write(usercodetabstop + usercode+"\n")
+                outfile.write(tabstop + "if test_del_" +(keys[len(keys)-1]) +"():\n")
+                if (keys[0] != "ALL_VALUES"):
+                    outfile.write(tabstop + "    del "+pos+"[\'" + (keys[len(keys)-1]) + "\']\n")
+                else:
+                    outfile.write(tabstop + "    rediskey = None\n")
             elif (cmd == "REN"):
                 outfile.write(tabstop + pos+"[\'" + (newpath[len(newpath)-1]) + "\'] = "\
                 + pos + ".pop("+ "\'" + (keys[len(keys)-1]) + "\'"     + ")\n")
@@ -229,7 +240,7 @@ def parse_dslfile_inner(dslfile):
     patterns =  ['(INIT)\\s+(\[.*\])\\s?\\s?\{(.*)\}',     #INIT [...] {...}
                  '(UPD)\\s+(\[.*\])\\s?\\s?\{(.*)\}',      #UPD [...] {...}
                  '(REN)\\s+(\[.*\])\\s?->\\s?(\[.*\])',     #REN [...]->[...]
-                 '(DEL)\\s+(\[.*\])']                       #DEL [...]
+                 '(DEL)\\s+(\[.*\])\\s?\\s?\{(.*)\}']       #DEL [...] {...}
 
     dsldict = dict()
     def extract_from_re(estr):
@@ -249,8 +260,8 @@ def parse_dslfile_inner(dslfile):
         line = line.rstrip('\n')
         print "next line" + line
         
-        # parse multiline cmds. INIT and UPD have usercode, DEL and REN do not.
-        if (("INIT" in line) or ("UPD" in line)): 
+        # parse multiline cmds. INIT and UPD and DEL have usercode, REN does not.
+        if (("INIT" in line) or ("UPD" in line) or ("DEL" in line)): 
             while ("}" not in line):
                 tmp = next(dslfile, None)
                 if tmp is not None:

@@ -104,11 +104,13 @@ def do_upd(r, updfile="dsu"):
                         continue
                     # Call the function for the current key and current jsonsubkey
                     (modkey, modjson) = func(currkey, jsonkey)
+                    print "GOT BACK: " + str(modkey) + " " + str(modjson)
 
                     # Now serialize it back, then write it back to redis.  
                     # (Note that the key was modified in place.)
                     modjsonstr = json.dumps(modjson)
-                    r.set(modkey, modjsonstr)
+                    if(modkey is not None):
+                        r.set(modkey, modjsonstr)
                     # if key changed, delete the old
                     if(modkey != currkey):
                         r.delete(currkey)

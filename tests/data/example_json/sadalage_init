@@ -4,6 +4,9 @@ REN ["order", ["orderItems"], "price"]->["order", ["orderItems"], "fullprice"]
 UPD ["_id"] {
 if any(c.isalpha() for c in $in): 
     $out=int($in, 16)}
-DEL ["category"]
+DEL ["category"] {if $out == "A": 
+    return True 
+else: 
+    return False}
 };
 
