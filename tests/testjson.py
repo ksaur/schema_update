@@ -231,11 +231,48 @@ def test4(r):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+
+# Demonstrate updating the names of or deleting existing database keys
+def test5(r):
+    tname = "test5"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(r)
+
+    # create the update file
+    json_patch_creator.process_dsl("data/example_json/upd_keys_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
+
+
+    # generate fake data
+    r.set("edgeattr_n2@n5", "{ \"_id\": 4}")
+    r.set("edgeattr_n5@n8", "{ \"_id\": 4}")
+    r.set("decoy", "{ \"_id\": 4}")
+    r.set("oldn3", "{ \"_id\": 4}")
+    r.set("oldn4", "{ \"_id\": 4}")
+    assert(r.get("edgeattr_n2@n5") is not None)
+    assert(r.get("edgeattr_n5@n8") is not None)
+    assert(r.get("decoy") is not None)
+    assert(r.get("oldn3") is not None)
+    assert(r.get("oldn4") is not None)
+
+
+    # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
+    print "Performing update for " + tname
+    numupd = do_upd.do_upd(r, "generated_" + tname)
+    assert(r.get("edgeattr_n2@n5_graph") is not None)
+    assert(r.get("edgeattr_n2@n5") is None)
+    assert(r.get("edgeattr_n5@n8_graph") is not None)
+    assert(r.get("decoy_graph") is None)
+    assert(r.get("decoy") is not None)
+
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
 def main():
     # connect to Redis
     r = do_upd.connect()
 
-    ## test basic INIT, ADD, REN, UPD for fullpaths
+    # test basic INIT, ADD, REN, UPD for fullpaths
     test1(r)
     # tests for key-glob matching
     test2(r)
@@ -244,6 +281,8 @@ def main():
     test3(r)
     # tests adding new keys to db
     test4(r)
+    # tests updating or deleting existing keys to db
+    test5(r)
 
     r.execute_command('QUIT')
 

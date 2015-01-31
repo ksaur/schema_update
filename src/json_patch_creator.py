@@ -62,7 +62,7 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
 
 
     # remove weird chars from keyglob to use as function name
-    funname = re.sub(r'\W+', '', str(prefix +"_update_" + keyglob))
+    funname = re.sub(r'\W+', '', str(prefix + keyglob))
     if "[" in keyglob:
         # use this library call to grab all the ranges (not actually nested)
         ranges = nestedExpr('[',']').parseString("[" + keyglob + "]").asList()[0]
@@ -135,10 +135,9 @@ def generate_upd(cmddict, outfile, prefix):
             # load newpath if REN
             if (cmd == "REN"):
                 newpath = json.loads(l.group(3),object_hook=decode.decode_dict) 
-            assert(len(keys)>0)
             if (entry != function):
                 # write the function signature to file
-                name = re.sub(r'\W+', '', str(prefix +"_update_" + entry))
+                name = re.sub(r'\W+', '', str(prefix + entry))
                 outfile.write("\ndef "+ name + "(rediskey, jsonobj):\n")
                 # store the name of the function to call
                 funname_list.append(name)
@@ -152,30 +151,34 @@ def generate_upd(cmddict, outfile, prefix):
             codeline = tabstop + pos + " = jsonobj"
             
             print keys
-            for s in keys[0:(len(keys)-1)]:
-                print type(s)
-                if (type(s) is not list):
-                    codeline += ".get(\'" + s + "\')"
-                else: # arrays
-                    # if array isn't the leaf
-                    nextpos = chr(ord(pos) + 1) # increment the variable name
-                    codeline += ".get(\'" + s[0] + "\')\n"
-                    codeline += tabstop + "assert(" + pos + " is not None)\n"
-                    codeline += tabstop + "for " + nextpos +" in " + pos + ":"
-                    tabstop = tabstop + "    "
-                    pos = nextpos
-                    if (s != keys[(len(keys)-2)]):
-                        nextpos = chr(ord(pos) + 1)
-                        codeline += "\n" + tabstop + nextpos + " = " + pos
+            if(len(keys)>0):
+                for s in keys[0:(len(keys)-1)]:
+                    print type(s)
+                    if (type(s) is not list):
+                        codeline += ".get(\'" + s + "\')"
+                    else: # arrays
+                        # if array isn't the leaf
+                        nextpos = chr(ord(pos) + 1) # increment the variable name
+                        codeline += ".get(\'" + s[0] + "\')\n"
+                        codeline += tabstop + "assert(" + pos + " is not None)\n"
+                        codeline += tabstop + "for " + nextpos +" in " + pos + ":"
+                        tabstop = tabstop + "    "
                         pos = nextpos
-                    # TODO There are probably several scenarios this leaves out?
+                        if (s != keys[(len(keys)-2)]):
+                            nextpos = chr(ord(pos) + 1)
+                            codeline += "\n" + tabstop + nextpos + " = " + pos
+                            pos = nextpos
+                        # TODO There are probably several scenarios this leaves out?
             if (getter != codeline):
                 outfile.write(codeline+"\n")
                 outfile.write(tabstop + "assert(" + pos + " is not None)\n")
                 getter = codeline
 
             # Replace $out's with the variable to assign to
-            vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
+            if(len(keys)>0):
+                vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
+            else:
+                vartoassign = pos
             # whoa. where has this function been my whole life?
             if (cmd == "UPD"):
                 outfile.write(tabstop + "tmp = " + vartoassign +"\n")
@@ -187,11 +190,12 @@ def generate_upd(cmddict, outfile, prefix):
                 usercode = usercode.replace("$dbkey", "rediskey")
                 usercode = usercode.replace("|", "\n"+tabstop)
                 outfile.write(tabstop + usercode+"\n")
-            elif (cmd == "DEL"):
+            elif (cmd == "DEL"):  #TODO Implement DEL[]
                 outfile.write(tabstop + "del "+pos+"[\'" + (keys[len(keys)-1]) + "\']\n")
             elif (cmd == "REN"):
                 outfile.write(tabstop + pos+"[\'" + (newpath[len(newpath)-1]) + "\'] = "\
                 + pos + ".pop("+ "\'" + (keys[len(keys)-1]) + "\'"     + ")\n")
+        outfile.write("    return (rediskey, jsonobj)\n")
     return funname_list
              
 
@@ -260,7 +264,10 @@ def parse_dslfile_inner(dslfile):
             print "found " + str(len(curr.groups())) + " groups"
             print curr.group(2)
             keys = json.loads(curr.group(2),object_hook=decode.decode_dict)
-            if (type(keys[0]) is list): #TODO other cases?? What if mid-list?  more testing needed.
+            #test for empty keys, meaning fullpath ([])
+            if (len(keys) == 0):
+                dsldict["ALL_VALUES"] = [curr] #TODO, better placeholder?
+            elif (type(keys[0]) is list): #TODO other cases?? What if mid-list?  more testing needed.
                 dsldict[keys[0][0]] = [curr]
             elif(keys[0] not in dsldict.keys()):
                 dsldict[keys[0]] = [curr]
@@ -402,9 +409,9 @@ def process_dsl(file1, outfile="dsu.py"):
     # (Use the index as the namespace, as the keystring has too many special chars) 
     for idx, curr_tup in enumerate(dsllist):
         if (curr_tup[0] == "for"):
-            kv_update_pairs.append(("for", curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx))))
+            kv_update_pairs.append(("for", curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_")))
         elif (curr_tup[0] == "add"):
-            kv_update_pairs.append(("add", curr_tup[1], generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder")))
+            kv_update_pairs.append(("add", curr_tup[1], generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_")))
 
     # write the name of the key globs and corresponding functions
     outfile.write("\ndef get_update_tuples():\n    return " + str(kv_update_pairs))

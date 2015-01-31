@@ -103,12 +103,15 @@ def do_upd(r, updfile="dsu"):
                         print "(Could not find function: " + funcname + ")"
                         continue
                     # Call the function for the current key and current jsonsubkey
-                    func(currkey, jsonkey)
+                    (modkey, modjson) = func(currkey, jsonkey)
 
                     # Now serialize it back, then write it back to redis.  
                     # (Note that the key was modified in place.)
-                    modedkey = json.dumps(jsonkey)
-                    r.set(currkey, modedkey)
+                    modjsonstr = json.dumps(modjson)
+                    r.set(modkey, modjsonstr)
+                    # if key changed, delete the old
+                    if(modkey != currkey):
+                        r.delete(currkey)
                     num_upd+=1
         # add new keys
         else:
