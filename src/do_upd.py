@@ -11,6 +11,7 @@ import decode
 import redis
 import sys
 sys.path.append("../generated")
+import lazyupdredis
 
 # TODO move this into some sort of util library
 def connect(host=None, port=None):
@@ -26,7 +27,8 @@ def connect(host=None, port=None):
         host = 'localhost'
     if port is None:
         port = 6379
-    r = redis.StrictRedis(host, port, db=0)
+    r = lazyupdredis.LazyUpdateRedis(host, port, db=0)
+    #r = redis.StrictRedis(host, port, db=0)
     try:
         r.ping()
     except r.ConnectionError as e:

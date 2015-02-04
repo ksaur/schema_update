@@ -9,6 +9,7 @@ sys.path.append("../src")
 import decode
 import do_upd
 import json_patch_creator
+import lazyupdredis
 
 def reset(r):
     # clear out old data from redis
