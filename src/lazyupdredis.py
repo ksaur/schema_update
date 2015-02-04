@@ -27,28 +27,18 @@
 import redis
 
 from redis.client import (dict_merge, string_keys_to_dict, sort_return_tuples,
-float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
-parse_config_get, parse_debug_object, parse_hscan, parse_info,
-timestamp_to_datetime, parse_object, parse_scan, nativestr,
-parse_sentinel_get_master, parse_sentinel_master, parse_sentinel_masters,
-parse_sentinel_slaves_and_sentinels, parse_slowlog_get, parse_zscan)
+    float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
+    parse_config_get, parse_debug_object, parse_hscan, parse_info,
+    timestamp_to_datetime, parse_object, parse_scan, 
+    parse_sentinel_get_master, parse_sentinel_master, parse_sentinel_masters,
+    parse_sentinel_slaves_and_sentinels, parse_slowlog_get, parse_zscan)
 
-from redis._compat import (b, basestring, bytes, imap, iteritems, iterkeys,
-itervalues, izip, long, nativestr, unicode)
+from redis._compat import (basestring, iteritems, iterkeys, itervalues, long,
+    nativestr)
 
 from redis.connection import (ConnectionPool, UnixDomainSocketConnection,
-SSLConnection, Token)
+    SSLConnection, Token)
 
-
-# special unicode handling for python2 to avoid UnicodeDecodeError
-def safe_unicode(obj, *args):
-    """ return the unicode representation of obj """
-    try:
-        return unicode(obj, *args)
-    except UnicodeDecodeError:
-        # obj is byte string
-        ascii_text = str(obj).encode('string_escape')
-        return unicode(ascii_text)
 
 class LazyUpdateRedis(object):
     """
