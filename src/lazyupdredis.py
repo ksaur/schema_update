@@ -36,6 +36,18 @@
         keys
   
     Also, 'flushall' preserves the stored list of versions
+
+    Additional bookkeeping for lazy update:
+    * A redis list called "UPDATE_VERSIONS", which is a list of version name strings
+         Ex: "UPDATE_VERSIONS" -> ["V1"]
+    * A redis hash of "UPDATE_FILES", which stores a hash mapping version name strings
+         to file names (for loading into the self.upd_dict as clients connect)
+         Ex:  "UPDATE_FILES" -> { "V1" : "generated_upd1.py"}
+    * Update functions are stored in a dictionary named self.upd_dict
+      This stores "version string+ -> (version module, dict of (keyglob->module function strings))
+         Ex: {"V1": (<module "generated_upd1" from "../generated/generated_upd1.py">,
+              [("for", "*", ["group_0_update_category", "group_0_update__id"])])} 
+ 
    
     The initial (preupdate) version is named "INITIAL_V0" 
     (global string "initial_version" for now).  Subsequent
