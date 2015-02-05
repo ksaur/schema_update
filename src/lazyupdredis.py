@@ -1,4 +1,4 @@
-#  This is a modification of "class StrictRedis(object)" is from: 
+#  This modification of "class StrictRedis(object)" is from: 
 #  https://github.com/andymccurdy/redis-py/blob/master/redis/client.py
 #
 #  That code had the following license:
@@ -42,8 +42,25 @@ from redis.connection import (ConnectionPool, UnixDomainSocketConnection,
 
 class LazyUpdateRedis(object):
     """
-    Implementation of the Redis protocol.
+    Implementation of the Redis protocol, with wrappers to add/remove version 
+    strings to/from the keys, and to update the keys as necessary.
 
+    The following modifications were made to address key versioning:
+    * All keys are prepended with a version number and pipe.  
+        ex:  key0 at version v0 becomes "v0|key0".
+
+    To make redis operation work, this class:
+    * Tries prepending all possible version strings for:
+        delete, get
+    * Prepends only the most recent version string for:
+        set
+    * Prepend wildcard (*|) to keyglob for:
+        keys
+   
+    The default version is "0".
+    ----------
+
+    From previous "StrictRedis:"
     This abstract class provides a Python interface to all Redis commands
     and an implementation of the Redis protocol.
 
@@ -161,7 +178,7 @@ class LazyUpdateRedis(object):
                  charset=None, errors=None,
                  decode_responses=False, retry_on_timeout=False,
                  ssl=False, ssl_keyfile=None, ssl_certfile=None,
-                 ssl_cert_reqs=None, ssl_ca_certs=None):
+                 ssl_cert_reqs=None, ssl_ca_certs=None, prog_ver="0"):
         if not connection_pool:
             if charset is not None:
                 warnings.warn(DeprecationWarning(
@@ -208,6 +225,7 @@ class LazyUpdateRedis(object):
             connection_pool = ConnectionPool(**kwargs)
         self.connection_pool = connection_pool
         self._use_lua_lock = None
+        self.prog_ver = [prog_ver]
 
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
 
@@ -597,6 +615,9 @@ class LazyUpdateRedis(object):
 
     def delete(self, *names):
         "Delete one or more keys specified by ``names``"
+        # Delete doesn't allow keyglob, must expand all
+        for v in self.prog_ver:
+            names =  map(lambda x: v + "|" + x, names)
         return self.execute_command('DEL', *names)
 
     def __delitem__(self, name):
@@ -634,9 +655,19 @@ class LazyUpdateRedis(object):
 
     def get(self, name):
         """
-        Return the value at key ``name``, or None if the key doesn't exist
+        Return the value at key ``name`` (any version), or None if the key 
+        doesn't exist
         """
-        return self.execute_command('GET', name)
+        for v in reversed(self.prog_ver): #reverse to hopefully be correct faster
+            #getter = self.prog_ver[-1] + "|" + name
+            getter = v + "|" + name
+            ret = self.execute_command('GET', getter)
+            if ret is not None:
+                hit = getter.split("|", 1) 
+                print "GOT KEY " + hit[1] + " at VERSION: " + hit[0]
+                # TODO, do the update here if requested and if the version isn't [-1]
+                return ret
+        return None
 
     def __getitem__(self, name):
         """
@@ -691,7 +722,19 @@ class LazyUpdateRedis(object):
         return self.execute_command('INCRBYFLOAT', name, amount)
 
     def keys(self, pattern='*'):
-        "Returns a list of keys matching ``pattern``"
+        """
+        Returns a list of keys matching ``pattern`` (update tracking version
+        strings are stripped off before returning
+        """
+        pattern = "*|" + pattern
+        keylist = self.execute_command('KEYS', pattern)
+        return map(lambda x: x.split("|", 1)[1], keylist)
+
+    def vers_keys(self, pattern='*'):
+        """
+        Returns a list of keys matching ``pattern``, with the update tracking 
+        version strings attached
+        """
         return self.execute_command('KEYS', pattern)
 
     def mget(self, keys, *args):
@@ -801,6 +844,8 @@ class LazyUpdateRedis(object):
         """
         Set the value at key ``name`` to ``value``
 
+        Prepends the current version string to key ``name``.
+
         ``ex`` sets an expire flag on key ``name`` for ``ex`` seconds.
 
         ``px`` sets an expire flag on key ``name`` for ``px`` milliseconds.
@@ -811,6 +856,8 @@ class LazyUpdateRedis(object):
         ``xx`` if set to True, set the value at key ``name`` to ``value`` if it
             already exists.
         """
+
+        name = self.prog_ver[-1] + "|" + name
         pieces = [name, value]
         if ex:
             pieces.append('EX')
