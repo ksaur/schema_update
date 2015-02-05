@@ -3,7 +3,7 @@
           "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-  <title>Module Hierarchy</title>
+  <title>Class Hierarchy</title>
   <link rel="stylesheet" href="epydoc.css" type="text/css" />
   <script type="text/javascript" src="epydoc.js"></script>
 </head>
@@ -45,7 +45,7 @@
     onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
         <tr><td align="right"><span class="options"
             >[<a href="frames.html" target="_top">frames</a
-            >]&nbsp;|&nbsp;<a href="module-tree.html"
+            >]&nbsp;|&nbsp;<a href="class-tree.html"
             target="_top">no&nbsp;frames</a>]</span></td></tr>
       </table>
     </td>
@@ -55,15 +55,17 @@
  [ <a href="module-tree.html">Module Hierarchy</a>
  | <a href="class-tree.html">Class Hierarchy</a> ]
 </b></center><br />
-<h1 class="epydoc">Module Hierarchy</h1>
+<h1 class="epydoc">Class Hierarchy</h1>
 <ul class="nomargin-top">
-    <li> <strong class="uidlink"><a href="print_redis-module.html">print_redis</a></strong>: <em class="summary">Prints all the values (keys, types, and data) of everything 
-        currently stored in redis.</em>    </li>
-    <li> <strong class="uidlink"><a href="src.decode-module.html">src.decode</a></strong>: <em class="summary">This file contains some helper functions.</em>    </li>
-    <li> <strong class="uidlink"><a href="src.do_upd-module.html">src.do_upd</a></strong>: <em class="summary">Call all of the generated functions for the specified key stanzas 
-        in the redis database.</em>    </li>
-    <li> <strong class="uidlink"><a href="src.json_patch_creator-module.html">src.json_patch_creator</a></strong>: <em class="summary">This is the main file for generating the update code.</em>    </li>
-    <li> <strong class="uidlink"><a href="src.lazyupdredis-module.html">src.lazyupdredis</a></strong>    </li>
+    <li> <strong class="uidlink">object</strong>:
+      <em class="summary">The most base type</em>
+    <ul>
+    <li> <strong class="uidlink"><a href="src.lazyupdredis.LazyUpdateRedis-class.html">src.lazyupdredis.LazyUpdateRedis</a></strong>:
+      <em class="summary">Implementation of the Redis protocol, with wrappers to add/remove version 
+strings to/from the keys, and to update the keys as necessary.</em>
+    </li>
+    </ul>
+    </li>
 </ul>
 <!-- ==================== NAVIGATION BAR ==================== -->
 <table class="navbar" border="0" width="100%" cellpadding="0"
