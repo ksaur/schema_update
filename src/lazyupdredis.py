@@ -37,7 +37,8 @@
   
     Also, 'flushall' preserves the stored list of versions
    
-    The initial (preupdate) version is named "INITIAL_V0".  Subsequent
+    The initial (preupdate) version is named "INITIAL_V0" 
+    (global string "initial_version" for now).  Subsequent
     versions will be named when the user passes in the set of corresponding
     update functions.
 """
@@ -68,6 +69,7 @@ from redis.exceptions import (
     WatchError,
 )
 
+initial_version = "INITIAL_V0"
 
 class LazyUpdateRedis(object):
     """
@@ -244,13 +246,18 @@ class LazyUpdateRedis(object):
 
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         # check to see if we are the initial version and must init
-        if self.llen("UPDATE_VERSION") is 0:
-            self.lpush("UPDATE_VERSION", "INITIAL_V0")
-            self.prog_ver = ["INITIAL_V0"]
-        else:
-            self.prog_ver = self.lrange("UPDATE_VERSION", 0, -1)
-        print "Connected with the following ( " +str(len(self.prog_ver)),
-        print ") versions: " + str(self.prog_ver)
+        if self.versions() is None:
+            self.append_new_version(initial_version)
+        print "Connected with the following versions: " + str(self.versions())
+
+    def append_new_version(self, v):
+        return self.lpush("UPDATE_VERSION", v)
+
+    def versions(self):
+        return self.lrange("UPDATE_VERSION", 0, -1)
+
+    def curr_version(self):
+        return self.lindex("UPDATE_VERSION", 0)
 
     def __repr__(self):
         return "%s<%s>" % (type(self).__name__, repr(self.connection_pool))
@@ -447,9 +454,8 @@ class LazyUpdateRedis(object):
         "Delete all keys in all databases on the current host"
         upds = self.lrange("UPDATE_VERSION", 0, -1)
         ret = self.execute_command('FLUSHALL')
-        # ideally we could just put multiple at once, but it takes variable length
-        # string args...would have to parse out list; this is faster for now.
-        map(lambda x: self.lpush("UPDATE_VERSION", x), upds)
+        # reset the UPDATE_VERSION string
+        self.append_new_version(initial_version)
         return ret
 
     def flushdb(self):
@@ -644,9 +650,9 @@ class LazyUpdateRedis(object):
     def delete(self, *names):
         "Delete one or more keys specified by ``names``"
         # Delete doesn't allow keyglob, must expand all
-        for v in self.prog_ver:
-            names =  map(lambda x: v + "|" + x, names)
-        return self.execute_command('DEL', *names)
+        for v in self.versions():
+            newnames =  map(lambda x: v + "|" + x, names)
+        return self.execute_command('DEL', *newnames)
 
     def __delitem__(self, name):
         self.delete(name)
@@ -686,8 +692,7 @@ class LazyUpdateRedis(object):
         Return the value at key ``name`` (any version), or None if the key 
         doesn't exist
         """
-        for v in reversed(self.prog_ver): #reverse to hopefully be correct faster
-            #getter = self.prog_ver[-1] + "|" + name
+        for v in self.versions():
             getter = v + "|" + name
             ret = self.execute_command('GET', getter)
             if ret is not None:
@@ -885,7 +890,7 @@ class LazyUpdateRedis(object):
             already exists.
         """
 
-        name = self.prog_ver[-1] + "|" + name
+        name = self.curr_version() + "|" + name
         pieces = [name, value]
         if ex:
             pieces.append('EX')
@@ -1789,5 +1794,37 @@ class LazyUpdateRedis(object):
         with Lua scripts.
         """
         return Script(self, script)
+   
+    def do_upd(self, updfile="dsu", version=None):
+        """
+        Switch the version string and loadup the update functions for lazy updates.
+
+        @type updfile: string
+        @param updfile: The file with the update functions.  Defaults to "dsu".
+        
+        """
+        ##strip off extention, if provided
+        #updfile = updfile.replace(".py", "")
+        ## load up the file to get all functions (like dlsym with Kitsune)
+        #print "importing from " + updfile
+        #m = __import__ (updfile)
+
+        #get_update_tuples = getattr(m, "get_update_tuples")
+        #update_pairs = get_update_tuples()
+        #print len(update_pairs)
+
+        vers_list = self.versions()
+        if len(vers_list) < 1: #should never happen
+            print "Update failed to load, no version string stored"
+            return
+        if version is None:
+            version = "V"+str(len(vers_list))
+        self.append_new_version(version)
+
+		# TODO IMPORTANT, db lookup causes overhead, but local version
+		# (self.prog_ver) will not notify other connected redis clients that
+		# there is an update available!  Is there a function to do this?
+            
+       
 
 
