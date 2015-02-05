@@ -49,15 +49,25 @@ def test1(r, actualredis):
     # make sure the version string got loaded in actualredis
     assert(len(r.keys("*")) == 2)
     assert(len(actualredis.keys("*")) == 3)
-    assert(actualredis.lrange("UPDATE_VERSION", 0, -1) == ["INITIAL_V0"])
+    assert(actualredis.lrange("UPDATE_VERSIONS", 0, -1) == ["INITIAL_V0"])
 
     # Make sure the versioning works for the udpate 
     print "Performing update for " + tname
-    r.do_upd("generated_" + tname)
-    print actualredis.lrange("UPDATE_VERSION", 0, -1)
-    assert(actualredis.lrange("UPDATE_VERSION", 0, -1) == ["V1", "INITIAL_V0"])
+    r.do_upd("generated_" + tname,)
+    print actualredis.lrange("UPDATE_VERSIONS", 0, -1)
+    assert(actualredis.lrange("UPDATE_VERSIONS", 0, -1) == ["V1", "INITIAL_V0"])
     assert(r.versions() == ["V1", "INITIAL_V0"]) 
     assert(r.curr_version() == "V1") 
+    assert(r.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
+    assert(r.upd_dict["V1"][1] == [("for", "*", ["group_0_update_category", "group_0_update__id", "group_0_update_order"])])
+
+    # make sure that the new module loads on a new connection
+    r2 = do_upd.connect()
+    assert(r2.versions() == ["V1", "INITIAL_V0"]) 
+    assert(r2.curr_version() == "V1") 
+    assert(r2.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
+    assert(r2.upd_dict["V1"][1] == [("for", "*", ["group_0_update_category", "group_0_update__id", "group_0_update_order"])])
+
 
 
     #numupd = do_upd.do_upd(r, "generated_" + tname)

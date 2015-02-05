@@ -48,7 +48,7 @@ import redis
 from redis.client import (dict_merge, string_keys_to_dict, sort_return_tuples,
     float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
     parse_config_get, parse_debug_object, parse_hscan, parse_info,
-    timestamp_to_datetime, parse_object, parse_scan, 
+    timestamp_to_datetime, parse_object, parse_scan, pairs_to_dict, 
     parse_sentinel_get_master, parse_sentinel_master, parse_sentinel_masters,
     parse_sentinel_slaves_and_sentinels, parse_slowlog_get, parse_zscan)
 
@@ -248,16 +248,29 @@ class LazyUpdateRedis(object):
         # check to see if we are the initial version and must init
         if self.versions() is None:
             self.append_new_version(initial_version)
+
+        # check to see if existing updates need to be loaded into this class
+        self.upd_dict = dict()
+        upd_files = self.hgetall("UPDATE_FILES")
+        for v in upd_files:
+            print "GETTING " + v + " " + upd_files[v]
+            m = __import__ (upd_files[v])
+            get_update_tuples = getattr(m, "get_update_tuples")
+            self.upd_dict[v] = (m, get_update_tuples())
+ 
         print "Connected with the following versions: " + str(self.versions())
 
-    def append_new_version(self, v):
-        return self.lpush("UPDATE_VERSION", v)
+    def append_new_version(self, v, updfile=None):
+        ret = self.lpush("UPDATE_VERSIONS", v)
+        if updfile is not None:        
+            self.hset("UPDATE_FILES", v, updfile)
+        return ret
 
     def versions(self):
-        return self.lrange("UPDATE_VERSION", 0, -1)
+        return self.lrange("UPDATE_VERSIONS", 0, -1)
 
     def curr_version(self):
-        return self.lindex("UPDATE_VERSION", 0)
+        return self.lindex("UPDATE_VERSIONS", 0)
 
     def __repr__(self):
         return "%s<%s>" % (type(self).__name__, repr(self.connection_pool))
@@ -452,9 +465,9 @@ class LazyUpdateRedis(object):
 
     def flushall(self):
         "Delete all keys in all databases on the current host"
-        upds = self.lrange("UPDATE_VERSION", 0, -1)
+        upds = self.lrange("UPDATE_VERSIONS", 0, -1)
         ret = self.execute_command('FLUSHALL')
-        # reset the UPDATE_VERSION string
+        # reset the UPDATE_VERSIONS string
         self.append_new_version(initial_version)
         return ret
 
@@ -1795,7 +1808,7 @@ class LazyUpdateRedis(object):
         """
         return Script(self, script)
    
-    def do_upd(self, updfile="dsu", version=None):
+    def do_upd(self, upd_file="dsu", version=None):
         """
         Switch the version string and loadup the update functions for lazy updates.
 
@@ -1803,15 +1816,6 @@ class LazyUpdateRedis(object):
         @param updfile: The file with the update functions.  Defaults to "dsu".
         
         """
-        ##strip off extention, if provided
-        #updfile = updfile.replace(".py", "")
-        ## load up the file to get all functions (like dlsym with Kitsune)
-        #print "importing from " + updfile
-        #m = __import__ (updfile)
-
-        #get_update_tuples = getattr(m, "get_update_tuples")
-        #update_pairs = get_update_tuples()
-        #print len(update_pairs)
 
         vers_list = self.versions()
         if len(vers_list) < 1: #should never happen
@@ -1819,12 +1823,17 @@ class LazyUpdateRedis(object):
             return
         if version is None:
             version = "V"+str(len(vers_list))
-        self.append_new_version(version)
 
-		# TODO IMPORTANT, db lookup causes overhead, but local version
-		# (self.prog_ver) will not notify other connected redis clients that
-		# there is an update available!  Is there a function to do this?
-            
-       
+        #strip off extention, if provided
+        upd_file = upd_file.replace(".py", "")
+
+        # TODO error checking
+        print "importing from " + upd_file
+        m = __import__ (upd_file) #m stores the module
+        get_update_tuples = getattr(m, "get_update_tuples")
+        self.upd_dict[version] = (m, get_update_tuples())
+
+        # call this only after loading functions has succeeded
+        self.append_new_version(version, upd_file)
 
 
