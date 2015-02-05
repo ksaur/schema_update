@@ -137,6 +137,56 @@ object --+
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
+          <td><span class="summary-sig"><a name="append_new_version"></a><span class="summary-sig-name">append_new_version</span>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">v</span>,
+        <span class="summary-sig-arg">updfile</span>=<span class="summary-sig-default">None</span>)</span></td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.lazyupdredis-pysrc.html#LazyUpdateRedis.append_new_version">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="versions"></a><span class="summary-sig-name">versions</span>(<span class="summary-sig-arg">self</span>)</span></td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.lazyupdredis-pysrc.html#LazyUpdateRedis.versions">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="curr_version"></a><span class="summary-sig-name">curr_version</span>(<span class="summary-sig-arg">self</span>)</span></td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.lazyupdredis-pysrc.html#LazyUpdateRedis.curr_version">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
           <td><span class="summary-sig"><a href="src.lazyupdredis.LazyUpdateRedis-class.html#__repr__" class="summary-sig-name">__repr__</a>(<span class="summary-sig-arg">self</span>)</span><br />
       repr(x)</td>
           <td align="right" valign="top">
@@ -3517,6 +3567,26 @@ from the list stored at ``name``.</td>
       
     </td>
   </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="src.lazyupdredis.LazyUpdateRedis-class.html#do_upd" class="summary-sig-name">do_upd</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">upd_file</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">dsu</code><code class="variable-quote">'</code></span>,
+        <span class="summary-sig-arg">version</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Switch the version string and loadup the update functions for lazy 
+      updates.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.lazyupdredis-pysrc.html#LazyUpdateRedis.do_upd">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
   <tr>
     <td colspan="2" class="summary">
     <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
@@ -5518,6 +5588,32 @@ Sort and return the list, set or sorted set at ``name``.
   </dl>
 </td></tr></table>
 </div>
+<a name="do_upd"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">do_upd</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">upd_file</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">dsu</code><code class="variable-quote">'</code></span>,
+        <span class="sig-arg">version</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.lazyupdredis-pysrc.html#LazyUpdateRedis.do_upd">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Switch the version string and loadup the update functions for lazy 
+  updates.</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>upd_file</code></strong> (string) - The file with the update functions.  Defaults to &quot;dsu&quot;.</li>
+    </ul></dd>
+  </dl>
+</td></tr></table>
+</div>
 <br />
 <!-- ==================== CLASS VARIABLE DETAILS ==================== -->
 <a name="section-ClassVariableDetails"></a>
@@ -5592,7 +5688,7 @@ _keys_to_dict('LPUSH RPUSH', lambda r: isinstance(r, long) and r or na<span clas
 <table border="0" cellpadding="0" cellspacing="0" width="100%%">
   <tr>
     <td align="left" class="footer">
-    Generated by Epydoc 3.0.1 on Thu Feb  5 14:16:46 2015
+    Generated by Epydoc 3.0.1 on Thu Feb  5 17:57:44 2015
     </td>
     <td align="right" class="footer">
       <a target="mainFrame" href="http://epydoc.sourceforge.net"

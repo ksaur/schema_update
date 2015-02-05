@@ -7,11 +7,11 @@ src.decode	src.decode-module.html
 src.decode.decode_list	src.decode-module.html#decode_list
 src.decode.decode_dict	src.decode-module.html#decode_dict
 src.decode.__package__	src.decode-module.html#__package__
-src.do_upd	src.do_upd-module.html
-src.do_upd.__package__	src.do_upd-module.html#__package__
-src.do_upd.connect	src.do_upd-module.html#connect
-src.do_upd.main	src.do_upd-module.html#main
-src.do_upd.do_upd	src.do_upd-module.html#do_upd
+src.do_upd_all_now	src.do_upd_all_now-module.html
+src.do_upd_all_now.do_upd_all_now	src.do_upd_all_now-module.html#do_upd_all_now
+src.do_upd_all_now.__package__	src.do_upd_all_now-module.html#__package__
+src.do_upd_all_now.connect	src.do_upd_all_now-module.html#connect
+src.do_upd_all_now.main	src.do_upd_all_now-module.html#main
 src.json_patch_creator	src.json_patch_creator-module.html
 src.json_patch_creator.parse_dslfile_inner	src.json_patch_creator-module.html#parse_dslfile_inner
 src.json_patch_creator.make_template	src.json_patch_creator-module.html#make_template
@@ -25,6 +25,8 @@ src.json_patch_creator.bulkload	src.json_patch_creator-module.html#bulkload
 src.json_patch_creator.__VERSION__	src.json_patch_creator-module.html#__VERSION__
 src.json_patch_creator.generate_dsltemplate	src.json_patch_creator-module.html#generate_dsltemplate
 src.lazyupdredis	src.lazyupdredis-module.html
+src.lazyupdredis.initial_version	src.lazyupdredis-module.html#initial_version
+src.lazyupdredis.connect	src.lazyupdredis-module.html#connect
 src.lazyupdredis.__package__	src.lazyupdredis-module.html#__package__
 src.lazyupdredis.LazyUpdateRedis	src.lazyupdredis.LazyUpdateRedis-class.html
 src.lazyupdredis.LazyUpdateRedis.restore	src.lazyupdredis.LazyUpdateRedis-class.html#restore
@@ -60,6 +62,7 @@ src.lazyupdredis.LazyUpdateRedis.incrby	src.lazyupdredis.LazyUpdateRedis-class.h
 src.lazyupdredis.LazyUpdateRedis.sentinel_slaves	src.lazyupdredis.LazyUpdateRedis-class.html#sentinel_slaves
 src.lazyupdredis.LazyUpdateRedis.scan_iter	src.lazyupdredis.LazyUpdateRedis-class.html#scan_iter
 src.lazyupdredis.LazyUpdateRedis.hexists	src.lazyupdredis.LazyUpdateRedis-class.html#hexists
+src.lazyupdredis.LazyUpdateRedis.do_upd	src.lazyupdredis.LazyUpdateRedis-class.html#do_upd
 src.lazyupdredis.LazyUpdateRedis.flushall	src.lazyupdredis.LazyUpdateRedis-class.html#flushall
 src.lazyupdredis.LazyUpdateRedis.__delitem__	src.lazyupdredis.LazyUpdateRedis-class.html#__delitem__
 src.lazyupdredis.LazyUpdateRedis.pfadd	src.lazyupdredis.LazyUpdateRedis-class.html#pfadd
@@ -96,6 +99,7 @@ src.lazyupdredis.LazyUpdateRedis.spop	src.lazyupdredis.LazyUpdateRedis-class.htm
 src.lazyupdredis.LazyUpdateRedis.srandmember	src.lazyupdredis.LazyUpdateRedis-class.html#srandmember
 src.lazyupdredis.LazyUpdateRedis.zincrby	src.lazyupdredis.LazyUpdateRedis-class.html#zincrby
 src.lazyupdredis.LazyUpdateRedis.zlexcount	src.lazyupdredis.LazyUpdateRedis-class.html#zlexcount
+src.lazyupdredis.LazyUpdateRedis.dbsize	src.lazyupdredis.LazyUpdateRedis-class.html#dbsize
 src.lazyupdredis.LazyUpdateRedis.register_script	src.lazyupdredis.LazyUpdateRedis-class.html#register_script
 src.lazyupdredis.LazyUpdateRedis.__setitem__	src.lazyupdredis.LazyUpdateRedis-class.html#__setitem__
 src.lazyupdredis.LazyUpdateRedis.expire	src.lazyupdredis.LazyUpdateRedis-class.html#expire
@@ -120,6 +124,7 @@ src.lazyupdredis.LazyUpdateRedis.pfcount	src.lazyupdredis.LazyUpdateRedis-class.
 src.lazyupdredis.LazyUpdateRedis.eval	src.lazyupdredis.LazyUpdateRedis-class.html#eval
 src.lazyupdredis.LazyUpdateRedis.hincrby	src.lazyupdredis.LazyUpdateRedis-class.html#hincrby
 src.lazyupdredis.LazyUpdateRedis.echo	src.lazyupdredis.LazyUpdateRedis-class.html#echo
+src.lazyupdredis.LazyUpdateRedis.append_new_version	src.lazyupdredis.LazyUpdateRedis-class.html#append_new_version
 src.lazyupdredis.LazyUpdateRedis.substr	src.lazyupdredis.LazyUpdateRedis-class.html#substr
 src.lazyupdredis.LazyUpdateRedis.flushdb	src.lazyupdredis.LazyUpdateRedis-class.html#flushdb
 src.lazyupdredis.LazyUpdateRedis.shutdown	src.lazyupdredis.LazyUpdateRedis-class.html#shutdown
@@ -146,12 +151,13 @@ src.lazyupdredis.LazyUpdateRedis.info	src.lazyupdredis.LazyUpdateRedis-class.htm
 src.lazyupdredis.LazyUpdateRedis.zadd	src.lazyupdredis.LazyUpdateRedis-class.html#zadd
 src.lazyupdredis.LazyUpdateRedis.sinter	src.lazyupdredis.LazyUpdateRedis-class.html#sinter
 src.lazyupdredis.LazyUpdateRedis.expireat	src.lazyupdredis.LazyUpdateRedis-class.html#expireat
+src.lazyupdredis.LazyUpdateRedis.versions	src.lazyupdredis.LazyUpdateRedis-class.html#versions
 src.lazyupdredis.LazyUpdateRedis.type	src.lazyupdredis.LazyUpdateRedis-class.html#type
 src.lazyupdredis.LazyUpdateRedis.setrange	src.lazyupdredis.LazyUpdateRedis-class.html#setrange
 src.lazyupdredis.LazyUpdateRedis.config_set	src.lazyupdredis.LazyUpdateRedis-class.html#config_set
 src.lazyupdredis.LazyUpdateRedis.randomkey	src.lazyupdredis.LazyUpdateRedis-class.html#randomkey
 src.lazyupdredis.LazyUpdateRedis.sismember	src.lazyupdredis.LazyUpdateRedis-class.html#sismember
-src.lazyupdredis.LazyUpdateRedis.dbsize	src.lazyupdredis.LazyUpdateRedis-class.html#dbsize
+src.lazyupdredis.LazyUpdateRedis.curr_version	src.lazyupdredis.LazyUpdateRedis-class.html#curr_version
 src.lazyupdredis.LazyUpdateRedis.delete	src.lazyupdredis.LazyUpdateRedis-class.html#delete
 src.lazyupdredis.LazyUpdateRedis.rename	src.lazyupdredis.LazyUpdateRedis-class.html#rename
 src.lazyupdredis.LazyUpdateRedis.sunionstore	src.lazyupdredis.LazyUpdateRedis-class.html#sunionstore

@@ -74,7 +74,20 @@ To make redis operation work, this class:
 
 Also, 'flushall' preserves the stored list of versions
 
-The initial (preupdate) version is named &quot;INITIAL_V0&quot;.  Subsequent
+Additional bookkeeping for lazy update:
+* A redis list called &quot;UPDATE_VERSIONS&quot;, which is a list of version name strings
+     Ex: &quot;UPDATE_VERSIONS&quot; -&gt; [&quot;V1&quot;]
+* A redis hash of &quot;UPDATE_FILES&quot;, which stores a hash mapping version name strings
+     to file names (for loading into the self.upd_dict as clients connect)
+     Ex:  &quot;UPDATE_FILES&quot; -&gt; { &quot;V1&quot; : &quot;generated_upd1.py&quot;}
+* Update functions are stored in a dictionary named self.upd_dict
+  This stores &quot;version string+ -&gt; (version module, dict of (keyglob-&gt;module function strings))
+     Ex: {&quot;V1&quot;: (&lt;module &quot;generated_upd1&quot; from &quot;../generated/generated_upd1.py&quot;&gt;,
+          [(&quot;for&quot;, &quot;*&quot;, [&quot;group_0_update_category&quot;, &quot;group_0_update__id&quot;])])} 
+
+
+The initial (preupdate) version is named &quot;INITIAL_V0&quot; 
+(global string &quot;initial_version&quot; for now).  Subsequent
 versions will be named when the user passes in the set of corresponding
 update functions.
 
@@ -108,6 +121,42 @@ update functions.
     </td>
   </tr>
 </table>
+<!-- ==================== FUNCTIONS ==================== -->
+<a name="section-Functions"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Functions</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Functions"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="src.lazyupdredis-module.html#connect" class="summary-sig-name">connect</a>(<span class="summary-sig-arg">host</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">port</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Connect to redis.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="src.lazyupdredis-pysrc.html#connect">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
 <!-- ==================== VARIABLES ==================== -->
 <a name="section-Variables"></a>
 <table class="summary" border="1" cellpadding="3"
@@ -129,10 +178,62 @@ update functions.
     <td width="15%" align="right" valign="top" class="summary">
       <span class="summary-type">&nbsp;</span>
     </td><td class="summary">
+        <a name="initial_version"></a><span class="summary-name">initial_version</span> = <code title="'INITIAL_V0'"><code class="variable-quote">'</code><code class="variable-string">INITIAL_V0</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
         <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'src'"><code class="variable-quote">'</code><code class="variable-string">src</code><code class="variable-quote">'</code></code>
     </td>
   </tr>
 </table>
+<!-- ==================== FUNCTION DETAILS ==================== -->
+<a name="section-FunctionDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Function Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-FunctionDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="connect"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">connect</span>(<span class="sig-arg">host</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">port</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="src.lazyupdredis-pysrc.html#connect">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Connect to redis. Default is localhost, port 6379. (Redis must be 
+  running.)</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>host</code></strong> - the address of redis, defaults to 'localhost</li>
+        <li><strong class="pname"><code>port</code></strong> - the port for redis, defaults to 6379</li>
+    </ul></dd>
+  </dl>
+</td></tr></table>
+</div>
+<br />
 <!-- ==================== NAVIGATION BAR ==================== -->
 <table class="navbar" border="0" width="100%" cellpadding="0"
        bgcolor="#a0c0ff" cellspacing="0">
@@ -161,7 +262,7 @@ update functions.
 <table border="0" cellpadding="0" cellspacing="0" width="100%%">
   <tr>
     <td align="left" class="footer">
-    Generated by Epydoc 3.0.1 on Thu Feb  5 14:16:46 2015
+    Generated by Epydoc 3.0.1 on Thu Feb  5 17:57:44 2015
     </td>
     <td align="right" class="footer">
       <a target="mainFrame" href="http://epydoc.sourceforge.net"

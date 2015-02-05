@@ -6,8 +6,8 @@ import json
 import sys
 import shutil
 sys.path.append("../src")
+sys.path.append("../generated")
 import decode
-import do_upd
 import json_patch_creator
 import redis
 import lazyupdredis
@@ -62,7 +62,7 @@ def test1(r, actualredis):
     assert(r.upd_dict["V1"][1] == [("for", "*", ["group_0_update_category", "group_0_update__id", "group_0_update_order"])])
 
     # make sure that the new module loads on a new connection
-    r2 = do_upd.connect()
+    r2 = lazyupdredis.connect()
     assert(r2.versions() == ["V1", "INITIAL_V0"]) 
     assert(r2.curr_version() == "V1") 
     assert(r2.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
@@ -102,7 +102,7 @@ def main():
     actualredis.flushall() # wipes out all version string after tests are done
 
     # connect to Redis
-    r = do_upd.connect()
+    r = lazyupdredis.connect()
 
     # test basic INIT, ADD, REN, UPD for fullpaths
     test1(r, actualredis)

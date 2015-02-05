@@ -1,6 +1,6 @@
 """
 Call all of the generated functions for the specified key stanzas 
-in the redis database.
+in the redis database...now, not lazy.
 
 Usage: python doupd.py
 
@@ -11,9 +11,8 @@ import decode
 import redis
 import sys
 sys.path.append("../generated")
-import lazyupdredis
+import redis
 
-# TODO move this into some sort of util library
 def connect(host=None, port=None):
     """ 
     Connect to redis. Default is localhost, port 6379.
@@ -27,8 +26,7 @@ def connect(host=None, port=None):
         host = 'localhost'
     if port is None:
         port = 6379
-    r = lazyupdredis.LazyUpdateRedis(host, port, db=0)
-    #r = redis.StrictRedis(host, port, db=0)
+    r = redis.StrictRedis(host, port, db=0)
     try:
         r.ping()
     except r.ConnectionError as e:
@@ -55,7 +53,7 @@ def connect(host=None, port=None):
         #print "---"
 
 
-def do_upd(r, updfile="dsu"):
+def do_upd_all_now(r, updfile="dsu"):
     """
     Perform the update.
 
@@ -135,7 +133,7 @@ def do_upd(r, updfile="dsu"):
 
 def main():
     r = connect()
-    do_upd(r)
+    do_upd_all_now(r)
             
 
 if __name__ == '__main__':

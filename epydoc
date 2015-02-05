@@ -8,7 +8,7 @@ url: https://github.com/plum-umd/schema_update
 # dotted names, module filenames, or package directory names.
 # This option may be repeated.
 modules: sys, os.path, re
-modules: src/do_upd.py, src/decode.py, src/json_patch_creator.py src/lazyupdredis.py util/print_redis.py
+modules: src/do_upd_all_now.py, src/decode.py, src/json_patch_creator.py src/lazyupdredis.py util/print_redis.py
 
 # Write html output to the directory "docs"
 output: html

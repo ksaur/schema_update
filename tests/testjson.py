@@ -7,9 +7,9 @@ import sys
 import shutil
 sys.path.append("../src")
 import decode
-import do_upd
+import do_upd_all_now
 import json_patch_creator
-import lazyupdredis
+import redis
 
 def reset(r):
     # clear out old data from redis
@@ -44,7 +44,7 @@ def test1(r):
 
     # perform the update and grab the updated value (Also test including the extension on filename)
     print "Performing update for " + tname
-    numupd = do_upd.do_upd(r, "generated_" + tname)
+    numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname)
     e = r.get("key1")
     assert (e) is not None
     jsone = json.loads(e,object_hook=decode.decode_dict)
@@ -97,7 +97,7 @@ def test2(r):
 
     # perform the update and grab the updated value
     print "Performing update for " + tname
-    numupd = do_upd.do_upd(r, "generated_" + tname)
+    numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname)
     assert(len(r.keys("*")) == 3)
     # test for expected number of updated keys
     assert(numupd == 2)
@@ -145,7 +145,7 @@ def test2b(r):
 
     # perform the update and grab the updated value
     print "Performing update for " + tname
-    numupd = do_upd.do_upd(r, "generated_" + tname +".py")
+    numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname +".py")
     assert(len(r.keys("*")) == 3)
     # test for expected number of updated keys
     assert(numupd == 3)
@@ -189,7 +189,7 @@ def test3(r):
 
     # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
     print "Performing update for " + tname
-    numupd = do_upd.do_upd(r, "generated_" + tname)
+    numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname)
     e = r.get("key1")
     assert (e) is not None
     jsone = json.loads(e,object_hook=decode.decode_dict)
@@ -217,7 +217,7 @@ def test4(r):
 
     # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
     print "Performing update for " + tname
-    numupd = do_upd.do_upd(r, "generated_" + tname)
+    numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname)
     e = r.get("edgeattr_n2@n1")
     assert(e is not None)
     # should have skipped n4
@@ -266,7 +266,7 @@ def test5(r):
 
     # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
     print "Performing update for " + tname
-    numupd = do_upd.do_upd(r, "generated_" + tname)
+    numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname)
     assert(r.get("edgeattr_n2@n5_graph") is not None)
     assert(r.get("edgeattr_n2@n5") is None)
     assert(r.get("edgeattr_n5@n8_graph") is not None)
@@ -281,7 +281,7 @@ def test5(r):
 
 def main():
     # connect to Redis
-    r = do_upd.connect()
+    r = do_upd_all_now.connect()
 
     # test basic INIT, ADD, REN, UPD for fullpaths
     test1(r)

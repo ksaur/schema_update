@@ -1824,8 +1824,8 @@ class LazyUpdateRedis(object):
         """
         Switch the version string and loadup the update functions for lazy updates.
 
-        @type updfile: string
-        @param updfile: The file with the update functions.  Defaults to "dsu".
+        @type upd_file: string
+        @param upd_file: The file with the update functions.  Defaults to "dsu".
         
         """
 
@@ -1849,3 +1849,24 @@ class LazyUpdateRedis(object):
         self.append_new_version(version, upd_file)
 
 
+def connect(host=None, port=None):
+    """ 
+    Connect to redis. Default is localhost, port 6379.
+    (Redis must be running.)
+
+    @param host: the address of redis, defaults to 'localhost
+    @param port: the port for redis, defaults to 6379
+        
+    """
+    if host is None:
+        host = 'localhost'
+    if port is None:
+        port = 6379
+    r = LazyUpdateRedis(host, port, db=0)
+    #r = redis.StrictRedis(host, port, db=0)
+    try:
+        r.ping()
+    except r.ConnectionError as e:
+        print(e)
+        sys.exit(-1)
+    return r
