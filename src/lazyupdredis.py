@@ -22,7 +22,25 @@
 #  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 #  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 #  OTHER DEALINGS IN THE SOFTWARE.
+"""
+    The following modifications were made to address key versioning:
+    * All keys are prepended with a version number and pipe.  
+        ex:  key0 at version v0 becomes "v0|key0".
 
+    To make redis operation work, this class:
+    * Tries prepending all possible version strings for:
+        delete, get
+    * Prepends only the most recent version string for:
+        set
+    * Prepend wildcard (*|) to keyglob for:
+        keys
+  
+    Also, 'flushall' preserves the stored list of versions
+   
+    The initial (preupdate) version is named "INITIAL_V0".  Subsequent
+    versions will be named when the user passes in the set of corresponding
+    update functions.
+"""
 
 import redis
 
@@ -38,6 +56,17 @@ from redis._compat import (basestring, iteritems, iterkeys, itervalues, long,
 
 from redis.connection import (ConnectionPool, UnixDomainSocketConnection,
     SSLConnection, Token)
+from redis.exceptions import (
+    ConnectionError,
+    DataError,
+    ExecAbortError,
+    NoScriptError,
+    PubSubError,
+    RedisError,
+    ResponseError,
+    TimeoutError,
+    WatchError,
+)
 
 
 class LazyUpdateRedis(object):
@@ -45,19 +74,6 @@ class LazyUpdateRedis(object):
     Implementation of the Redis protocol, with wrappers to add/remove version 
     strings to/from the keys, and to update the keys as necessary.
 
-    The following modifications were made to address key versioning:
-    * All keys are prepended with a version number and pipe.  
-        ex:  key0 at version v0 becomes "v0|key0".
-
-    To make redis operation work, this class:
-    * Tries prepending all possible version strings for:
-        delete, get
-    * Prepends only the most recent version string for:
-        set
-    * Prepend wildcard (*|) to keyglob for:
-        keys
-   
-    The default version is "0".
     ----------
 
     From previous "StrictRedis:"
@@ -178,7 +194,7 @@ class LazyUpdateRedis(object):
                  charset=None, errors=None,
                  decode_responses=False, retry_on_timeout=False,
                  ssl=False, ssl_keyfile=None, ssl_certfile=None,
-                 ssl_cert_reqs=None, ssl_ca_certs=None, prog_ver="0"):
+                 ssl_cert_reqs=None, ssl_ca_certs=None):
         if not connection_pool:
             if charset is not None:
                 warnings.warn(DeprecationWarning(
@@ -225,9 +241,16 @@ class LazyUpdateRedis(object):
             connection_pool = ConnectionPool(**kwargs)
         self.connection_pool = connection_pool
         self._use_lua_lock = None
-        self.prog_ver = [prog_ver]
 
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
+        # check to see if we are the initial version and must init
+        if self.llen("UPDATE_VERSION") is 0:
+            self.lpush("UPDATE_VERSION", "INITIAL_V0")
+            self.prog_ver = ["INITIAL_V0"]
+        else:
+            self.prog_ver = self.lrange("UPDATE_VERSION", 0, -1)
+        print "Connected with the following ( " +str(len(self.prog_ver)),
+        print ") versions: " + str(self.prog_ver)
 
     def __repr__(self):
         return "%s<%s>" % (type(self).__name__, repr(self.connection_pool))
@@ -422,7 +445,12 @@ class LazyUpdateRedis(object):
 
     def flushall(self):
         "Delete all keys in all databases on the current host"
-        return self.execute_command('FLUSHALL')
+        upds = self.lrange("UPDATE_VERSION", 0, -1)
+        ret = self.execute_command('FLUSHALL')
+        # ideally we could just put multiple at once, but it takes variable length
+        # string args...would have to parse out list; this is faster for now.
+        map(lambda x: self.lpush("UPDATE_VERSION", x), upds)
+        return ret
 
     def flushdb(self):
         "Delete all keys in the current database"
