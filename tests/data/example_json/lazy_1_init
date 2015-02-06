@@ -14,3 +14,6 @@ else:
     return False}
 };
 
+for edgeattr_n2@n5 {
+UPD ["outport"] {$out = 777}
+};

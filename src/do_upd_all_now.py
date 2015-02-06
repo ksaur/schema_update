@@ -69,6 +69,21 @@ def do_upd_all_now(r, updfile="dsu"):
     print "importing from " + updfile
     m = __import__ (updfile)
 
+    # handle the new/"add" cases
+    get_newkey_tuples = getattr(m, "get_newkey_tuples")
+    newkey_pairs = get_newkey_tuples()
+    for (glob, funcs) in newkey_pairs:
+        try:
+            func = getattr(m,funcs[0])
+        except AttributeError as e:
+            print "(Could not find function: " + funcs[0] + ")"
+            continue
+        # retrieve the list of keys to add, and the usercode to set it to
+        (keys, userjson) = func()
+        for k in keys:
+            r.set(k,json.dumps(userjson))
+
+    # handle the update/"for" cases
     get_update_tuples = getattr(m, "get_update_tuples")
     update_pairs = get_update_tuples()
     print update_pairs
@@ -76,57 +91,43 @@ def do_upd_all_now(r, updfile="dsu"):
 
     num_upd = 0
     # Loop over the "for/add __  " glob stanzas
-    for (cmd, glob, funcs) in update_pairs:
+    for (glob, funcs) in update_pairs:
         print "GLOB = " + glob
         print "FUNCS = " + str(funcs)
-        # modify existing keys
-        if cmd == "for":
-            keys = r.keys(glob)
-            print "Printing \'" + str(len(keys)) + "\' keys:"
-            # Loop over the keys matching the current glob
-            for currkey in keys:
-                redisval = None
-                print "key: " + currkey
-                redisval = r.get(currkey)
-                print "value: |" + redisval + "|"
+        keys = r.keys(glob)
+        print "Printing \'" + str(len(keys)) + "\' keys:"
+        # Loop over the keys matching the current glob
+        for currkey in keys:
+            redisval = None
+            print "key: " + currkey
+            redisval = r.get(currkey)
+            print "value: |" + redisval + "|"
 
-                # Make sure everything is loaded
-                assert redisval is not None, ("could not find value for" + currkey)
-                print type(redisval)
-                jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
-                
-                # Loop over the set of functions that apply to the keys
-                for funcname in funcs:
-                    try:
-                        func = getattr(m,funcname)
-                    except AttributeError as e:
-                        print "(Could not find function: " + funcname + ")"
-                        continue
-                    # Call the function for the current key and current jsonsubkey
-                    (modkey, modjson) = func(currkey, jsonkey)
-                    print "GOT BACK: " + str(modkey) + " " + str(modjson)
+            # Make sure everything is loaded
+            assert redisval is not None, ("could not find value for" + currkey)
+            print type(redisval)
+            jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
+            
+            # Loop over the set of functions that apply to the keys
+            for funcname in funcs:
+                try:
+                    func = getattr(m,funcname)
+                except AttributeError as e:
+                    print "(Could not find function: " + funcname + ")"
+                    continue
+                # Call the function for the current key and current jsonsubkey
+                (modkey, modjson) = func(currkey, jsonkey)
+                print "GOT BACK: " + str(modkey) + " " + str(modjson)
 
-                    # Now serialize it back, then write it back to redis.  
-                    # (Note that the key was modified in place.)
-                    modjsonstr = json.dumps(modjson)
-                    if(modkey is not None):
-                        r.set(modkey, modjsonstr)
-                    # if key changed, delete the old
-                    if(modkey != currkey):
-                        r.delete(currkey)
-                    num_upd+=1
-        # add new keys
-        else:
-            try:
-                func = getattr(m,funcs[0]) #TODO is it possible to have more than 1?
-            except AttributeError as e:
-                print "(Could not find function: " + funcs[0] + ")"
-                continue
-            # retrieve the list of keys to add, and the usercode to set it to
-            (keys, userjson) = func()
-            for k in keys:
-                r.set(k,json.dumps(userjson))
-                
+                # Now serialize it back, then write it back to redis.  
+                # (Note that the key was modified in place.)
+                modjsonstr = json.dumps(modjson)
+                if(modkey is not None):
+                    r.set(modkey, modjsonstr)
+                # if key changed, delete the old
+                if(modkey != currkey):
+                    r.delete(currkey)
+                num_upd+=1 
 
     return num_upd
 

@@ -17,7 +17,7 @@ import ast
 from pyparsing import nestedExpr
 
 
-__VERSION__ = '0.3.1'
+__VERSION__ = '0.3.1' # this version number refers to the DSL version
 
 
 def generate_add_key(keyglob, usercode, outfile, prefix):
@@ -415,17 +415,19 @@ def process_dsl(file1, outfile="dsu.py"):
 
     # create a list to store the parsed dsl output
     kv_update_pairs = list()
+    kv_new_pairs = list()
 
     # Generate the functions based on the DSL file contents
     # (Use the index as the namespace, as the keystring has too many special chars) 
     for idx, curr_tup in enumerate(dsllist):
         if (curr_tup[0] == "for"):
-            kv_update_pairs.append(("for", curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_")))
+            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_")))
         elif (curr_tup[0] == "add"):
-            kv_update_pairs.append(("add", curr_tup[1], generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_")))
+            kv_new_pairs.append((curr_tup[1], generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_")))
 
     # write the name of the key globs and corresponding functions
     outfile.write("\ndef get_update_tuples():\n    return " + str(kv_update_pairs))
+    outfile.write("\ndef get_newkey_tuples():\n    return " + str(kv_new_pairs))
 
     # cleanup
     outfile.close()

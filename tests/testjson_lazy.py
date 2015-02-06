@@ -60,7 +60,8 @@ def test1(r, actualredis):
     assert(r.curr_version() == "V1") 
     assert(r.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
     print r.upd_dict["V1"]
-    assert(r.upd_dict["V1"][1] == [("for", "*", ["group_1_update_category", "group_1_update__id", "group_1_update_order"])])
+    correctd = [('*', ['group_1_update_category', 'group_1_update__id', 'group_1_update_order']), ('edgeattr_n2@n5', ['group_2_update_outport'])]
+    assert(r.upd_dict["V1"][1] == correctd)
 
     # make sure that the new module loads on a new connection
     r2 = lazyupdredis.connect()
@@ -68,7 +69,7 @@ def test1(r, actualredis):
     assert(r2.curr_version() == "V1") 
     assert(r2.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
     print (r2.upd_dict["V1"][1])
-    #assert(r2.upd_dict["V1"][1] == [("for", "*", ["group_1_update_category", "group_1_update__id", "group_1_update_order"])])
+    assert(r2.upd_dict["V1"][1] == correctd)
 
 
 
