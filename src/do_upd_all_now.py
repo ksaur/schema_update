@@ -120,7 +120,7 @@ def do_upd_all_now(r, updfile="dsu"):
             try:
                 func = getattr(m,funcs[0]) #TODO is it possible to have more than 1?
             except AttributeError as e:
-                print "(Could not find function: " + funcname + ")"
+                print "(Could not find function: " + funcs[0] + ")"
                 continue
             # retrieve the list of keys to add, and the usercode to set it to
             (keys, userjson) = func()

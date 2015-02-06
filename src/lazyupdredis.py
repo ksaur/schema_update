@@ -56,6 +56,7 @@
 """
 
 import redis
+import json
 
 from redis.client import (dict_merge, string_keys_to_dict, sort_return_tuples,
     float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
@@ -1843,15 +1844,37 @@ class LazyUpdateRedis(object):
         print "importing from " + upd_file
         m = __import__ (upd_file) #m stores the module
         get_update_tuples = getattr(m, "get_update_tuples")
-        self.upd_dict[version] = (m, get_update_tuples())
+        tups = get_update_tuples()
+
+        # do the "add" functions now.
+        # TODO pull this function out?  Separate out json...how best to do?
+        for (cmd, glob, funcs) in tups:
+            if cmd == "add":
+                try:
+                    func = getattr(m,funcs[0])
+                except AttributeError as e:
+                    print "(Could not find function: " + funcs[0] + ")"
+                    continue
+                # retrieve the list of keys to add, and the usercode to set it to
+                (keys, userjson) = func()
+                for k in keys:
+                    self.set(k,json.dumps(userjson))
+                tups.remove((cmd, glob, funcs))
+
+        self.upd_dict[version] = (m, tups)
 
         # call this only after loading functions has succeeded
         self.append_new_version(version, upd_file)
 
+ 
+        print self.upd_dict
 
+
+
+# Utility function...may move this later...
 def connect(host=None, port=None):
     """ 
-    Connect to redis. Default is localhost, port 6379.
+    Connect to (lazy) redis. Default is localhost, port 6379.
     (Redis must be running.)
 
     @param host: the address of redis, defaults to 'localhost

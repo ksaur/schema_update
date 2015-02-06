@@ -1,0 +1,16 @@
+add edgeattr_n[1-2]@n[1-3,5] {
+$dbkey = {"outport": None, "inport": None}
+};
+
+for * {
+INIT ["order", ["orderItems"], "discountedPrice"] {$out = round($base['price']*.7,2)}
+REN ["order", ["orderItems"], "price"]->["order", ["orderItems"], "fullprice"]
+UPD ["_id"] {
+if any(c.isalpha() for c in $in): 
+    $out=int($in, 16)}
+DEL ["category"] {if $out == "A": 
+    return True 
+else: 
+    return False}
+};
+

@@ -23,11 +23,11 @@ def reset(r):
 # test version string in lazy redis.  
 # test basic lazy update functionality 
 def test1(r, actualredis):
-    tname = "test1"
+    tname = "test1_z"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
     reset(r)
     # create the update file
-    json_patch_creator.process_dsl("data/example_json/sadalage_init", tname +".py")
+    json_patch_creator.process_dsl("data/example_json/lazy_1_init", tname +".py")
     shutil.move(tname +".py", "../generated/generated_"+tname+".py")
 
     # add an entry
@@ -59,14 +59,16 @@ def test1(r, actualredis):
     assert(r.versions() == ["V1", "INITIAL_V0"]) 
     assert(r.curr_version() == "V1") 
     assert(r.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
-    assert(r.upd_dict["V1"][1] == [("for", "*", ["group_0_update_category", "group_0_update__id", "group_0_update_order"])])
+    print r.upd_dict["V1"]
+    assert(r.upd_dict["V1"][1] == [("for", "*", ["group_1_update_category", "group_1_update__id", "group_1_update_order"])])
 
     # make sure that the new module loads on a new connection
     r2 = lazyupdredis.connect()
     assert(r2.versions() == ["V1", "INITIAL_V0"]) 
     assert(r2.curr_version() == "V1") 
     assert(r2.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
-    assert(r2.upd_dict["V1"][1] == [("for", "*", ["group_0_update_category", "group_0_update__id", "group_0_update_order"])])
+    print (r2.upd_dict["V1"][1])
+    #assert(r2.upd_dict["V1"][1] == [("for", "*", ["group_1_update_category", "group_1_update__id", "group_1_update_order"])])
 
 
 
