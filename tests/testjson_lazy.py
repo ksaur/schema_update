@@ -55,17 +55,17 @@ def test1(r, actualredis):
     print "Performing update for " + tname
     r.do_upd("generated_" + tname,)
     print actualredis.lrange("UPDATE_VERSIONS", 0, -1)
-    assert(actualredis.lrange("UPDATE_VERSIONS", 0, -1) == ["V1", "INITIAL_V0"])
-    assert(r.versions() == ["V1", "INITIAL_V0"]) 
+    assert(actualredis.lrange("UPDATE_VERSIONS", 0, -1) == ["INITIAL_V0", "V1"])
+    assert(r.versions() == ["INITIAL_V0", "V1"]) 
     assert(r.curr_version() == "V1") 
     assert(r.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
     print r.upd_dict["V1"]
-    correctd = [('*', ['group_1_update_category', 'group_1_update__id', 'group_1_update_order']), ('edgeattr_n2@n5', ['group_2_update_outport'])]
+    correctd = [('key*', ['group_1_update_category', 'group_1_update__id', 'group_1_update_order']), ('edgeattr_n*@n5', ['group_2_update_outport'])]
     assert(r.upd_dict["V1"][1] == correctd)
 
     # make sure that the new module loads on a new connection
     r2 = lazyupdredis.connect()
-    assert(r2.versions() == ["V1", "INITIAL_V0"]) 
+    assert(r2.versions() == ["INITIAL_V0", "V1"]) 
     assert(r2.curr_version() == "V1") 
     assert(r2.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
     print (r2.upd_dict["V1"][1])
@@ -81,10 +81,20 @@ def test1(r, actualredis):
     assert(jsone.get("inport") is None)
     assert(jsone.get("outport") is None)
     
+    print "here is the giant mess you have to work with:"
+    print r.upd_dict
+    
     # test that the update worked
+    # make sure that it hasn't happened on-demand by checking in non-hooked redis
+    e = actualredis.get("INITIAL_V0|edgeattr_n2@n5") # must include tag in actual redis
+    assert(e is not None)
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone.get("outport") is None)
+    # now, when we grab it in lazy redis, the update should happen on-demand
     #e = r.get("edgeattr_n2@n5")
     #jsone = json.loads(e,object_hook=decode.decode_dict)
     #assert(jsone.get("outport") == 777)
+    # and i
 
     #numupd = do_upd.do_upd(r, "generated_" + tname)
     #e = r.get("key1")

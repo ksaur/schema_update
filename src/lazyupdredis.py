@@ -56,7 +56,7 @@
 """
 
 import redis
-import json
+import json, re, sys, fnmatch
 
 from redis.client import (dict_merge, string_keys_to_dict, sort_return_tuples,
     float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
@@ -274,7 +274,7 @@ class LazyUpdateRedis(object):
         print "Connected with the following versions: " + str(self.versions())
 
     def append_new_version(self, v, updfile=None):
-        ret = self.lpush("UPDATE_VERSIONS", v)
+        ret = self.rpush("UPDATE_VERSIONS", v)
         if updfile is not None:        
             self.hset("UPDATE_FILES", v, updfile)
         return ret
@@ -283,7 +283,7 @@ class LazyUpdateRedis(object):
         return self.lrange("UPDATE_VERSIONS", 0, -1)
 
     def curr_version(self):
-        return self.lindex("UPDATE_VERSIONS", 0)
+        return self.lindex("UPDATE_VERSIONS", -1)
 
     def __repr__(self):
         return "%s<%s>" % (type(self).__name__, repr(self.connection_pool))
@@ -718,13 +718,42 @@ class LazyUpdateRedis(object):
         Return the value at key ``name`` (any version), or None if the key 
         doesn't exist
         """
-        for v in self.versions():
+        # get the value to initialize the keys to
+        def extract_for_keys(estr, version):
+            matched = list()
+            (m,tups) = self.upd_dict[version]
+            for (glob, funcs) in tups:
+                glob_to_regex = fnmatch.translate(glob)
+                #print "TRYING TO MATCH (" + glob_to_regex+ ") with (" + estr + ")"
+                if re.match(glob_to_regex,estr) is not None:
+                    matched.extend(funcs)
+            return matched
+
+        # LAZY UPDATES HERE!!!! :)  
+        vers_list = self.versions()
+        # try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
+        for v in vers_list:
             getter = v + "|" + name
             ret = self.execute_command('GET', getter)
+            # found a key!  figure out which version and see if it needs updating
             if ret is not None:
                 hit = getter.split("|", 1) 
                 print "GOT KEY " + hit[1] + " at VERSION: " + hit[0]
-                # TODO, do the update here if requested and if the version isn't [-1]
+                # check to see if update is necessary
+                if(hit[0] !=vers_list[-1]):
+                    curr_idx = vers_list.index(hit[0])
+                    print "Current key is at position " + str(curr_idx) +\
+                        " in the udp list, which means that there is/are " + \
+                        str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
+                    # apply 1 or multiple updates, if necessary
+                    for upd_v in vers_list[curr_idx+1:]:
+                        upd_funcs = (extract_for_keys(hit[1], upd_v))
+                        if upd_funcs:
+                            print "Updating key " + hit[1] + " to version: " +upd_v
+                            print "using the following functions:" + str(upd_funcs)
+                        else:
+                            print "No functions matched.  Updating version str only"
+
                 return ret
         return None
 
@@ -1866,9 +1895,6 @@ class LazyUpdateRedis(object):
 
         # call this only after loading functions has succeeded
         self.append_new_version(version, upd_file)
-
- 
-        print self.upd_dict
 
 
 
