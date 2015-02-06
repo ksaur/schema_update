@@ -72,17 +72,9 @@ def test1(r, actualredis):
     assert(r2.upd_dict["V1"][1] == correctd)
 
     # test that the expected keys are added
-    assert(r.get("edgeattr_n2@n1") is not None)
+    assert(r.get("edgeattr_n1@n2") is not None)
     # should have skipped n4
     assert(r.get("edgeattr_n1@n4") is None)
-    e = r.get("edgeattr_n1@n5")
-    assert(e is not None)
-    jsone = json.loads(e,object_hook=decode.decode_dict)
-    assert(jsone.get("inport") is None)
-    assert(jsone.get("outport") is None)
-    
-    print "here is the giant mess you have to work with:"
-    print r.upd_dict
     
     # test that the update worked
     # make sure that it hasn't happened on-demand by checking in non-hooked redis
@@ -91,10 +83,16 @@ def test1(r, actualredis):
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone.get("outport") is None)
     # now, when we grab it in lazy redis, the update should happen on-demand
-    #e = r.get("edgeattr_n2@n5")
-    #jsone = json.loads(e,object_hook=decode.decode_dict)
-    #assert(jsone.get("outport") == 777)
-    # and i
+    e = r.get("edgeattr_n2@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone.get("outport") == 777)
+
+    # At this point, keys "edgeattr_n1@n2" and "edgeattr_n2@n5" are the only two "touched"
+    # Make sure of this using actualredis
+    assert(len(actualredis.keys("V1*")) == 2) #n1@n2, n2@n5
+    assert(len(actualredis.keys("INITIAL_V0*")) == 8) #key1, key2, n1@n1, n1@3, n1@n5, n2@n1, n2@n2, n2@n3
+   
+
 
     #numupd = do_upd.do_upd(r, "generated_" + tname)
     #e = r.get("key1")

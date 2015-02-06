@@ -56,7 +56,7 @@
 """
 
 import redis
-import json, re, sys, fnmatch
+import json, re, sys, fnmatch, decode
 
 from redis.client import (dict_merge, string_keys_to_dict, sort_return_tuples,
     float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
@@ -713,6 +713,37 @@ class LazyUpdateRedis(object):
             when = int(mod_time.mktime(when.timetuple()))
         return self.execute_command('EXPIREAT', name, when)
 
+   
+    #TODO, integrate this with do_upd_all_now.py?
+    #TODO lock the key!!
+    def update(self, currkey, redisval, funcs, m):
+        """ 
+        Loop over the list of funcs and apply it to the value at currkey
+
+        @return: True on success (function found and called), else False
+        """
+        jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
+        for funcname in funcs:
+            try:
+                func = getattr(m,funcname)
+            except AttributeError as e:
+                print "(Could not find function: " + funcname + ")"
+                return False
+            # Call the function for the current key and current jsonsubkey
+            (modkey, modjson) = func(currkey, jsonkey)
+            print "GOT BACK: " + str(modkey) + " " + str(modjson)
+
+            # Now serialize it back, then write it back to redis.  
+            # (Note that the key was modified in place.)
+            modjsonstr = json.dumps(modjson)
+            if(modkey is not None):
+                self.set(modkey, modjsonstr)
+            # if key changed, delete the old
+            # TODO double check versioning
+            if(modkey != currkey):
+                self.delete(currkey)
+        return True
+
     def get(self, name):
         """
         Return the value at key ``name`` (any version), or None if the key 
@@ -733,28 +764,37 @@ class LazyUpdateRedis(object):
         vers_list = self.versions()
         # try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
         for v in vers_list:
-            getter = v + "|" + name
-            ret = self.execute_command('GET', getter)
+            orig_name = v + "|" + name
+            val = self.execute_command('GET', orig_name)
             # found a key!  figure out which version and see if it needs updating
-            if ret is not None:
-                hit = getter.split("|", 1) 
+            if val is not None:
+                hit = orig_name.split("|", 1) 
                 print "GOT KEY " + hit[1] + " at VERSION: " + hit[0]
                 # check to see if update is necessary
                 if(hit[0] !=vers_list[-1]):
                     curr_idx = vers_list.index(hit[0])
-                    print "Current key is at position " + str(curr_idx) +\
+                    new_name = vers_list[-1] + "|" + name
+                    print "\tCurrent key is at position " + str(curr_idx) +\
                         " in the udp list, which means that there is/are " + \
                         str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
                     # apply 1 or multiple updates, if necessary
                     for upd_v in vers_list[curr_idx+1:]:
                         upd_funcs = (extract_for_keys(hit[1], upd_v))
                         if upd_funcs:
-                            print "Updating key " + hit[1] + " to version: " +upd_v
-                            print "using the following functions:" + str(upd_funcs)
+                            print "\tUpdating key " + hit[1] + " to version: " + upd_v
+                            print "\tusing the following functions:" + str(upd_funcs)
+                            if self.update(hit[1], val, upd_funcs, self.upd_dict[upd_v][0]):
+                                self.execute_command('DEL', orig_name)
+                            else:
+                                print "ERROR!!! Could not update key: " + hit[1] 
+                                return val
                         else:
-                            print "No functions matched.  Updating version str only"
-
-                return ret
+                            print "\tNo functions matched.  Updating version str only"
+                            self.rename(orig_name, new_name)
+                    return self.execute_command('GET', new_name)
+                else:
+                    print "\tNo update necessary for key: " + hit[1] + " (version = " + hit[0] + ")"
+                    return val
         return None
 
     def __getitem__(self, name):
