@@ -71,7 +71,20 @@ def test1(r, actualredis):
     print (r2.upd_dict["V1"][1])
     assert(r2.upd_dict["V1"][1] == correctd)
 
-
+    # test that the expected keys are added
+    assert(r.get("edgeattr_n2@n1") is not None)
+    # should have skipped n4
+    assert(r.get("edgeattr_n1@n4") is None)
+    e = r.get("edgeattr_n1@n5")
+    assert(e is not None)
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone.get("inport") is None)
+    assert(jsone.get("outport") is None)
+    
+    # test that the update worked
+    #e = r.get("edgeattr_n2@n5")
+    #jsone = json.loads(e,object_hook=decode.decode_dict)
+    #assert(jsone.get("outport") == 777)
 
     #numupd = do_upd.do_upd(r, "generated_" + tname)
     #e = r.get("key1")
