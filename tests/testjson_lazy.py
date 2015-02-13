@@ -72,9 +72,9 @@ def test1(actualredis):
     assert(r.versions("edgeattr") == ["v0", "v1"]) 
     assert(actualredis.hget("UPDATE_FILES", "v1|edgeattr") == ("generated_" + tname))
 
-    # haven't touched key yet, so should be no upd.
-    assert(r.curr_version("key") == "ver0")
-    assert(r.versions("key") == ["ver0"]) 
+    # make sure the other updates also got loaded
+    assert(r.curr_version("key") == "ver1")
+    print r.upd_dict
 
 #    print r.upd_dict["V1"]
 ##    correctd = [('key*', ['group_1_update_category', 'group_1_update__id', 'group_1_update_order']), ('edgeattr_n*@n5', ['group_2_update_outport'])]
@@ -111,8 +111,6 @@ def test1(actualredis):
 #    # These keys at key1, key2, n1@n1, n1@3, n1@n5, n2@n1, n2@n2, n2@n3
 #    assert(len(actualredis.keys("v0*")) == 8) 
    
-
-    print r.upd_dict
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"

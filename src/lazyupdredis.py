@@ -269,7 +269,12 @@ class LazyUpdateRedis(object):
             print "GETTING " + v + " " + upd_files[v]
             m = __import__ (upd_files[v])
             get_update_tuples = getattr(m, "get_update_tuples")
-            self.upd_dict[v] = (m, get_update_tuples())
+            tups = (m, get_update_tuples())
+            for (glob, funcs, ns, version_from, version_to) in tups:
+                if self.curr_version(ns) == version_from:
+                    #TODO sanity checking...
+                    self.append_new_version(version_to, ns, upd_file)
+                self.upd_dict[version_from+"|"+ns] = (m, glob, funcs, version_to)
  
         print "Connected with the following versions: " + str(ns_versions)
 
@@ -287,7 +292,11 @@ class LazyUpdateRedis(object):
         # This call will do either.
         else:
             if updfile is not None:        
-                self.hset("UPDATE_FILES", v + "|" + ns, updfile)
+                prev = self.hget("UPDATE_FILES", v + "|" + ns)
+                if ((prev is not None) and (prev != updfile)):
+                    sys.exit("\n\nERROR!!! Already had an upate at version " + v + "in file" + prev)
+                else:
+                    self.hset("UPDATE_FILES", v + "|" + ns, updfile)
             return self.rpush("UPDATE_VERSIONS_"+ns, v)
 
     def versions(self, ns):
@@ -1939,16 +1948,14 @@ class LazyUpdateRedis(object):
         #strip off extention, if provided
         upd_file = upd_file.replace(".py", "")
 
-        # TODO error checking
-
         # do the "add" functions now.
         print "importing from " + upd_file
         m = __import__ (upd_file) #m stores the module
         get_newkey_tuples = getattr(m, "get_newkey_tuples")
         tups = get_newkey_tuples()
         for (glob, funcs, ns, version) in tups:
-
             self.append_new_version(version, ns, upd_file)
+
             try:
                 func = getattr(m,funcs[0])
             except AttributeError as e:
@@ -1962,10 +1969,16 @@ class LazyUpdateRedis(object):
         # grab the update/"for" tups
         get_update_tuples = getattr(m, "get_update_tuples")
         update_pairs = get_update_tuples()
-        self.upd_dict[version] = (m, update_pairs)
 
-        # call this only after loading functions has succeeded
-        self.append_new_version(version, upd_file)
+        # TODO lock this whole function together to be passed or aborted
+        tups = get_update_tuples()
+        for (glob, funcs, ns, version_from, version_to) in tups:
+            if self.curr_version(ns) == version_from:
+                #TODO sanity checking...
+                self.append_new_version(version_to, ns, upd_file)
+            self.upd_dict[version_from+"|"+ns] = (m, glob, funcs, version_to)
+             
+
 
 
 
