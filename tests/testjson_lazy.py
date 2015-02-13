@@ -31,9 +31,9 @@ def test1(actualredis):
     reset(actualredis)
 
     # connect to Redis
-    r = lazyupdredis.connect([("key", "INITIAL_V0"), ("edgeattr", "INITIAL_V0")])
-    assert(actualredis.lrange("UPDATE_VERSIONS_key", 0, -1) == ["INITIAL_V0"])
-    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) == ["INITIAL_V0"])
+    r = lazyupdredis.connect([("key", "ver0"), ("edgeattr", "v0")])
+    assert(actualredis.lrange("UPDATE_VERSIONS_key", 0, -1) == ["ver0"])
+    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) == ["v0"])
 
 
     # create the update file
@@ -60,22 +60,29 @@ def test1(actualredis):
     # make sure the version string got loaded in actualredis
     assert(len(r.keys("*")) == 3)
     assert(len(actualredis.keys("*")) == 5) # key:1 key:2 edgettr92 UPDV:key UPDV:edge
+ 
+    #TODO test "nones" with no namespaces
 
     # Make sure the versioning works for the udpate 
     print "Performing update for " + tname
     r.do_upd("generated_" + tname)
-#    print actualredis.lrange("UPDATE_VERSIONS", 0, -1)
-#    assert(actualredis.lrange("UPDATE_VERSIONS", 0, -1) == ["INITIAL_V0", "V1"])
-#    assert(r.versions() == ["INITIAL_V0", "V1"]) 
-#    assert(r.curr_version() == "V1") 
-#    assert(r.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
+    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==["v0", "v1"] )
+    # adding new entries is done on demand, so should have new values 
+    assert(r.curr_version("edgeattr") == "v1")
+    assert(r.versions("edgeattr") == ["v0", "v1"]) 
+    assert(actualredis.hget("UPDATE_FILES", "v1|edgeattr") == ("generated_" + tname))
+
+    # haven't touched key yet, so should be no upd.
+    assert(r.curr_version("key") == "ver0")
+    assert(r.versions("key") == ["ver0"]) 
+
 #    print r.upd_dict["V1"]
 ##    correctd = [('key*', ['group_1_update_category', 'group_1_update__id', 'group_1_update_order']), ('edgeattr_n*@n5', ['group_2_update_outport'])]
 ##    assert(r.upd_dict["V1"][1] == correctd)
 #
 #    # make sure that the new module loads on a new connection
 #    r2 = lazyupdredis.connect([])
-#    assert(r2.versions() == ["INITIAL_V0", "V1"]) 
+#    assert(r2.versions() == ["v0", "V1"]) 
 #    assert(r2.curr_version() == "V1") 
 #    assert(r2.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
 #    print (r2.upd_dict["V1"][1])
@@ -88,7 +95,7 @@ def test1(actualredis):
 #    
 #    # test that the update worked
 #    # make sure that it hasn't happened on-demand by checking in non-hooked redis
-#    e = actualredis.get("INITIAL_V0|edgeattr:n2@n5") # must include tag in actual redis
+#    e = actualredis.get("v0|edgeattr:n2@n5") # must include tag in actual redis
 #    assert(e is not None)
 #    jsone = json.loads(e,object_hook=decode.decode_dict)
 #    assert(jsone.get("outport") is None)
@@ -102,7 +109,7 @@ def test1(actualredis):
 #    # These keys at V1:  n1@n2, n2@n5
 #    assert(len(actualredis.keys("V1*")) == 2) 
 #    # These keys at key1, key2, n1@n1, n1@3, n1@n5, n2@n1, n2@n2, n2@n3
-#    assert(len(actualredis.keys("INITIAL_V0*")) == 8) 
+#    assert(len(actualredis.keys("v0*")) == 8) 
    
 
     print r.upd_dict

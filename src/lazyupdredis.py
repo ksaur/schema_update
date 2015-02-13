@@ -259,7 +259,6 @@ class LazyUpdateRedis(object):
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
 
         # check to see if we are the initial version and must init
-#[("INITIAL_V0", "key"), ("INITIAL_V0", "edgeattr")]
         for (ns, v) in ns_versions:
             self.append_new_version(v, ns)
 
@@ -275,6 +274,7 @@ class LazyUpdateRedis(object):
         print "Connected with the following versions: " + str(ns_versions)
 
     def append_new_version(self, v, ns, updfile=None):
+        #TODO DEFAULT NAMESPACE!!!
         curr_ver = self.curr_version(ns)
         # Check if we're already at this namespace
         if (v == curr_ver):
@@ -1014,10 +1014,15 @@ class LazyUpdateRedis(object):
 
 
         # TODO error checking
-        print "addIN " + name
-        print "at namespace " + self.namespace(name)
-        name = self.curr_version(self.namespace(name)) + "|" + name
-        print "name:: " + name
+        ns = self.namespace(name)
+        if ns is None:
+            print "WARNING, COULD NOT ADD: " + name + ". BAD NAMESPACE."
+            return None
+        curr_ver = self.curr_version(ns)
+        if curr_ver is None:
+            print "WARNING, COULD NOT ADD: " + name + ". BAD VERSION."
+            return None
+        name = curr_ver + "|" + name
         pieces = [name, value]
         if ex:
             pieces.append('EX')
@@ -1942,6 +1947,8 @@ class LazyUpdateRedis(object):
         get_newkey_tuples = getattr(m, "get_newkey_tuples")
         tups = get_newkey_tuples()
         for (glob, funcs, ns, version) in tups:
+
+            self.append_new_version(version, ns, upd_file)
             try:
                 func = getattr(m,funcs[0])
             except AttributeError as e:
