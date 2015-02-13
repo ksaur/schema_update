@@ -324,7 +324,7 @@ def parse_dslfile(dslfile):
         keyglob = parsed.group(2).strip()
         if (len(keyglob.split(":", 1)) != 2):
             print("\n\nWARNING!!!! - Keyglob Should contain a \":\" to denote namespace\n")
-            namespace = keyglob
+            namespace = keyglob.strip()
         else:
             namespace = keyglob.split(":", 1)[0]
         curr = next(dslfile, None)
@@ -336,14 +336,14 @@ def parse_dslfile(dslfile):
         if (cmd == "for"):
             inner = parse_dslfile_inner(iter(l))
             print "for INNER = " + str(inner)
-            old_ver = parsed.group(3)
-            new_ver = parsed.group(4)
+            old_ver = parsed.group(3).strip()
+            new_ver = parsed.group(4).strip()
         else: #guaranteed cmd == "add", else would have failed in 'extract'
             if "*" in keyglob or "?" in keyglob:
                 sys.exit("\n\nFatal - Cannot use wildcards in keyglob for adding keys.\n")
             inner =  '|'.join(l)
             old_ver = None
-            new_ver = parsed.group(3)
+            new_ver = parsed.group(3).strip()
         tups.append((cmd, keyglob, inner, namespace, old_ver, new_ver))
         print "\n\ncmd: " + cmd
         print "\n\nold_ver: " + str(old_ver)
@@ -425,9 +425,6 @@ def process_dsl(file1, outfile="dsu.py"):
 
     # parse DSL file
     dsllist = parse_dslfile(dslfile)
-    print "+++++++++++++++++++++++++++++++++++++"
-    print dsllist
-    print "+++++++++++++++++++++++++++++++++++++"
 
     # create a list to store the parsed dsl output
     kv_update_pairs = list()

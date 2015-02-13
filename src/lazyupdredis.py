@@ -38,15 +38,17 @@
     Also, 'flushall' preserves the stored list of versions
 
     Additional bookkeeping for lazy update:
-    * A redis list called "UPDATE_VERSIONS", which is a list of version name strings
-         Ex: "UPDATE_VERSIONS" -> ["V1"]
+    * A redis list called "UPDATE_VERSIONS_NS", which is a list of version name strings
+         for each namespace NS.  (There will be a list of versions for each namespaces)
+         Ex: "UPDATE_VERSIONS_NS" -> ["V1"]
+
     * A redis hash of "UPDATE_FILES", which stores a hash mapping version name strings
-         to file names (for loading into the self.upd_dict as clients connect)
-         Ex:  "UPDATE_FILES" -> { "V1" : "generated_upd1.py"}
+         concatinated with namespaces to file names (for loading into the self.upd_dict 
+         as clients connect)  One "UPDATE_FILES" hash total.
+         Ex:  "UPDATE_FILES" -> { "V1|NS" : "generated_upd1.py", "V1|NS2" : "gen_upd2.py"}
     * Update functions are stored in a dictionary named self.upd_dict
       This stores "version string+ -> (version module, dict of (keyglob->module function strings))
-         Ex: {"V1": (<module "generated_upd1" from "../generated/generated_upd1.py">,
-              [("for", "*", ["group_0_update_category", "group_0_update__id"])])} 
+         Ex: TODO 
  
    
     The initial (preupdate) version is named "INITIAL_V0" 
@@ -81,8 +83,6 @@ from redis.exceptions import (
     TimeoutError,
     WatchError,
 )
-
-initial_version = "INITIAL_V0"
 
 class LazyUpdateRedis(object):
     """
@@ -256,12 +256,12 @@ class LazyUpdateRedis(object):
             connection_pool = ConnectionPool(**kwargs)
         self.connection_pool = connection_pool
         self._use_lua_lock = None
-        self.ns_versions =  ns_versions
-
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
+
         # check to see if we are the initial version and must init
-        if self.versions() is None:
-            self.append_new_version(initial_version)
+#[("INITIAL_V0", "key"), ("INITIAL_V0", "edgeattr")]
+        for (ns, v) in ns_versions:
+            self.append_new_version(v, ns)
 
         # check to see if existing updates need to be loaded into this class
         self.upd_dict = dict()
@@ -272,19 +272,43 @@ class LazyUpdateRedis(object):
             get_update_tuples = getattr(m, "get_update_tuples")
             self.upd_dict[v] = (m, get_update_tuples())
  
-        print "Connected with the following versions: " + str(self.versions())
+        print "Connected with the following versions: " + str(ns_versions)
 
-    def append_new_version(self, v, updfile=None):
-        ret = self.rpush("UPDATE_VERSIONS", v)
-        if updfile is not None:        
-            self.hset("UPDATE_FILES", v, updfile)
-        return ret
+    def append_new_version(self, v, ns, updfile=None):
+        curr_ver = self.curr_version(ns)
+        # Check if we're already at this namespace
+        if (v == curr_ver):
+            return 0
+        # Check to see if this version is old for this namespace
+        elif(v in self.versions(ns)):
+            sys.exit("\n\nFatal - Trying to connect to an old version\n")
+        # Either the namespace exists, and we need to add a new version
+        # or no such namespace exists, so create a version entry for new namespace
+        # This call will do either.
+        else:
+            if updfile is not None:        
+                self.hset("UPDATE_FILES", v + "|" + ns, updfile)
+            return self.rpush("UPDATE_VERSIONS_"+ns, v)
 
-    def versions(self):
-        return self.lrange("UPDATE_VERSIONS", 0, -1)
+    def versions(self, ns):
+        """
+        Return the LIST of ALL versions from redis for namespace ns
+        @param ns: the namespace
+        """
+        return self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
 
-    def curr_version(self):
-        return self.lindex("UPDATE_VERSIONS", -1)
+    def curr_version(self, ns):
+        """
+        Return the most current version from redis for namespace ns
+        @param ns: the namespace
+        """
+        return self.lindex("UPDATE_VERSIONS_"+ns, -1)
+
+    def namespace(self, name):
+        if (len(name.split(":", 1)) != 2):
+            return name
+        else:
+            return name.split(":", 1)[0]
 
     def __repr__(self):
         return "%s<%s>" % (type(self).__name__, repr(self.connection_pool))
@@ -481,8 +505,6 @@ class LazyUpdateRedis(object):
         "Delete all keys in all databases on the current host"
         upds = self.lrange("UPDATE_VERSIONS", 0, -1)
         ret = self.execute_command('FLUSHALL')
-        # reset the UPDATE_VERSIONS string
-        self.append_new_version(initial_version)
         return ret
 
     def flushdb(self):
@@ -677,8 +699,10 @@ class LazyUpdateRedis(object):
     def delete(self, *names):
         "Delete one or more keys specified by ``names``"
         # Delete doesn't allow keyglob, must expand all
-        for v in self.versions():
-            newnames =  map(lambda x: v + "|" + x, names)
+        newnames = list()
+        for n in names[0]:
+            v = versions(namespace(n))
+            newnames.extend(map(lambda x: x + "|" + n, v))
         return self.execute_command('DEL', *newnames)
 
     def __delitem__(self, name):
@@ -764,7 +788,7 @@ class LazyUpdateRedis(object):
             return matched
 
         # LAZY UPDATES HERE!!!! :)  
-        vers_list = self.versions()
+        vers_list = self.versions(self.namespace(name))
         # try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
         for v in vers_list:
             orig_name = v + "|" + name
@@ -988,7 +1012,12 @@ class LazyUpdateRedis(object):
             already exists.
         """
 
-        name = self.curr_version() + "|" + name
+
+        # TODO error checking
+        print "addIN " + name
+        print "at namespace " + self.namespace(name)
+        name = self.curr_version(self.namespace(name)) + "|" + name
+        print "name:: " + name
         pieces = [name, value]
         if ex:
             pieces.append('EX')
@@ -1893,7 +1922,7 @@ class LazyUpdateRedis(object):
         """
         return Script(self, script)
    
-    def do_upd(self, upd_file="dsu", version=None):
+    def do_upd(self, upd_file="dsu"):
         """
         Switch the version string and loadup the update functions for lazy updates.
 
@@ -1901,13 +1930,6 @@ class LazyUpdateRedis(object):
         @param upd_file: The file with the update functions.  Defaults to "dsu".
         
         """
-
-        vers_list = self.versions()
-        if len(vers_list) < 1: #should never happen
-            print "Update failed to load, no version string stored"
-            return
-        if version is None:
-            version = "V"+str(len(vers_list))
 
         #strip off extention, if provided
         upd_file = upd_file.replace(".py", "")
@@ -1919,10 +1941,7 @@ class LazyUpdateRedis(object):
         m = __import__ (upd_file) #m stores the module
         get_newkey_tuples = getattr(m, "get_newkey_tuples")
         tups = get_newkey_tuples()
-        # TODO pull this code out?  Separate out json...how best to do?
-        for e in tups:
-            glob = e[0]
-            funcs = e[1]
+        for (glob, funcs, ns, version) in tups:
             try:
                 func = getattr(m,funcs[0])
             except AttributeError as e:
