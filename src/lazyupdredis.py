@@ -200,7 +200,7 @@ class LazyUpdateRedis(object):
         connection_pool = ConnectionPool.from_url(url, db=db, **kwargs)
         return cls(connection_pool=connection_pool)
 
-    def __init__(self, host='localhost', port=6379,
+    def __init__(self, ns_versions, host='localhost', port=6379,  
                  db=0, password=None, socket_timeout=None,
                  socket_connect_timeout=None,
                  socket_keepalive=None, socket_keepalive_options=None,
@@ -256,6 +256,7 @@ class LazyUpdateRedis(object):
             connection_pool = ConnectionPool(**kwargs)
         self.connection_pool = connection_pool
         self._use_lua_lock = None
+        self.ns_versions =  ns_versions
 
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         # check to see if we are the initial version and must init
@@ -753,7 +754,9 @@ class LazyUpdateRedis(object):
         def extract_for_keys(estr, version):
             matched = list()
             (m,tups) = self.upd_dict[version]
-            for (glob, funcs) in tups:
+            for e in tups:
+                glob = e[0]
+                funcs = e[1]
                 glob_to_regex = fnmatch.translate(glob)
                 #print "TRYING TO MATCH (" + glob_to_regex+ ") with (" + estr + ")"
                 if re.match(glob_to_regex,estr) is not None:
@@ -1917,7 +1920,9 @@ class LazyUpdateRedis(object):
         get_newkey_tuples = getattr(m, "get_newkey_tuples")
         tups = get_newkey_tuples()
         # TODO pull this code out?  Separate out json...how best to do?
-        for (glob, funcs) in tups:
+        for e in tups:
+            glob = e[0]
+            funcs = e[1]
             try:
                 func = getattr(m,funcs[0])
             except AttributeError as e:
@@ -1939,7 +1944,7 @@ class LazyUpdateRedis(object):
 
 
 # Utility function...may move this later...
-def connect(host=None, port=None):
+def connect(ns_versions):
     """ 
     Connect to (lazy) redis. Default is localhost, port 6379.
     (Redis must be running.)
@@ -1948,12 +1953,7 @@ def connect(host=None, port=None):
     @param port: the port for redis, defaults to 6379
         
     """
-    if host is None:
-        host = 'localhost'
-    if port is None:
-        port = 6379
-    r = LazyUpdateRedis(host, port, db=0)
-    #r = redis.StrictRedis(host, port, db=0)
+    r = LazyUpdateRedis(ns_versions)
     try:
         r.ping()
     except r.ConnectionError as e:

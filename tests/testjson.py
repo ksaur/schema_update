@@ -218,18 +218,18 @@ def test4(r):
     # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
     print "Performing update for " + tname
     numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname)
-    e = r.get("edgeattr_n2@n1")
+    e = r.get("edgeattr:n2@n1")
     assert(e is not None)
     # should have skipped n4
-    e = r.get("edgeattr_n1@n4")
+    e = r.get("edgeattr:n1@n4")
     assert(e is None)
-    e = r.get("edgeattr_n1@n5")
+    e = r.get("edgeattr:n1@n5")
     assert(e is not None)
     print e
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone.get("inport") is None)
     assert(jsone.get("outport") is None)
-    e = r.get("edgeattr_n2@n5")
+    e = r.get("edgeattr:n2@n5")
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone.get("outport") == 777)
     e = r.get("n")
@@ -252,28 +252,28 @@ def test5(r):
 
 
     # generate fake data
-    r.set("edgeattr_n2@n5", "{ \"_id\": 4}")
-    r.set("edgeattr_n5@n8", "{ \"_id\": 4}")
+    r.set("edgeattr:n2@n5", "{ \"_id\": 4}")
+    r.set("edgeattr:n5@n8", "{ \"_id\": 4}")
     r.set("decoy", "{ \"_id\": 4}")
-    r.set("oldn5", "{ \"_id\": 4}")
-    r.set("oldn4", "{ \"_id\": 4}")
-    assert(r.get("edgeattr_n2@n5") is not None)
-    assert(r.get("edgeattr_n5@n8") is not None)
+    r.set("old:n5", "{ \"_id\": 4}")
+    r.set("old:n4", "{ \"_id\": 4}")
+    assert(r.get("edgeattr:n2@n5") is not None)
+    assert(r.get("edgeattr:n5@n8") is not None)
     assert(r.get("decoy") is not None)
-    assert(r.get("oldn5") is not None)
-    assert(r.get("oldn4") is not None)
+    assert(r.get("old:n5") is not None)
+    assert(r.get("old:n4") is not None)
 
 
     # perform the update and grab the updated value.  (Also test leaving off the extension from filename)
     print "Performing update for " + tname
     numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname)
-    assert(r.get("edgeattr_n2@n5_graph") is not None)
-    assert(r.get("edgeattr_n2@n5") is None)
-    assert(r.get("edgeattr_n5@n8_graph") is not None)
+    assert(r.get("edgeattr:n2@n5_graph") is not None)
+    assert(r.get("edgeattr:n2@n5") is None)
+    assert(r.get("edgeattr:n5@n8_graph") is not None)
     assert(r.get("decoy_graph") is None)
     assert(r.get("decoy") is not None)
-    assert(r.get("oldn5") is None)
-    assert(r.get("oldn4") is not None)
+    assert(r.get("old:n5") is None)
+    assert(r.get("old:n4") is not None)
     assert(len(r.keys("*")) == 4)
 
 

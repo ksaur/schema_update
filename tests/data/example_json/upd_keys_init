@@ -1,9 +1,9 @@
-for edgeattr* {
+for edgeattr:* v0->v1 {
 UPD [] {$dbkey = $dbkey+"_graph"}
 };
 
-for oldn* {
-DEL [] {if $dbkey > "oldn4":
+for old:n* v0->v1{
+DEL [] {if $dbkey > "old:n4":
     return True
 return False}
 };

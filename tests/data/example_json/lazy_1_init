@@ -1,8 +1,8 @@
-add edgeattr_n[1-2]@n[1-3,5] {
+add edgeattr:n[1-2]@n[1-3,5] v1 {
 $dbkey = {"outport": None, "inport": None}
 };
 
-for key* {
+for key:* ver0->ver1 {
 INIT ["order", ["orderItems"], "discountedPrice"] {$out = round($base['price']*.7,2)}
 REN ["order", ["orderItems"], "price"]->["order", ["orderItems"], "fullprice"]
 UPD ["_id"] {
@@ -14,6 +14,6 @@ else:
     return False}
 };
 
-for edgeattr_n*@n5 {
+for edgeattr:n*@n5 v0->v1 {
 UPD ["outport"] {$out = 777}
 };

@@ -1,7 +1,7 @@
-for key* {
+for key* v0->v1 {
 INIT ["dob"] {$out = "01/01/1970"}
 };
-for o* {
+for o* v0->v1 {
 UPD [["phoneNumber"], "number"] {$out = "(+1) "+$out}
 };
 

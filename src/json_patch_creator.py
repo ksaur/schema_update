@@ -294,8 +294,8 @@ def parse_dslfile(dslfile):
     
     @return: a list of tuples (key:string (if any), commands:dictionary)
     """
-    patterns =  ['(for) \\s?(.*)\\s?{',
-                 '(add) \\s?(.*)\\s?{']
+    patterns =  ['(for) \\s?(\S*)\\s+(.*)->(.*)\\s?{',
+                 '(add) \\s?(\S*)\\s+(.*)\\s?{']
 
     def extract_for_keys(estr):
         for p in patterns:
@@ -322,6 +322,11 @@ def parse_dslfile(dslfile):
             sys.exit("\n\nFatal - Parse error near line containing: " + line)
         cmd = parsed.group(1)
         keyglob = parsed.group(2).strip()
+        if (len(keyglob.split(":", 1)) != 2):
+            print("\n\nWARNING!!!! - Keyglob Should contain a \":\" to denote namespace\n")
+            namespace = keyglob
+        else:
+            namespace = keyglob.split(":", 1)[0]
         curr = next(dslfile, None)
         while curr and "};" not in curr:
             l.append(curr)
@@ -331,11 +336,19 @@ def parse_dslfile(dslfile):
         if (cmd == "for"):
             inner = parse_dslfile_inner(iter(l))
             print "for INNER = " + str(inner)
+            old_ver = parsed.group(3)
+            new_ver = parsed.group(4)
         else: #guaranteed cmd == "add", else would have failed in 'extract'
             if "*" in keyglob or "?" in keyglob:
                 sys.exit("\n\nFatal - Cannot use wildcards in keyglob for adding keys.\n")
             inner =  '|'.join(l)
-        tups.append((cmd, keyglob, inner))
+            old_ver = None
+            new_ver = parsed.group(3)
+        tups.append((cmd, keyglob, inner, namespace, old_ver, new_ver))
+        print "\n\ncmd: " + cmd
+        print "\n\nold_ver: " + str(old_ver)
+        print "\n\nnew_ver: " + str(new_ver)
+        print tups
     print tups
     return tups
 
@@ -412,6 +425,9 @@ def process_dsl(file1, outfile="dsu.py"):
 
     # parse DSL file
     dsllist = parse_dslfile(dslfile)
+    print "+++++++++++++++++++++++++++++++++++++"
+    print dsllist
+    print "+++++++++++++++++++++++++++++++++++++"
 
     # create a list to store the parsed dsl output
     kv_update_pairs = list()
@@ -419,11 +435,13 @@ def process_dsl(file1, outfile="dsu.py"):
 
     # Generate the functions based on the DSL file contents
     # (Use the index as the namespace, as the keystring has too many special chars) 
+    #
+    # Tuples are in the format of: (cmd, keyglob, inner, namespace, old_ver, new_ver)
     for idx, curr_tup in enumerate(dsllist):
         if (curr_tup[0] == "for"):
-            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_")))
+            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_"), curr_tup[3], curr_tup[4], curr_tup[5]))
         elif (curr_tup[0] == "add"):
-            kv_new_pairs.append((curr_tup[1], generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_")))
+            kv_new_pairs.append((curr_tup[1],  generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_"), curr_tup[3], curr_tup[5]))
 
     # write the name of the key globs and corresponding functions
     outfile.write("\ndef get_update_tuples():\n    return " + str(kv_update_pairs))

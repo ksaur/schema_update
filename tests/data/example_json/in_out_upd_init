@@ -1,4 +1,4 @@
-for * {
+for * v0->v1 {
 UPD ["order", ["orderitems"], "percentfullprice"] {
 $out = 1.0
 # blatantly demonstrate usage of $\in, 

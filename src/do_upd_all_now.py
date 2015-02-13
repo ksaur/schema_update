@@ -72,7 +72,9 @@ def do_upd_all_now(r, updfile="dsu"):
     # handle the new/"add" cases
     get_newkey_tuples = getattr(m, "get_newkey_tuples")
     newkey_pairs = get_newkey_tuples()
-    for (glob, funcs) in newkey_pairs:
+    for e in newkey_pairs:
+        glob = e[0]
+        funcs = e[1]
         try:
             func = getattr(m,funcs[0])
         except AttributeError as e:
@@ -91,7 +93,10 @@ def do_upd_all_now(r, updfile="dsu"):
 
     num_upd = 0
     # Loop over the "for/add __  " glob stanzas
-    for (glob, funcs) in update_pairs:
+    print update_pairs
+    for e in update_pairs:
+        glob = e[0]
+        funcs = e[1]
         print "GLOB = " + glob
         print "FUNCS = " + str(funcs)
         keys = r.keys(glob)
