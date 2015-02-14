@@ -269,7 +269,7 @@ class LazyUpdateRedis(object):
             print "GETTING " + v + " " + upd_files[v]
             m = __import__ (upd_files[v])
             get_update_tuples = getattr(m, "get_update_tuples")
-            tups = (m, get_update_tuples())
+            tups = (get_update_tuples())
             for (glob, funcs, ns, version_from, version_to) in tups:
                 if self.curr_version(ns) == version_from:
                     #TODO sanity checking...
@@ -709,8 +709,8 @@ class LazyUpdateRedis(object):
         "Delete one or more keys specified by ``names``"
         # Delete doesn't allow keyglob, must expand all
         newnames = list()
-        for n in names[0]:
-            v = versions(namespace(n))
+        for n in names:
+            v = self.versions(self.namespace(n))
             newnames.extend(map(lambda x: x + "|" + n, v))
         return self.execute_command('DEL', *newnames)
 
@@ -786,20 +786,18 @@ class LazyUpdateRedis(object):
         # get the value to initialize the keys to
         def extract_for_keys(estr, version):
             matched = list()
-            (m,tups) = self.upd_dict[version]
-            for e in tups:
-                glob = e[0]
-                funcs = e[1]
-                glob_to_regex = fnmatch.translate(glob)
-                #print "TRYING TO MATCH (" + glob_to_regex+ ") with (" + estr + ")"
-                if re.match(glob_to_regex,estr) is not None:
-                    matched.extend(funcs)
+            (_, glob, funcs, _) = self.upd_dict[version]  #TODO enable multi matching
+            glob_to_regex = fnmatch.translate(glob)
+            #print "TRYING TO MATCH (" + glob_to_regex+ ") with (" + estr + ")"
+            if re.match(glob_to_regex,estr) is not None:
+                matched.extend(funcs)
             return matched
 
         # LAZY UPDATES HERE!!!! :)  
-        vers_list = self.versions(self.namespace(name))
+        ns = self.namespace(name)
+        vers_list = self.versions(ns)
         # try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
-        for v in vers_list:
+        for v in reversed(vers_list): # this will test the most current first
             orig_name = v + "|" + name
             val = self.execute_command('GET', orig_name)
             # found a key!  figure out which version and see if it needs updating
@@ -815,11 +813,21 @@ class LazyUpdateRedis(object):
                         str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
                     # apply 1 or multiple updates, if necessary
                     for upd_v in vers_list[curr_idx+1:]:
-                        upd_funcs = (extract_for_keys(hit[1], upd_v))
+                        upd_name = hit[0]+"|"+ns
+                        print "upd_name is " + upd_name
+                        print "upd_dict is " + str(self.upd_dict)
+                        if upd_name not in self.upd_dict:
+                            print "ERROR!!! No upd info...Could not update key: " + hit[1] 
+                            return val
+                        upd_funcs = (extract_for_keys(hit[1], upd_name))
+                        if (self.upd_dict[upd_name][3] != upd_v):
+                            print "ERROR!!! Version mismatch at : " + hit[1] + "ver=" + upd_v 
+                            return val
+                        upd_funcs = (extract_for_keys(hit[1], upd_name))
                         if upd_funcs:
                             print "\tUpdating key " + hit[1] + " to version: " + upd_v
                             print "\tusing the following functions:" + str(upd_funcs)
-                            if self.update(hit[1], val, upd_funcs, self.upd_dict[upd_v][0]):
+                            if self.update(hit[1], val, upd_funcs, self.upd_dict[upd_name][0]):
                                 self.execute_command('DEL', orig_name)
                             else:
                                 print "ERROR!!! Could not update key: " + hit[1] 
@@ -1031,8 +1039,8 @@ class LazyUpdateRedis(object):
         if curr_ver is None:
             print "WARNING, COULD NOT ADD: " + name + ". BAD VERSION."
             return None
-        name = curr_ver + "|" + name
-        pieces = [name, value]
+        ver_and_name = curr_ver + "|" + name
+        pieces = [ver_and_name, value]
         if ex:
             pieces.append('EX')
             if isinstance(ex, datetime.timedelta):
@@ -1049,6 +1057,17 @@ class LazyUpdateRedis(object):
             pieces.append('NX')
         if xx:
             pieces.append('XX')
+
+        # Make sure that there is(are) no previous version(s) of this key
+        prev = self.versions(ns)
+        for v in reversed(prev[:-1]):
+            oldname = v + "|" + name
+            old = self.execute_command('GET', oldname)
+            if old is not None:
+                self.execute_command('DEL', oldname)
+            else:
+                break
+
         return self.execute_command('SET', *pieces)
 
     def __setitem__(self, name, value):
@@ -1999,3 +2018,4 @@ def connect(ns_versions):
         print(e)
         sys.exit(-1)
     return r
+

@@ -76,41 +76,47 @@ def test1(actualredis):
     assert(r.curr_version("key") == "ver1")
     print r.upd_dict
 
-#    print r.upd_dict["V1"]
-##    correctd = [('key*', ['group_1_update_category', 'group_1_update__id', 'group_1_update_order']), ('edgeattr_n*@n5', ['group_2_update_outport'])]
-##    assert(r.upd_dict["V1"][1] == correctd)
-#
-#    # make sure that the new module loads on a new connection
-#    r2 = lazyupdredis.connect([])
-#    assert(r2.versions() == ["v0", "V1"]) 
-#    assert(r2.curr_version() == "V1") 
-#    assert(r2.hget("UPDATE_FILES", "V1") == ("generated_" + tname))
-#    print (r2.upd_dict["V1"][1])
-##    assert(r2.upd_dict["V1"][1] == correctd)
-#
-#    # test that the expected keys are added
-#    assert(r.get("edgeattr:n1@n2") is not None)
-#    # should have skipped n4
-#    assert(r.get("edgeattr:n1@n4") is None)
-#    
-#    # test that the update worked
-#    # make sure that it hasn't happened on-demand by checking in non-hooked redis
-#    e = actualredis.get("v0|edgeattr:n2@n5") # must include tag in actual redis
-#    assert(e is not None)
-#    jsone = json.loads(e,object_hook=decode.decode_dict)
-#    assert(jsone.get("outport") is None)
-#    # now, when we grab it in lazy redis, the update should happen on-demand
-#    e = r.get("edgeattr:n2@n5")
-#    jsone = json.loads(e,object_hook=decode.decode_dict)
-#    assert(jsone.get("outport") == 777)
-#
-#    # At this point, keys "edgeattr_n1@n2" and "edgeattr_n2@n5" are the only two "touched"
-#    # Make sure of this using actualredis
-#    # These keys at V1:  n1@n2, n2@n5
-#    assert(len(actualredis.keys("V1*")) == 2) 
-#    # These keys at key1, key2, n1@n1, n1@3, n1@n5, n2@n1, n2@n2, n2@n3
-#    assert(len(actualredis.keys("v0*")) == 8) 
-   
+    # test setting...should blow away old versions
+    r.set("edgeattr:n9@n2", "{\"outport\": None, \"inport\": 9}")
+    assert(actualredis.get("v0|edgeattr:n9@n2") is None)
+    assert(actualredis.get("v1|edgeattr:n9@n2") is not None)
+
+    # make sure that the new module loads on a new connection
+    r2 = lazyupdredis.connect([("key", "ver1"), ("edgeattr", "v1")])
+    assert(r2.versions("edgeattr") == ["v0", "v1"]) 
+    assert(r2.curr_version("edgeattr") == "v1") 
+    assert(r2.hget("UPDATE_FILES", "v1|edgeattr") == ("generated_" + tname))
+
+    # test that the expected keys are added
+    assert(r.get("edgeattr:n1@n2") is not None)
+    # should have skipped n4
+    assert(r.get("edgeattr:n1@n4") is None)
+    
+    # test that the update worked
+    # make sure that it hasn't happened on-demand by checking in non-hooked redis
+    e = actualredis.get("ver0|key:1") # must include tag in actual redis
+    assert(e is not None)
+    # now, when we grab it in lazy redis, the update should happen on-demand
+    e = r.get("key:1")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(((jsone["order"].get("orderItems"))[0]).get("fullprice") == 19.99)
+    # make sure the old is gone
+    assert(actualredis.get("ver0|key:1") is None)
+    assert(actualredis.get("ver1|key:1") is not None)
+
+    # These keys at v0: key2, 
+    assert(len(actualredis.keys("v*0*")) == 1) 
+    # Rest of keys at v1/ver1
+    assert(len(actualredis.keys("v*1*")) == 10)
+
+    # test deletions
+    r.delete("edgeattr:n2@n2", "edgeattr:n1@n1")
+    assert(r.get("edgeattr:n2@n2") is None)
+    assert(actualredis.get("v0|edgeattr:n2@n2") is None)
+    assert(len(actualredis.keys("v*1*")) == 8)
+
+# TODO don't allow connect to v0
+# TODO test combining "for" statements for the same update...
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
