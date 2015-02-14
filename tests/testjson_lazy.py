@@ -117,6 +117,7 @@ def test1(actualredis):
 
 # TODO don't allow connect to v0
 # TODO test combining "for" statements for the same update...
+# TODO test multi-version updates
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"

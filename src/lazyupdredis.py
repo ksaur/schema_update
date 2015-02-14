@@ -748,7 +748,6 @@ class LazyUpdateRedis(object):
         return self.execute_command('EXPIREAT', name, when)
 
    
-    #TODO, integrate this with do_upd_all_now.py?
     #TODO lock the key!!
     def update(self, currkey, redisval, funcs, m):
         """ 
@@ -783,15 +782,6 @@ class LazyUpdateRedis(object):
         Return the value at key ``name`` (any version), or None if the key 
         doesn't exist
         """
-        # get the value to initialize the keys to
-        def extract_for_keys(estr, version):
-            matched = list()
-            (_, glob, funcs, _) = self.upd_dict[version]  #TODO enable multi matching
-            glob_to_regex = fnmatch.translate(glob)
-            #print "TRYING TO MATCH (" + glob_to_regex+ ") with (" + estr + ")"
-            if re.match(glob_to_regex,estr) is not None:
-                matched.extend(funcs)
-            return matched
 
         # LAZY UPDATES HERE!!!! :)  
         ns = self.namespace(name)
@@ -802,42 +792,49 @@ class LazyUpdateRedis(object):
             val = self.execute_command('GET', orig_name)
             # found a key!  figure out which version and see if it needs updating
             if val is not None:
-                hit = orig_name.split("|", 1) 
-                print "GOT KEY " + hit[1] + " at VERSION: " + hit[0]
+                curr_key_version = orig_name.split("|", 1)[0]
+                print "GOT KEY " + name + " at VERSION: " + curr_key_version
                 # check to see if update is necessary
-                if(hit[0] !=vers_list[-1]):
-                    curr_idx = vers_list.index(hit[0])
+                if(curr_key_version !=vers_list[-1]):
+                    curr_idx = vers_list.index(curr_key_version)
                     new_name = vers_list[-1] + "|" + name
                     print "\tCurrent key is at position " + str(curr_idx) +\
                         " in the udp list, which means that there is/are " + \
                         str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
                     # apply 1 or multiple updates, if necessary
                     for upd_v in vers_list[curr_idx+1:]:
-                        upd_name = hit[0]+"|"+ns
-                        print "upd_name is " + upd_name
-                        print "upd_dict is " + str(self.upd_dict)
+
+                        # Make sure we have the update in the dictionary
+                        upd_name = curr_key_version+"|"+ns
                         if upd_name not in self.upd_dict:
-                            print "ERROR!!! No upd info...Could not update key: " + hit[1] 
+                            print "ERROR!!! No upd info...Could not update key: " + name 
                             return val
-                        upd_funcs = (extract_for_keys(hit[1], upd_name))
-                        if (self.upd_dict[upd_name][3] != upd_v):
-                            print "ERROR!!! Version mismatch at : " + hit[1] + "ver=" + upd_v 
+
+                        # Grab all the information from the update dictionary
+                        # TODO enable multiple updates per version!!!
+                        (module, glob, upd_funcs, new_ver) = self.upd_dict[upd_name]
+
+                        # Make sure we have the expected version
+                        if (new_ver != upd_v):
+                            print "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
                             return val
-                        upd_funcs = (extract_for_keys(hit[1], upd_name))
-                        if upd_funcs:
-                            print "\tUpdating key " + hit[1] + " to version: " + upd_v
+                        # Check if the keyglob matches this particular key
+                        # Ex: if the glob wanted key:[1-3] and we are key:4, no update,
+                        #     eventhough the namespace matches.
+                        if re.match(fnmatch.translate(glob), name):
+                            print "\tUpdating key " + name + " to version: " + upd_v
                             print "\tusing the following functions:" + str(upd_funcs)
-                            if self.update(hit[1], val, upd_funcs, self.upd_dict[upd_name][0]):
+                            if self.update(name, val, upd_funcs, module):
                                 self.execute_command('DEL', orig_name)
                             else:
-                                print "ERROR!!! Could not update key: " + hit[1] 
+                                print "ERROR!!! Could not update key: " + name 
                                 return val
                         else:
                             print "\tNo functions matched.  Updating version str only"
                             self.rename(orig_name, new_name)
                     return self.execute_command('GET', new_name)
                 else:
-                    print "\tNo update necessary for key: " + hit[1] + " (version = " + hit[0] + ")"
+                    print "\tNo update necessary for key: " + name + " (version = " + curr_key_version + ")"
                     return val
         return None
 
