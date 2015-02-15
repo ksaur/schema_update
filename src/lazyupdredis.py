@@ -287,7 +287,7 @@ class LazyUpdateRedis(object):
             return 0
         # Check to see if this version is old for this namespace
         elif(v in self.versions(ns)):
-            sys.exit("\n\nFatal - Trying to connect to an old version\n")
+            raise ValueError('Fatal - Trying to connect to an old version')
         # Either the namespace exists, and we need to add a new version
         # or no such namespace exists, so create a version entry for new namespace
         # This call will do either.

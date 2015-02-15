@@ -167,7 +167,6 @@ def test2(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
-# TODO don't allow connect to v0
 def test3(actualredis):
     tname = "test3_z"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
@@ -232,6 +231,53 @@ def test3(actualredis):
     assert(len(actualredis.keys("*edgeattr:n2@n3")) == 1)
 
 
+# Make sure to connect to the correct versions
+def test4(actualredis):
+    tname = "test4_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+    # connect to Redis
+    json_val = json.dumps({"outport": None, "inport": None})
+    r = lazyupdredis.connect([("edgeattr", "v0")])
+    for (i,j) in [("9","5"), ("2","3"), ("4","2")]:
+        r.set("edgeattr:n" + i + "@n" + j, json_val)
+
+    # create the update file v0->v1
+    json_patch_creator.process_dsl("data/example_json/lazy_3_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
+
+    r.do_upd("generated_" + tname)
+
+    # make sure update applied
+    assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
+    e = r.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+
+
+    # now try to connect to the current (correct) version, should succeed
+    r2 = lazyupdredis.connect([("edgeattr", "v1")])
+    e = r.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+    # make sure the new client can also do updates
+    e = r.get("edgeattr:n4@n2")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+
+
+    # now try to connect to and old version.  we should only be able to connect
+    # to the new version, should fail
+    try:
+       r3 = lazyupdredis.connect([("edgeattr", "v0")])
+       assert False, "Should have thrown an exception on previous line"
+    except ValueError as e:
+       print e
+
+    # now try to connect to some madeup version....should....do...something?!?!
+    # TODO what to do in this case...?  Does the first one that connect always win?
+    #r4 = lazyupdredis.connect([("edgeattr", "v9")])
+
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
@@ -241,11 +287,13 @@ def main():
     actualredis = redis.StrictRedis()
 
     # test basic lazy updates
-    #test1(actualredis)
+    test1(actualredis)
     # test exists/not exists cominations
-    #test2(actualredis)
+    test2(actualredis)
     # test multi update cmds; test multi updates.
     test3(actualredis)
+    # don't allow connect to previous version
+    test4(actualredis)
 
     actualredis.execute_command('QUIT')
 
