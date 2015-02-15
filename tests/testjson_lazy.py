@@ -168,13 +168,71 @@ def test2(actualredis):
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 # TODO don't allow connect to v0
-# TODO test combining "for" statements for the same update...
-# TODO test multi-version updates
-# TODO test single-version multi updates
 def test3(actualredis):
-    tname = "test2_z"
+    tname = "test3_z"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
     reset(actualredis)
+    # connect to Redis
+    json_val = json.dumps({"outport": None, "inport": None})
+    r = lazyupdredis.connect([("edgeattr", "v0")])
+    for (i,j) in [("9","5"), ("2","3"), ("4","2")]:
+        r.set("edgeattr:n" + i + "@n" + j, json_val)
+
+    # create the update file v0->v1
+    json_patch_creator.process_dsl("data/example_json/lazy_3_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
+
+    r.do_upd("generated_" + tname)
+
+    # test combining "for" statements for the same update...
+    assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
+    e = r.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+    assert(jsone["inport"] == 999 )
+    assert(actualredis.get("v1|edgeattr:n9@n5") is not None)
+    assert(actualredis.get("v0|edgeattr:n9@n5") is None)
+
+
+    # test multi-version updates
+
+    # create the update file v1->v2
+    json_patch_creator.process_dsl("data/example_json/lazy_3b_init", tname +"2.py")
+    shutil.move(tname +"2.py", "../generated/generated_"+tname+"2.py")
+
+    r.do_upd("generated_" + tname + "2")
+
+    # test going from v1->v2 for (n9@n5)
+    print "\n**************** Testing going v1->v2 for n9@n5 *********************"
+    assert(actualredis.get("v1|edgeattr:n9@n5") is not None)
+    e = r.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 555 )
+    assert(jsone["inport"] == 333 )
+    assert(actualredis.get("v2|edgeattr:n9@n5") is not None)
+    assert(actualredis.get("v1|edgeattr:n9@n5") is None)
+    assert(actualredis.get("v0|edgeattr:n9@n5") is None)
+    assert(len(actualredis.keys("*edgeattr:n9@n5")) == 1)
+
+    # test going from v0->v1->v2 for (n2@n3)
+    print "\n**************** Testing going v0->v1->v2 for n2@n3 *********************"
+    # make sure it's still untouched
+    e = actualredis.get("v0|edgeattr:n2@n3")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == None )
+    assert(jsone["inport"] == None )
+    # Now grab the key to trigger both updates
+    e = r.get("edgeattr:n2@n3")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 555 )
+    assert(jsone["inport"] == 333 )
+    assert(actualredis.get("v2|edgeattr:n2@n3") is not None)
+    assert(actualredis.get("v1|edgeattr:n2@n3") is None)
+    assert(actualredis.get("v0|edgeattr:n2@n3") is None)
+    assert(len(actualredis.keys("*edgeattr:n2@n3")) == 1)
+
+
+
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 
@@ -183,11 +241,11 @@ def main():
     actualredis = redis.StrictRedis()
 
     # test basic lazy updates
-    test1(actualredis)
+    #test1(actualredis)
     # test exists/not exists cominations
-    test2(actualredis)
+    #test2(actualredis)
     # test multi update cmds; test multi updates.
-    # test3(actualredis)
+    test3(actualredis)
 
     actualredis.execute_command('QUIT')
 

@@ -791,12 +791,12 @@ class LazyUpdateRedis(object):
         for v in reversed(vers_list): # this will test the most current first
             orig_name = v + "|" + name
             val = self.execute_command('GET', orig_name)
-            # found a key!  figure out which version and see if it needs updating
+            # Found a key!  Figure out which version and see if it needs updating
             if val is not None:
                 curr_key_version = orig_name.split("|", 1)[0]
                 print "GOT KEY " + name + " at VERSION: " + curr_key_version
 
-                # check to see if update is necessary
+                # Check to see if update is necessary
                 # Return immediately if no update is necsesary
                 if(curr_key_version == vers_list[-1]):
                     print "\tNo update necessary for key: " + name + " (version = " + curr_key_version + ")"
@@ -809,11 +809,12 @@ class LazyUpdateRedis(object):
                     " in the udp list, which means that there is/are " + \
                     str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
 
-                # apply 1 or multiple updates, if necessary
+                # Apply 1 or multiple updates, if necessary
                 for upd_v in vers_list[curr_idx+1:]:
 
                     # Make sure we have the update in the dictionary
                     upd_name = curr_key_version+"|"+ns
+                    print "Updating to version " + upd_v + " using update \'" + upd_name +"\'"
                     if upd_name not in self.upd_dict:
                         print "ERROR!!! No upd info...Could not update key: " + name 
                         return val
@@ -827,6 +828,8 @@ class LazyUpdateRedis(object):
                     upd_funcs_combined = list()
                     for (module, glob, upd_funcs, new_ver) in self.upd_dict[upd_name]:
 
+                        print "Found a rule."
+                        print "new_ver = " + new_ver + " upd_v = " + upd_v
                         # Make sure we have the expected version
                         if (new_ver != upd_v):
                             print "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
@@ -847,6 +850,7 @@ class LazyUpdateRedis(object):
                     if upd_funcs_combined:  
                         print "Applying some updates:" + str(upd_funcs_combined)
                         if self.update(name, val, upd_funcs_combined, module):
+                            curr_key_version = new_ver
                             self.execute_command('DEL', orig_name)
                         else:
                             print "ERROR!!! Could not update key: " + name 

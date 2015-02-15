@@ -1,0 +1,7 @@
+for edgeattr:* v0->v1 {
+UPD ["outport"] {$out = 777}
+};
+
+for edgeattr:* v0->v1 {
+UPD ["inport"] {$out = 999}  #demonstrate if the DSL writer doesn't combine for some stupid reason
+};

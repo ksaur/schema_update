@@ -1,0 +1,5 @@
+for edgeattr:* v1->v2 {
+UPD ["outport"] {$out = 555}
+UPD ["inport"] {$out = 333}
+};
+
