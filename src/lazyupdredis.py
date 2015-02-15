@@ -274,7 +274,8 @@ class LazyUpdateRedis(object):
                 if self.curr_version(ns) == version_from:
                     #TODO sanity checking...
                     self.append_new_version(version_to, ns, upd_file)
-                self.upd_dict[version_from+"|"+ns] = (m, glob, funcs, version_to)
+                #TODO combine this with the other loading function
+                self.upd_dict.setdefault(version_from+"|"+ns, []).append((m, glob, funcs, version_to))
  
         print "Connected with the following versions: " + str(ns_versions)
 
@@ -794,25 +795,37 @@ class LazyUpdateRedis(object):
             if val is not None:
                 curr_key_version = orig_name.split("|", 1)[0]
                 print "GOT KEY " + name + " at VERSION: " + curr_key_version
+
                 # check to see if update is necessary
-                if(curr_key_version !=vers_list[-1]):
-                    curr_idx = vers_list.index(curr_key_version)
-                    new_name = vers_list[-1] + "|" + name
-                    print "\tCurrent key is at position " + str(curr_idx) +\
-                        " in the udp list, which means that there is/are " + \
-                        str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
-                    # apply 1 or multiple updates, if necessary
-                    for upd_v in vers_list[curr_idx+1:]:
+                # Return immediately if no update is necsesary
+                if(curr_key_version == vers_list[-1]):
+                    print "\tNo update necessary for key: " + name + " (version = " + curr_key_version + ")"
+                    return val
 
-                        # Make sure we have the update in the dictionary
-                        upd_name = curr_key_version+"|"+ns
-                        if upd_name not in self.upd_dict:
-                            print "ERROR!!! No upd info...Could not update key: " + name 
-                            return val
+                # Version isn't current.  Now check for updates
+                curr_idx = vers_list.index(curr_key_version)
+                new_name = vers_list[-1] + "|" + name
+                print "\tCurrent key is at position " + str(curr_idx) +\
+                    " in the udp list, which means that there is/are " + \
+                    str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
 
-                        # Grab all the information from the update dictionary
-                        # TODO enable multiple updates per version!!!
-                        (module, glob, upd_funcs, new_ver) = self.upd_dict[upd_name]
+                # apply 1 or multiple updates, if necessary
+                for upd_v in vers_list[curr_idx+1:]:
+
+                    # Make sure we have the update in the dictionary
+                    upd_name = curr_key_version+"|"+ns
+                    if upd_name not in self.upd_dict:
+                        print "ERROR!!! No upd info...Could not update key: " + name 
+                        return val
+
+                    # Grab all the information from the update dictionary...
+                    # Combine all of the update functions into a list "upd_funcs_combined"
+                    #
+                    # There may be more than one command per update
+                    #   Ex: for edgeattr:n*@n5 v0->v1
+                    #       for edgeattr:n4@n* v0->v1
+                    upd_funcs_combined = list()
+                    for (module, glob, upd_funcs, new_ver) in self.upd_dict[upd_name]:
 
                         # Make sure we have the expected version
                         if (new_ver != upd_v):
@@ -821,21 +834,31 @@ class LazyUpdateRedis(object):
                         # Check if the keyglob matches this particular key
                         # Ex: if the glob wanted key:[1-3] and we are key:4, no update,
                         #     eventhough the namespace matches.
+                        print "Searching for a match with glob = " + glob 
+                        print "and name = " + name 
                         if re.match(fnmatch.translate(glob), name):
                             print "\tUpdating key " + name + " to version: " + upd_v
                             print "\tusing the following functions:" + str(upd_funcs)
-                            if self.update(name, val, upd_funcs, module):
-                                self.execute_command('DEL', orig_name)
-                            else:
-                                print "ERROR!!! Could not update key: " + name 
-                                return val
+                            print "\twith value:" + val
+                            upd_funcs_combined.extend(upd_funcs)
+
+                    # if we found some functions to call, then call them (all at once) so the
+                    # version string only gets written once.
+                    if upd_funcs_combined:  
+                        print "Applying some updates:" + str(upd_funcs_combined)
+                        if self.update(name, val, upd_funcs_combined, module):
+                            self.execute_command('DEL', orig_name)
                         else:
-                            print "\tNo functions matched.  Updating version str only"
-                            self.rename(orig_name, new_name)
-                    return self.execute_command('GET', new_name)
-                else:
-                    print "\tNo update necessary for key: " + name + " (version = " + curr_key_version + ")"
-                    return val
+                            print "ERROR!!! Could not update key: " + name 
+                            return val
+                    # no functions matched, update version string only.                   
+                    else:
+                        print "\tNo functions matched.  Updating version str only"
+                        print "orig_name "+orig_name
+                        print "new_name " +new_name
+                        self.rename(orig_name, new_name)
+                # now get and return the updated value
+                return self.execute_command('GET', new_name)
         return None
 
     def __getitem__(self, name):
@@ -1992,7 +2015,7 @@ class LazyUpdateRedis(object):
             if self.curr_version(ns) == version_from:
                 #TODO sanity checking...
                 self.append_new_version(version_to, ns, upd_file)
-            self.upd_dict[version_from+"|"+ns] = (m, glob, funcs, version_to)
+            self.upd_dict.setdefault(version_from+"|"+ns, []).append((m, glob, funcs, version_to))
              
 
 

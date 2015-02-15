@@ -24,8 +24,6 @@ def reset(r):
 # test basic lazy update functionality 
 def test1(actualredis):
 
-
-
     tname = "test1_z"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
     reset(actualredis)
@@ -77,7 +75,7 @@ def test1(actualredis):
     print r.upd_dict
 
     # test setting...should blow away old versions
-    r.set("edgeattr:n9@n2", "{\"outport\": None, \"inport\": 9}")
+    r.set("edgeattr:n9@n2", "{\"outport\": 2, \"inport\": 9}")
     assert(actualredis.get("v0|edgeattr:n9@n2") is None)
     assert(actualredis.get("v1|edgeattr:n9@n2") is not None)
 
@@ -115,13 +113,69 @@ def test1(actualredis):
     assert(actualredis.get("v0|edgeattr:n2@n2") is None)
     assert(len(actualredis.keys("v*1*")) == 8)
 
-# TODO don't allow connect to v0
-# TODO test combining "for" statements for the same update...
-# TODO test multi-version updates
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+
+# Test combintations of key existing/update existing
+def test2(actualredis):
+
+    tname = "test2_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+
+    # connect to Redis
+    json_val = json.dumps({"outport": None, "inport": None})
+    r = lazyupdredis.connect([("edgeattr", "v0")])
+    for (i,j) in [("1","2"), ("2","3"), ("4","2"), ("4","6"), ("5","2"), ("9","5")]:
+        r.set("edgeattr:n" + i + "@n" + j, json_val)
+
+    # create the update file
+    json_patch_creator.process_dsl("data/example_json/lazy_2_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
+
+    #The globs:
+    #  edgeattr:n*@n5
+    #  edgeattr:n4@n*
+    r.do_upd("generated_" + tname)
+    print "update dict is:"
+    print r.upd_dict
+
+    # key exists, update exists
+    assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
+    e = r.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+    assert(actualredis.get("v1|edgeattr:n9@n5") is not None)
+    assert(actualredis.get("v0|edgeattr:n9@n5") is None)
+
+    # key does not exist, update exists
+    assert(r.get("edgeattr:n4@n7") is None)
+
+    ## key exists, update does not exist
+    assert(actualredis.get("v0|edgeattr:n5@n2") is not None)
+    e = r.get("edgeattr:n5@n2")
+    print e
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    print jsone
+    assert(jsone["outport"] == None )
+    assert(actualredis.get("v1|edgeattr:n5@n2") is not None)
+    assert(actualredis.get("v0|edgeattr:n5@n2") is None)
+
+    ## key does not exist, update does not exist
+    assert(r.get("edgeattr:n1@n9") is None)
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# TODO don't allow connect to v0
+# TODO test combining "for" statements for the same update...
+# TODO test multi-version updates
+# TODO test single-version multi updates
+def test3(actualredis):
+    tname = "test2_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 
 def main():
@@ -130,6 +184,10 @@ def main():
 
     # test basic lazy updates
     test1(actualredis)
+    # test exists/not exists cominations
+    test2(actualredis)
+    # test multi update cmds; test multi updates.
+    # test3(actualredis)
 
     actualredis.execute_command('QUIT')
 
