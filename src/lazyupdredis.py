@@ -268,14 +268,7 @@ class LazyUpdateRedis(object):
         for v in upd_files:
             print "GETTING " + v + " " + upd_files[v]
             m = __import__ (upd_files[v])
-            get_update_tuples = getattr(m, "get_update_tuples")
-            tups = (get_update_tuples())
-            for (glob, funcs, ns, version_from, version_to) in tups:
-                if self.curr_version(ns) == version_from:
-                    #TODO sanity checking...
-                    self.append_new_version(version_to, ns, upd_file)
-                #TODO combine this with the other loading function
-                self.upd_dict.setdefault(version_from+"|"+ns, []).append((m, glob, funcs, version_to))
+            self.load_upd_tuples(m, v)
  
         print "Connected with the following versions: " + str(ns_versions)
 
@@ -288,6 +281,10 @@ class LazyUpdateRedis(object):
         # Check to see if this version is old for this namespace
         elif(v in self.versions(ns)):
             raise ValueError('Fatal - Trying to connect to an old version')
+        # Check to see if we're trying to connect to a bogus version (
+        # if we're starting up without an upd file)
+        elif ((updfile is None) and (curr_ver is not None) and (v != curr_ver)):
+            raise ValueError('Fatal - Trying to connect to a bogus version for namespace: ' + ns)
         # Either the namespace exists, and we need to add a new version
         # or no such namespace exists, so create a version entry for new namespace
         # This call will do either.
@@ -2009,6 +2006,13 @@ class LazyUpdateRedis(object):
             for k in keys:
                 self.set(k,json.dumps(userjson))
 
+        # load up the update tuples to be called lazily later
+        self.load_upd_tuples(m, upd_file)
+ 
+    def load_upd_tuples(self, m, upd_file):
+        """
+        Load up the updating tuples from module m
+        """
         # grab the update/"for" tups
         get_update_tuples = getattr(m, "get_update_tuples")
         update_pairs = get_update_tuples()

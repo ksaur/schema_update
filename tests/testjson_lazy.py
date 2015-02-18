@@ -230,6 +230,8 @@ def test3(actualredis):
     assert(actualredis.get("v0|edgeattr:n2@n3") is None)
     assert(len(actualredis.keys("*edgeattr:n2@n3")) == 1)
 
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
 
 # Make sure to connect to the correct versions
 def test4(actualredis):
@@ -268,15 +270,22 @@ def test4(actualredis):
 
     # now try to connect to and old version.  we should only be able to connect
     # to the new version, should fail
+    print "This should print \"Fatal - old version\":"
+    print "\t",
     try:
        r3 = lazyupdredis.connect([("edgeattr", "v0")])
        assert False, "Should have thrown an exception on previous line"
     except ValueError as e:
        print e
 
-    # now try to connect to some madeup version....should....do...something?!?!
-    # TODO what to do in this case...?  Does the first one that connect always win?
-    #r4 = lazyupdredis.connect([("edgeattr", "v9")])
+    # now try to connect to some madeup version....should fail, since the namespace exists
+    print "This should print \"Fatal - bogus version\":"
+    print "\t",
+    try:
+       r4 = lazyupdredis.connect([("edgeattr", "v9")])
+       assert False, "Should have thrown an exception on previous line"
+    except ValueError as e:
+       print e
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
