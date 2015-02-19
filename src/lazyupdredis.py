@@ -2054,9 +2054,6 @@ def connect(ns_versions):
     Connect to (lazy) redis. Default is localhost, port 6379.
     (Redis must be running.)
 
-    @param host: the address of redis, defaults to 'localhost
-    @param port: the port for redis, defaults to 6379
-        
     """
     r = LazyUpdateRedis(ns_versions)
     try:
