@@ -352,6 +352,57 @@ def parse_dslfile(dslfile):
     print tups
     return tups
 
+def parse_dslfile_string_only(dslfile):
+    #TODO, to open file here, or not?
+    """
+    Takes as input the DSL file in the format of: 
+    for * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
+
+    Ignores the "adds", these will be done right way, not lazily, so no need to store.
+    
+    @return: a dictionary of {oldvernewver|namespace : [DSL String, ...], }
+    """
+
+    def extract_for_keys(estr):
+        p =  '(for) \\s?(\S*)\\s+(.*)->(.*)\\s?{'
+        if re.match(p,estr) is not None:
+            cmd_re = re.compile(p)
+            return cmd_re.search(estr)
+
+    dsl_dict = dict() # for returning
+    for line in dslfile:
+
+        # skip blank lines in between "for key *{...};" stanzas
+        if line == "\n":
+           continue
+
+        parsed = extract_for_keys(line)
+        if parsed is None:
+            continue
+        l = list() # list of all the readin dsl lines
+        l.append(line)
+        cmd = parsed.group(1)
+        keyglob = parsed.group(2).strip()
+        if (len(keyglob.split(":", 1)) != 2):
+            print("\n\nWARNING!!!! - Keyglob Should contain a \":\" to denote namespace\n")
+            namespace = keyglob.strip()
+        else:
+            namespace = keyglob.split(":", 1)[0]
+        curr = next(dslfile, None)
+        while curr and "};" not in curr:
+            l.append(curr)
+            curr = next(dslfile, None)
+        l.append(curr)
+        print "LIST=" + str(l)
+        old_ver = parsed.group(3).strip()
+        new_ver = parsed.group(4).strip()
+        # parse the stuff inside the "for" stanza
+        dict_key = (old_ver +"->" + new_ver + "|" + namespace)
+        dsl_dict.setdefault(dict_key, []).extend(l)
+        print "\n\nnew_ver: " + str(new_ver)
+    print dsl_dict
+    return dsl_dict
+
 
 def bulkload(f, jsonarr):
     for line in f:
@@ -408,6 +459,7 @@ def make_template(file1, file2):
 
     # generate the template file here
     generate_dsltemplate(thediff, outfile)
+
 
 def process_dsl(file1, outfile="dsu.py"):
     """

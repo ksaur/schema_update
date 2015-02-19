@@ -42,10 +42,11 @@
          for each namespace NS.  (There will be a list of versions for each namespaces)
          Ex: "UPDATE_VERSIONS_NS" -> ["V1"]
 
-    * A redis hash of "UPDATE_FILES", which stores a hash mapping version name strings
-         concatinated with namespaces to file names (for loading into the self.upd_dict 
-         as clients connect)  One "UPDATE_FILES" hash total.
-         Ex:  "UPDATE_FILES" -> { "V1|NS" : "generated_upd1.py", "V1|NS2" : "gen_upd2.py"}
+    * A redis hash of "UPDATE_DSL_STRINGS", which stores a hash mapping version name strings
+         concatinated with namespaces to DSL strings (for generating to modules later by 
+         other connected clients into the self.upd_dict 
+         as clients connect)  One "UPDATE_DSL_STRINGS" hash total.
+         Ex:  "UPDATE_DSL_STRINGS" -> { "V1V2|NS" : "for ns:... v0->v1", "V1V2|NS2" : "add ns2....v0"}
     * Update functions are stored in a dictionary named self.upd_dict
       This stores "version string+ -> (version module, dict of (keyglob->module function strings))
          Ex: TODO 
@@ -58,7 +59,8 @@
 """
 
 import redis
-import json, re, sys, fnmatch, decode
+import json, re, sys, fnmatch, decode, time
+import json_patch_creator
 
 from redis.client import (dict_merge, string_keys_to_dict, sort_return_tuples,
     float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
@@ -260,41 +262,30 @@ class LazyUpdateRedis(object):
 
         # check to see if we are the initial version and must init
         for (ns, v) in ns_versions:
-            self.append_new_version(v, ns)
+            self.append_new_version(v, ns, startup=True)
 
-        # check to see if existing updates need to be loaded into this class
+        # check to see if existing updates need to be loaded into this client
         self.upd_dict = dict()
-        upd_files = self.hgetall("UPDATE_FILES")
-        for v in upd_files:
-            print "GETTING " + v + " " + upd_files[v]
-            m = __import__ (upd_files[v])
-            self.load_upd_tuples(m, v)
+        self.load_upd_tuples()
  
         print "Connected with the following versions: " + str(ns_versions)
 
-    def append_new_version(self, v, ns, updfile=None):
+    def append_new_version(self, v, ns, startup=False):
         #TODO DEFAULT NAMESPACE!!!
         curr_ver = self.curr_version(ns)
         # Check if we're already at this namespace
         if (v == curr_ver):
             return 0
         # Check to see if this version is old for this namespace
-        elif(v in self.versions(ns)):
+        elif (startup and (v in self.versions(ns))):
             raise ValueError('Fatal - Trying to connect to an old version')
-        # Check to see if we're trying to connect to a bogus version (
-        # if we're starting up without an upd file)
-        elif ((updfile is None) and (curr_ver is not None) and (v != curr_ver)):
+        # Check to see if we're trying to connect to a bogus version
+        elif (startup and (curr_ver is not None) and (v != curr_ver)):
             raise ValueError('Fatal - Trying to connect to a bogus version for namespace: ' + ns)
         # Either the namespace exists, and we need to add a new version
         # or no such namespace exists, so create a version entry for new namespace
         # This call will do either.
         else:
-            if updfile is not None:        
-                prev = self.hget("UPDATE_FILES", v + "|" + ns)
-                if ((prev is not None) and (prev != updfile)):
-                    sys.exit("\n\nERROR!!! Already had an upate at version " + v + "in file" + prev)
-                else:
-                    self.hset("UPDATE_FILES", v + "|" + ns, updfile)
             return self.rpush("UPDATE_VERSIONS_"+ns, v)
 
     def versions(self, ns):
@@ -810,7 +801,7 @@ class LazyUpdateRedis(object):
                 for upd_v in vers_list[curr_idx+1:]:
 
                     # Make sure we have the update in the dictionary
-                    upd_name = curr_key_version+"|"+ns
+                    upd_name = curr_key_version + "->" + upd_v+"|"+ns
                     print "Updating to version " + upd_v + " using update \'" + upd_name +"\'"
                     if upd_name not in self.upd_dict:
                         print "ERROR!!! No upd info...Could not update key: " + name 
@@ -1976,7 +1967,7 @@ class LazyUpdateRedis(object):
         """
         return Script(self, script)
    
-    def do_upd(self, upd_file="dsu"):
+    def do_upd(self, dsl_file, upd_file_out=None):
         """
         Switch the version string and loadup the update functions for lazy updates.
 
@@ -1984,17 +1975,23 @@ class LazyUpdateRedis(object):
         @param upd_file: The file with the update functions.  Defaults to "dsu".
         
         """
-
+        if upd_file_out == None:
+            upd_file_out = "gen_" + str(int(round(time.time() * 1000))) + ".py"
+        
+        print("parsing from" + str(dsl_file))
+        dsl_for_redis = json_patch_creator.parse_dslfile_string_only(open(dsl_file, 'r'))
+        print dsl_for_redis
+        json_patch_creator.process_dsl(dsl_file, upd_file_out)
         #strip off extention, if provided
-        upd_file = upd_file.replace(".py", "")
+        upd_module = upd_file_out.replace(".py", "")
 
         # do the "add" functions now.
-        print "importing from " + upd_file
-        m = __import__ (upd_file) #m stores the module
+        print "importing from " + upd_module
+        m = __import__ (upd_module) #m stores the module
         get_newkey_tuples = getattr(m, "get_newkey_tuples")
         tups = get_newkey_tuples()
         for (glob, funcs, ns, version) in tups:
-            self.append_new_version(version, ns, upd_file)
+            self.append_new_version(version, ns)
 
             try:
                 func = getattr(m,funcs[0])
@@ -2006,24 +2003,62 @@ class LazyUpdateRedis(object):
             for k in keys:
                 self.set(k,json.dumps(userjson))
 
-        # load up the update tuples to be called lazily later
-        self.load_upd_tuples(m, upd_file)
- 
-    def load_upd_tuples(self, m, upd_file):
-        """
-        Load up the updating tuples from module m
-        """
-        # grab the update/"for" tups
-        get_update_tuples = getattr(m, "get_update_tuples")
-        update_pairs = get_update_tuples()
-
+        # store the update tuples to be called lazily later
         # TODO lock this whole function together to be passed or aborted
+        get_update_tuples = getattr(m, "get_update_tuples")
         tups = get_update_tuples()
+
+        print dsl_for_redis
+        print tups
         for (glob, funcs, ns, version_from, version_to) in tups:
-            if self.curr_version(ns) == version_from:
-                #TODO sanity checking...
-                self.append_new_version(version_to, ns, upd_file)
-            self.upd_dict.setdefault(version_from+"|"+ns, []).append((m, glob, funcs, version_to))
+            print "GOT NAMESPACE: " + ns
+            print "VERSION+FROM: " + version_from
+            #TODO sanity checking...
+            vOldvNewNs = version_from + "->" + version_to + "|" + ns
+            print dsl_for_redis
+            if vOldvNewNs not in dsl_for_redis:
+                raise ValueError("ERROR, dsl string not found: "+ vOldvNewNs)
+            prev = self.hget("UPDATE_DSL_STRINGS", vOldvNewNs)
+            joined = '\n'.join(dsl_for_redis[vOldvNewNs])
+            if ((prev is not None) and (prev != joined)):
+                raise ValueError("\n\nERROR!!! Already had an update at version " + vOldvNewNs )
+            elif (prev != joined):
+                self.hset("UPDATE_DSL_STRINGS", vOldvNewNs, joined)
+            self.append_new_version(version_to, ns)
+            self.upd_dict.setdefault(vOldvNewNs, []).append((m, glob, funcs, version_to))
+
+    def load_upd_tuples(self):
+        """
+        Load up the updating tuples from redis into self.upd_dict
+        """
+        dsl_files = self.hgetall("UPDATE_DSL_STRINGS")
+        print type(dsl_files)
+        print dsl_files
+        #TODO module naming
+        for (k,v) in dsl_files.iteritems():
+            name = "gen_" + str(int(round(time.time() * 1000))) + k.replace("|","").replace("->","")
+            dsl_file = open(name, "w")
+            dsl_file.write(v)
+            dsl_file.close()
+
+            json_patch_creator.process_dsl(name, name+"_gen.py")
+
+            # do the "add" functions now.
+            m = __import__ (name+"_gen") #m stores the module
+            get_upd_tuples = getattr(m, "get_update_tuples")
+            tups = get_upd_tuples()
+            for (glob, funcs, ns, version_from, version_to) in tups:
+                self.append_new_version(version_to, ns)
+
+                try:
+                    func = getattr(m,funcs[0])
+                except AttributeError as e:
+                    print "(Could not find function: " + funcs[0] + ")"
+                    continue
+                # retrieve the list of keys to add, and the usercode to set it to
+                self.upd_dict.setdefault(k, []).append((m, glob, funcs, version_to))
+            print "LOADED: "
+            print self.upd_dict
              
 
 

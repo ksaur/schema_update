@@ -33,11 +33,6 @@ def test1(actualredis):
     assert(actualredis.lrange("UPDATE_VERSIONS_key", 0, -1) == ["ver0"])
     assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) == ["v0"])
 
-
-    # create the update file
-    json_patch_creator.process_dsl("data/example_json/lazy_1_init", tname +".py")
-    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
-
     # add an entry
     cat_a = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"A\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [ { \"product\": \"Fortune Cookies\",   \"price\": 19.99 },{ \"product\": \"Edamame\",   \"price\": 29.99 } ] } }"
     cat_b = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"B\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [ { \"product\": \"Fortune Cookies\",   \"price\": 19.99 },{ \"product\": \"Edamame\",   \"price\": 29.99 } ] } }"
@@ -63,12 +58,12 @@ def test1(actualredis):
 
     # Make sure the versioning works for the udpate 
     print "Performing update for " + tname
-    r.do_upd("generated_" + tname)
+    r.do_upd("data/example_json/lazy_1_init")
+
     assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==["v0", "v1"] )
     # adding new entries is done on demand, so should have new values 
     assert(r.curr_version("edgeattr") == "v1")
     assert(r.versions("edgeattr") == ["v0", "v1"]) 
-    assert(actualredis.hget("UPDATE_FILES", "v1|edgeattr") == ("generated_" + tname))
 
     # make sure the other updates also got loaded
     assert(r.curr_version("key") == "ver1")
@@ -83,7 +78,6 @@ def test1(actualredis):
     r2 = lazyupdredis.connect([("key", "ver1"), ("edgeattr", "v1")])
     assert(r2.versions("edgeattr") == ["v0", "v1"]) 
     assert(r2.curr_version("edgeattr") == "v1") 
-    assert(r2.hget("UPDATE_FILES", "v1|edgeattr") == ("generated_" + tname))
 
     # test that the expected keys are added
     assert(r.get("edgeattr:n1@n2") is not None)
@@ -129,16 +123,10 @@ def test2(actualredis):
     for (i,j) in [("1","2"), ("2","3"), ("4","2"), ("4","6"), ("5","2"), ("9","5")]:
         r.set("edgeattr:n" + i + "@n" + j, json_val)
 
-    # create the update file
-    json_patch_creator.process_dsl("data/example_json/lazy_2_init", tname +".py")
-    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
-
     #The globs:
     #  edgeattr:n*@n5
     #  edgeattr:n4@n*
-    r.do_upd("generated_" + tname)
-    print "update dict is:"
-    print r.upd_dict
+    r.do_upd("data/example_json/lazy_2_init")
 
     # key exists, update exists
     assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
@@ -167,6 +155,7 @@ def test2(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# test multi update cmds; test multi updates.
 def test3(actualredis):
     tname = "test3_z"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
@@ -177,11 +166,8 @@ def test3(actualredis):
     for (i,j) in [("9","5"), ("2","3"), ("4","2")]:
         r.set("edgeattr:n" + i + "@n" + j, json_val)
 
-    # create the update file v0->v1
-    json_patch_creator.process_dsl("data/example_json/lazy_3_init", tname +".py")
-    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
-
-    r.do_upd("generated_" + tname)
+    # load the update file v0->v1
+    r.do_upd("data/example_json/lazy_3_init")
 
     # test combining "for" statements for the same update...
     assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
@@ -196,10 +182,7 @@ def test3(actualredis):
     # test multi-version updates
 
     # create the update file v1->v2
-    json_patch_creator.process_dsl("data/example_json/lazy_3b_init", tname +"2.py")
-    shutil.move(tname +"2.py", "../generated/generated_"+tname+"2.py")
-
-    r.do_upd("generated_" + tname + "2")
+    r.do_upd("data/example_json/lazy_3b_init")
 
     # test going from v1->v2 for (n9@n5)
     print "\n**************** Testing going v1->v2 for n9@n5 *********************"
@@ -244,11 +227,8 @@ def test4(actualredis):
     for (i,j) in [("9","5"), ("2","3"), ("4","2")]:
         r.set("edgeattr:n" + i + "@n" + j, json_val)
 
-    # create the update file v0->v1
-    json_patch_creator.process_dsl("data/example_json/lazy_3_init", tname +".py")
-    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
-
-    r.do_upd("generated_" + tname)
+    # load the update file v0->v1
+    r.do_upd("data/example_json/lazy_3_init")
 
     # make sure update applied
     assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
@@ -259,6 +239,7 @@ def test4(actualredis):
 
     # now try to connect to the current (correct) version, should succeed
     r2 = lazyupdredis.connect([("edgeattr", "v1")])
+    print r2.upd_dict
     e = r.get("edgeattr:n9@n5")
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone["outport"] == 777 )
@@ -290,7 +271,66 @@ def test4(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. Have r2 see the update.
+def test5(actualredis):
+    tname = "test5_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+    # connect to Redis
+    json_val = json.dumps({"outport": None, "inport": None})
+    r1 = lazyupdredis.connect([("edgeattr", "v0")])
+    r2 = lazyupdredis.connect([("edgeattr", "v0")])
+    for (i,j) in [("9","5"), ("2","3"), ("4","2")]:
+        r1.set("edgeattr:n" + i + "@n" + j, json_val)
 
+    # create the update file v0->v1
+    json_patch_creator.process_dsl("data/example_json/lazy_3_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
+
+    r1.do_upd("generated_" + tname)
+
+    # make sure update applied
+    assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
+    e = r1.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+
+
+    # This client is asking for an old key at an old version
+    e = r2.get("edgeattr:n4@n2")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == None )
+    # now see if other client can see the update should succeed
+    e = r2.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+
+    e = r1.get("edgeattr:n9@n5")
+
+   # # now try to connect to and old version.  we should only be able to connect
+   # # to the new version, should fail
+   # print "This should print \"Fatal - old version\":"
+   # print "\t",
+   # try:
+   #    r3 = lazyupdredis.connect([("edgeattr", "v0")])
+   #    assert False, "Should have thrown an exception on previous line"
+   # except ValueError as e:
+   #    print e
+
+   # # now try to connect to some madeup version....should fail, since the namespace exists
+   # print "This should print \"Fatal - bogus version\":"
+   # print "\t",
+   # try:
+   #    r4 = lazyupdredis.connect([("edgeattr", "v9")])
+   #    assert False, "Should have thrown an exception on previous line"
+   # except ValueError as e:
+   #    print e
+
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+
+#TODO Nones with no namespaces
 def main():
     # non-hooked redis commands to work as orginally specified
     actualredis = redis.StrictRedis()
@@ -299,10 +339,14 @@ def main():
     test1(actualredis)
     # test exists/not exists cominations
     test2(actualredis)
-    # test multi update cmds; test multi updates.
-    test3(actualredis)
+    ## test multi update cmds; test multi updates.
+    #test3(actualredis)
     # don't allow connect to previous version
     test4(actualredis)
+    ## Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
+    ## Then have r2 try to do a get, and realize it's behind..
+    ## TODO, I want to hash out all expected behaviuor before implementing this.
+    #test5(actualredis)
 
     actualredis.execute_command('QUIT')
 
