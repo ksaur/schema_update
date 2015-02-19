@@ -283,11 +283,8 @@ def test5(actualredis):
     for (i,j) in [("9","5"), ("2","3"), ("4","2")]:
         r1.set("edgeattr:n" + i + "@n" + j, json_val)
 
-    # create the update file v0->v1
-    json_patch_creator.process_dsl("data/example_json/lazy_3_init", tname +".py")
-    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
-
-    r1.do_upd("generated_" + tname)
+    # load the update file v0->v1
+    r1.do_upd("data/example_json/lazy_3_init")
 
     # make sure update applied
     assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
@@ -346,7 +343,7 @@ def main():
     ## Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
     ## Then have r2 try to do a get, and realize it's behind..
     ## TODO, I want to hash out all expected behaviuor before implementing this.
-    #test5(actualredis)
+    test5(actualredis)
 
     actualredis.execute_command('QUIT')
 

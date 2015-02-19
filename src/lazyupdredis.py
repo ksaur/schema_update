@@ -271,6 +271,9 @@ class LazyUpdateRedis(object):
         print "Connected with the following versions: " + str(ns_versions)
 
     def append_new_version(self, v, ns, startup=False):
+        """
+        Append the new version (v) to redis for namespace (ns)
+        """
         #TODO DEFAULT NAMESPACE!!!
         curr_ver = self.curr_version(ns)
         # Check if we're already at this namespace
@@ -1971,8 +1974,8 @@ class LazyUpdateRedis(object):
         """
         Switch the version string and loadup the update functions for lazy updates.
 
-        @type upd_file: string
-        @param upd_file: The file with the update functions.  Defaults to "dsu".
+        @type dsl_file: string
+        @param dsl_file: The file with the update functions.
         
         """
         if upd_file_out == None:
@@ -1980,7 +1983,6 @@ class LazyUpdateRedis(object):
         
         print("parsing from" + str(dsl_file))
         dsl_for_redis = json_patch_creator.parse_dslfile_string_only(open(dsl_file, 'r'))
-        print dsl_for_redis
         json_patch_creator.process_dsl(dsl_file, upd_file_out)
         #strip off extention, if provided
         upd_module = upd_file_out.replace(".py", "")
@@ -2008,14 +2010,8 @@ class LazyUpdateRedis(object):
         get_update_tuples = getattr(m, "get_update_tuples")
         tups = get_update_tuples()
 
-        print dsl_for_redis
-        print tups
         for (glob, funcs, ns, version_from, version_to) in tups:
-            print "GOT NAMESPACE: " + ns
-            print "VERSION+FROM: " + version_from
-            #TODO sanity checking...
             vOldvNewNs = version_from + "->" + version_to + "|" + ns
-            print dsl_for_redis
             if vOldvNewNs not in dsl_for_redis:
                 raise ValueError("ERROR, dsl string not found: "+ vOldvNewNs)
             prev = self.hget("UPDATE_DSL_STRINGS", vOldvNewNs)
@@ -2029,39 +2025,27 @@ class LazyUpdateRedis(object):
 
     def load_upd_tuples(self):
         """
-        Load up the updating tuples from redis into self.upd_dict
+        Load up (on client connect) the existing updates from redis (stored as user DSL)
+        by generating the update functions and then loading them into self.upd_dict
         """
         dsl_files = self.hgetall("UPDATE_DSL_STRINGS")
-        print type(dsl_files)
-        print dsl_files
-        #TODO module naming
         for (k,v) in dsl_files.iteritems():
+            # Ensure a unique name to checkout the generated code later if necessary
             name = "gen_" + str(int(round(time.time() * 1000))) + k.replace("|","").replace("->","")
+            # Write the contents of redis to a file
             dsl_file = open(name, "w")
             dsl_file.write(v)
             dsl_file.close()
 
+            # Process the DSL file and generate the python update functions
             json_patch_creator.process_dsl(name, name+"_gen.py")
 
-            # do the "add" functions now.
+            # Now load the generated update functions to be called lazily later
             m = __import__ (name+"_gen") #m stores the module
             get_upd_tuples = getattr(m, "get_update_tuples")
             tups = get_upd_tuples()
             for (glob, funcs, ns, version_from, version_to) in tups:
-                self.append_new_version(version_to, ns)
-
-                try:
-                    func = getattr(m,funcs[0])
-                except AttributeError as e:
-                    print "(Could not find function: " + funcs[0] + ")"
-                    continue
-                # retrieve the list of keys to add, and the usercode to set it to
                 self.upd_dict.setdefault(k, []).append((m, glob, funcs, version_to))
-            print "LOADED: "
-            print self.upd_dict
-             
-
-
 
 
 # Utility function...may move this later...
