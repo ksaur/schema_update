@@ -340,7 +340,7 @@ def main():
     # test exists/not exists cominations
     test2(actualredis)
     ## test multi update cmds; test multi updates.
-    #test3(actualredis)
+    test3(actualredis)
     # don't allow connect to previous version
     test4(actualredis)
     ## Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
