@@ -17,6 +17,7 @@ def reset(r):
     # other stuff?
 
 
+
 # test basic INIT, ADD, REN, UPD for fullpaths
 def test1(r):
     tname = "test1"
@@ -279,6 +280,27 @@ def test5(r):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# Test for update in keys made entirely of arrays of json.
+def test6(r):
+    tname = "test6"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(r)
+    
+    json_patch_creator.process_dsl("data/example_json/crazy_init", tname +".py")
+    shutil.move(tname +".py", "../generated/generated_"+tname+".py")
+
+    x = [ { "trusted_ip": "A", "trusted_port": "B", "untrusted_ip": "D", "untrusted_port": "C" },
+     { "trusted_ip": "A", "trusted_port": "B", "untrusted_ip": "D", "untrusted_port": "C" }]
+    print x
+    r.set("fw_allowed", json.dumps(x))
+    numupd = do_upd_all_now.do_upd_all_now(r, "generated_" + tname)
+    e = r.get("fw_allowed")
+    assert (e) is not None
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone[0].get("returned") == 0)
+    assert(jsone[1].get("returned") == 0)
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
 def main():
     # connect to Redis
     r = do_upd_all_now.connect()
@@ -294,6 +316,8 @@ def main():
     test4(r)
     # tests updating or deleting existing keys to db
     test5(r)
+    # test array of json unnamed
+    test6(r)
 
     r.execute_command('QUIT')
 

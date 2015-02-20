@@ -1,0 +1,3 @@
+for fw_allowed v0->v1 {
+INIT [["returned"]] {$out = 0}
+};

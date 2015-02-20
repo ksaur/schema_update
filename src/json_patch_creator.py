@@ -151,7 +151,12 @@ def generate_upd(cmddict, outfile, prefix):
             codeline = tabstop + pos + " = jsonobj"
             
             print keys
-            if(len(keys)>0):
+            if (len(keys) is 1 and type(keys[0]) is list):
+                nextpos = chr(ord(pos) + 1) # increment the variable name
+                codeline += "\n" +tabstop + "for " + nextpos +" in " + pos + ":"
+                tabstop = tabstop + "    "
+                pos = nextpos
+            elif(len(keys)>0):
                 for s in keys[0:(len(keys)-1)]:
                     print type(s)
                     if (type(s) is not list):
@@ -176,7 +181,11 @@ def generate_upd(cmddict, outfile, prefix):
 
             # Replace $out's with the variable to assign to
             if(len(keys)>0):
-                vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
+                print type(keys[len(keys)-1])
+                if(type(keys[len(keys)-1]) is list):
+                    vartoassign = pos+"[\'" + keys[len(keys)-1][0] + "\']"
+                else:
+                    vartoassign = pos+"[\'" + keys[len(keys)-1] + "\']"
             else:
                 vartoassign = pos
             # whoa. where has this function been my whole life?
