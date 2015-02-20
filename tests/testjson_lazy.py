@@ -62,11 +62,11 @@ def test1(actualredis):
 
     assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==["v0", "v1"] )
     # adding new entries is done on demand, so should have new values 
-    assert(r.curr_version("edgeattr") == "v1")
-    assert(r.versions("edgeattr") == ["v0", "v1"]) 
+    assert(r.global_curr_version("edgeattr") == "v1")
+    assert(r.global_versions("edgeattr") == ["v0", "v1"]) 
 
     # make sure the other updates also got loaded
-    assert(r.curr_version("key") == "ver1")
+    assert(r.global_curr_version("key") == "ver1")
     print r.upd_dict
 
     # test setting...should blow away old versions
@@ -76,8 +76,8 @@ def test1(actualredis):
 
     # make sure that the new module loads on a new connection
     r2 = lazyupdredis.connect([("key", "ver1"), ("edgeattr", "v1")])
-    assert(r2.versions("edgeattr") == ["v0", "v1"]) 
-    assert(r2.curr_version("edgeattr") == "v1") 
+    assert(r2.global_versions("edgeattr") == ["v0", "v1"]) 
+    assert(r2.global_curr_version("edgeattr") == "v1") 
 
     # test that the expected keys are added
     assert(r.get("edgeattr:n1@n2") is not None)
@@ -276,10 +276,12 @@ def test5(actualredis):
     tname = "test5_z"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
     reset(actualredis)
-    # connect to Redis
-    json_val = json.dumps({"outport": None, "inport": None})
+
+    # Two clients connect to Redis
     r1 = lazyupdredis.connect([("edgeattr", "v0")])
     r2 = lazyupdredis.connect([("edgeattr", "v0")])
+
+    json_val = json.dumps({"outport": None, "inport": None})
     for (i,j) in [("9","5"), ("2","3"), ("4","2")]:
         r1.set("edgeattr:n" + i + "@n" + j, json_val)
 
@@ -287,41 +289,38 @@ def test5(actualredis):
     r1.do_upd("data/example_json/lazy_3_init")
 
     # make sure update applied
+
+
+    # New Client (r1 at v1|edgeattr), Old Data (v0|egdeattr)
     assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
-    e = r1.get("edgeattr:n9@n5")
-    jsone = json.loads(e,object_hook=decode.decode_dict)
+    val = r1.get("edgeattr:n9@n5")
+    jsone = json.loads(val,object_hook=decode.decode_dict)
     assert(jsone["outport"] == 777 )
 
 
+    # Old Client (r2 at v0|edgeattr), Old Data (v0|egdeattr)
+    # TODO: this is technically OK.   What to do here?
     # This client is asking for an old key at an old version
-    e = r2.get("edgeattr:n4@n2")
-    jsone = json.loads(e,object_hook=decode.decode_dict)
-    assert(jsone["outport"] == None )
-    # now see if other client can see the update should succeed
-    e = r2.get("edgeattr:n9@n5")
-    jsone = json.loads(e,object_hook=decode.decode_dict)
-    assert(jsone["outport"] == 777 )
+    # But redis knows that there should be an update...
+    print "This should print a DeprecationWarning\":"
+    print "\t",
+    try:
+        r2.get("edgeattr:n4@n2")
+        assert False, "Should have thrown DeprecationWarning on previous line"
+    except DeprecationWarning as e:
+        print e
 
-    e = r1.get("edgeattr:n9@n5")
+    # Old Client (r2 at v0|edgeattr), New Data (v1|egdeattr)
+    assert(actualredis.get("v0|edgeattr:n9@n5") is None)
+    assert(actualredis.get("v1|edgeattr:n9@n5") is not None)
+    print "This should print a DeprecationWarning\":"
+    print "\t",
+    try:
+        r2.get("edgeattr:n9@n5")
+        assert False, "Should have thrown Deprecation on previous line"
+    except DeprecationWarning as e:
+        print e
 
-   # # now try to connect to and old version.  we should only be able to connect
-   # # to the new version, should fail
-   # print "This should print \"Fatal - old version\":"
-   # print "\t",
-   # try:
-   #    r3 = lazyupdredis.connect([("edgeattr", "v0")])
-   #    assert False, "Should have thrown an exception on previous line"
-   # except ValueError as e:
-   #    print e
-
-   # # now try to connect to some madeup version....should fail, since the namespace exists
-   # print "This should print \"Fatal - bogus version\":"
-   # print "\t",
-   # try:
-   #    r4 = lazyupdredis.connect([("edgeattr", "v9")])
-   #    assert False, "Should have thrown an exception on previous line"
-   # except ValueError as e:
-   #    print e
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
@@ -336,13 +335,12 @@ def main():
     test1(actualredis)
     # test exists/not exists cominations
     test2(actualredis)
-    ## test multi update cmds; test multi updates.
+    # test multi update cmds; test multi updates.
     test3(actualredis)
     # don't allow connect to previous version
     test4(actualredis)
-    ## Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
-    ## Then have r2 try to do a get, and realize it's behind..
-    ## TODO, I want to hash out all expected behaviuor before implementing this.
+    # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
+    # Then have r2 try to do a get, and realize it's behind..
     test5(actualredis)
 
     actualredis.execute_command('QUIT')

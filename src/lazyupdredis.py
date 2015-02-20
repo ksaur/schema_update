@@ -202,7 +202,7 @@ class LazyUpdateRedis(object):
         connection_pool = ConnectionPool.from_url(url, db=db, **kwargs)
         return cls(connection_pool=connection_pool)
 
-    def __init__(self, ns_versions, host='localhost', port=6379,  
+    def __init__(self, client_ns_versions, host='localhost', port=6379,  
                  db=0, password=None, socket_timeout=None,
                  socket_connect_timeout=None,
                  socket_keepalive=None, socket_keepalive_options=None,
@@ -259,28 +259,30 @@ class LazyUpdateRedis(object):
         self.connection_pool = connection_pool
         self._use_lua_lock = None
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
+        self.client_ns_versions = dict()
 
         # check to see if we are the initial version and must init
-        for (ns, v) in ns_versions:
+        for (ns, v) in client_ns_versions:
             self.append_new_version(v, ns, startup=True)
 
         # check to see if existing updates need to be loaded into this client
         self.upd_dict = dict()
         self.load_upd_tuples()
  
-        print "Connected with the following versions: " + str(ns_versions)
+        print "Connected with the following versions: " + str(client_ns_versions)
 
     def append_new_version(self, v, ns, startup=False):
         """
         Append the new version (v) to redis for namespace (ns)
         """
         #TODO DEFAULT NAMESPACE!!!
-        curr_ver = self.curr_version(ns)
+        curr_ver = self.global_curr_version(ns)
+        self.client_ns_versions[ns] = v
         # Check if we're already at this namespace
         if (v == curr_ver):
             return 0
         # Check to see if this version is old for this namespace
-        elif (startup and (v in self.versions(ns))):
+        elif (startup and (v in self.global_versions(ns))):
             raise ValueError('Fatal - Trying to connect to an old version')
         # Check to see if we're trying to connect to a bogus version
         elif (startup and (curr_ver is not None) and (v != curr_ver)):
@@ -291,14 +293,14 @@ class LazyUpdateRedis(object):
         else:
             return self.rpush("UPDATE_VERSIONS_"+ns, v)
 
-    def versions(self, ns):
+    def global_versions(self, ns):
         """
         Return the LIST of ALL versions from redis for namespace ns
         @param ns: the namespace
         """
         return self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
 
-    def curr_version(self, ns):
+    def global_curr_version(self, ns):
         """
         Return the most current version from redis for namespace ns
         @param ns: the namespace
@@ -702,7 +704,7 @@ class LazyUpdateRedis(object):
         # Delete doesn't allow keyglob, must expand all
         newnames = list()
         for n in names:
-            v = self.versions(self.namespace(n))
+            v = self.global_versions(self.namespace(n))
             newnames.extend(map(lambda x: x + "|" + n, v))
         return self.execute_command('DEL', *newnames)
 
@@ -747,6 +749,7 @@ class LazyUpdateRedis(object):
 
         @return: True on success (function found and called), else False
         """
+        print "totally just continuing: key = " + currkey + "redisval = " + redisval
         jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
         for funcname in funcs:
             try:
@@ -777,7 +780,20 @@ class LazyUpdateRedis(object):
 
         # LAZY UPDATES HERE!!!! :)  
         ns = self.namespace(name)
-        vers_list = self.versions(ns)
+        vers_list = self.global_versions(ns)
+        global_ns_ver = self.global_curr_version(ns)
+        client_ns_ver = self.client_ns_versions[ns]
+
+        #print "client ns version: " + client_ns_ver
+        #print "global ns version: " + global_ns_ver
+        # Make sure the client has been updated to this version
+        if global_ns_ver != client_ns_ver:
+            err= "Could not update key:" + name + ".\nTo continue, " +\
+                "you must update namespace \'" + ns + "\' to version " + global_ns_ver +\
+                ".  Currently at namespace version " + client_ns_ver +\
+                " for \'" + ns + "\'"
+            raise DeprecationWarning(err)
+
         # try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
         for v in reversed(vers_list): # this will test the most current first
             orig_name = v + "|" + name
@@ -785,6 +801,7 @@ class LazyUpdateRedis(object):
             # Found a key!  Figure out which version and see if it needs updating
             if val is not None:
                 curr_key_version = orig_name.split("|", 1)[0]
+                ### print "key ns version: " + curr_key_version
                 print "GOT KEY " + name + " at VERSION: " + curr_key_version
 
                 # Check to see if update is necessary
@@ -805,12 +822,13 @@ class LazyUpdateRedis(object):
 
                     # Make sure we have the update in the dictionary
                     upd_name = curr_key_version + "->" + upd_v+"|"+ns
-                    print "Updating to version " + upd_v + " using update \'" + upd_name +"\'"
                     if upd_name not in self.upd_dict:
-                        print "ERROR!!! No upd info...Could not update key: " + name 
-                        return val
+                        err= "Could not update key:" + name + ".  Could not find " +\
+                            "update \'" + upd_name +"\' in update dictionary."
+                        raise KeyError(err)
 
                     # Grab all the information from the update dictionary...
+                    print "Updating to version " + upd_v + " using update \'" + upd_name +"\'"
                     # Combine all of the update functions into a list "upd_funcs_combined"
                     #
                     # There may be more than one command per update
@@ -1050,7 +1068,7 @@ class LazyUpdateRedis(object):
         if ns is None:
             print "WARNING, COULD NOT ADD: " + name + ". BAD NAMESPACE."
             return None
-        curr_ver = self.curr_version(ns)
+        curr_ver = self.global_curr_version(ns)
         if curr_ver is None:
             print "WARNING, COULD NOT ADD: " + name + ". BAD VERSION."
             return None
@@ -1074,7 +1092,7 @@ class LazyUpdateRedis(object):
             pieces.append('XX')
 
         # Make sure that there is(are) no previous version(s) of this key
-        prev = self.versions(ns)
+        prev = self.global_versions(ns)
         for v in reversed(prev[:-1]):
             oldname = v + "|" + name
             old = self.execute_command('GET', oldname)
@@ -2049,13 +2067,13 @@ class LazyUpdateRedis(object):
 
 
 # Utility function...may move this later...
-def connect(ns_versions):
+def connect(client_ns_versions):
     """ 
     Connect to (lazy) redis. Default is localhost, port 6379.
     (Redis must be running.)
 
     """
-    r = LazyUpdateRedis(ns_versions)
+    r = LazyUpdateRedis(client_ns_versions)
     try:
         r.ping()
     except r.ConnectionError as e:
