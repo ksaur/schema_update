@@ -749,7 +749,6 @@ class LazyUpdateRedis(object):
 
         @return: True on success (function found and called), else False
         """
-        print "totally just continuing: key = " + currkey + "redisval = " + redisval
         jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
         for funcname in funcs:
             try:
