@@ -821,14 +821,14 @@ class LazyUpdateRedis(object):
                 for upd_v in vers_list[curr_idx+1:]:
 
                     # Make sure we have the update in the dictionary
-                    upd_name = curr_key_version + "->" + upd_v+"|"+ns
+                    upd_name = (curr_key_version, upd_v, ns)
                     if upd_name not in self.upd_dict:
                         err= "Could not update key:" + name + ".  Could not find " +\
-                            "update \'" + upd_name +"\' in update dictionary."
+                            "update \'" + str(upd_name) +"\' in update dictionary."
                         raise KeyError(err)
 
                     # Grab all the information from the update dictionary...
-                    print "Updating to version " + upd_v + " using update \'" + upd_name +"\'"
+                    print "Updating to version " + upd_v + " using update \'" + str(upd_name) +"\'"
                     # Combine all of the update functions into a list "upd_funcs_combined"
                     #
                     # There may be more than one command per update
@@ -2001,17 +2001,13 @@ class LazyUpdateRedis(object):
         if upd_file_out == None:
             upd_file_out = "gen_" + str(int(round(time.time() * 1000))) + ".py"
         
-        print("parsing from" + str(dsl_file))
-        dsl_for_redis = json_patch_creator.parse_dslfile_string_only(open(dsl_file, 'r'))
+        dsl_for_redis = json_patch_creator.parse_dslfile_string_only(dsl_file)
 
         # Verify that these updates are sensible with the current database.
-        for k in dsl_for_redis:
-            ex = re.match('(.*)->(.*)\|(.*)', k)# oldver -> newver | namespace
-            if (ex is None):
-                raise KeyError("ERROR, Corrupted update at: "+ key)
-            if (ex.group(1) != self.global_curr_version(ex.group(3))):
-                error = "ERROR: Namespace " + ex.group(3) + " is at \'" +\
-                 self.global_curr_version(ex.group(3)) + "\' but update was for: " + ex.group(1)
+        for (old,new,ns) in dsl_for_redis:
+            if (old != self.global_curr_version(ns)):
+                error = "ERROR: Namespace " + ns + " is at \'" +\
+                    self.global_curr_version(ns) + "\' but update was for: " + old
                 raise KeyError(error)
 
         json_patch_creator.process_dsl(dsl_file, upd_file_out)
@@ -2042,13 +2038,13 @@ class LazyUpdateRedis(object):
         tups = get_update_tuples()
 
         for (glob, funcs, ns, version_from, version_to) in tups:
-            vOldvNewNs = version_from + "->" + version_to + "|" + ns
+            vOldvNewNs = (version_from, version_to, ns)
             if vOldvNewNs not in dsl_for_redis:
-                raise ValueError("ERROR, dsl string not found: "+ vOldvNewNs)
+                raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))
             prev = self.hget("UPDATE_DSL_STRINGS", vOldvNewNs)
             joined = '\n'.join(dsl_for_redis[vOldvNewNs])
             if ((prev is not None) and (prev != joined)):
-                raise ValueError("\n\nERROR!!! Already had an update at version " + vOldvNewNs )
+                raise ValueError("\n\nERROR!!! Already had an update at version " + str(vOldvNewNs) )
             elif (prev != joined):
                 self.hset("UPDATE_DSL_STRINGS", vOldvNewNs, joined)
             self.append_new_version(version_to, ns)

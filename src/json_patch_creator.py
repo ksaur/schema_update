@@ -52,9 +52,8 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
     # get the value to initialize the keys to
     def extract_for_keys(estr):
         for p in patterns:
-            if re.match(p,estr) is not None:
-                cmd_re = re.compile(p)
-                cmd = cmd_re.search(estr)
+            cmd = re.match(p,estr)
+            if cmd is not None:
                 print "outer Group 1  = " +  cmd.group(1)
                 return cmd.group(1)
             else:
@@ -254,12 +253,8 @@ def parse_dslfile_inner(dslfile):
     dsldict = dict()
     def extract_from_re(estr):
         for p in patterns:
-            if re.match(p,estr) is not None:
-                cmd_re = re.compile(p)
-                cmd = cmd_re.search(estr)
-                print cmd_re.groups
-                for i in range(1,cmd_re.groups+1):
-                    print "inner Group " +str(i) + " = " +  cmd.group(i)
+            cmd = re.match(p,estr)
+            if cmd is not None:
                 return cmd
             else:
                 print "FAIL"
@@ -308,9 +303,8 @@ def parse_dslfile(dslfile):
 
     def extract_for_keys(estr):
         for p in patterns:
-            if re.match(p,estr) is not None:
-                cmd_re = re.compile(p)
-                cmd = cmd_re.search(estr)
+            cmd = re.match(p,estr)
+            if cmd is not None:
                 print "outer Group 2  = " +  cmd.group(2)
                 return cmd
             else:
@@ -357,22 +351,23 @@ def parse_dslfile(dslfile):
     print tups
     return tups
 
-def parse_dslfile_string_only(dslfile):
-    #TODO, to open file here, or not?
+def parse_dslfile_string_only(dslfile_location):
     """
-    Takes as input the DSL file in the format of: 
+    Takes as input the name of a DSL file in the format of: 
     for * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
 
     Ignores the "adds", these will be done right way, not lazily, so no need to store.
     
-    @return: a dictionary of {oldvernewver|namespace : [DSL String, ...], }
+    @param dslfile: The location of the DSL file for the update
+    @type dslfile: string
+    
+    @return: a dictionary of {(oldver, newver, namespace) : [DSL String, ...], }
     """
-
-    def extract_for_keys(estr):
-        p =  '(for) \\s?(\S*)\\s+(.*)->(.*)\\s?{'
-        if re.match(p,estr) is not None:
-            cmd_re = re.compile(p)
-            return cmd_re.search(estr)
+    try:
+       dslfile = open(dslfile_location, 'r')
+    except IOError as e:
+       print "I/O error({0}): {1}".format(e.errno, e.strerror)
+       return
 
     dsl_dict = dict() # for returning
     for line in dslfile:
@@ -381,7 +376,8 @@ def parse_dslfile_string_only(dslfile):
         if line == "\n":
            continue
 
-        parsed = extract_for_keys(line)
+        p =  '(for) \\s?(\S*)\\s+(\S*)->(\S*)\\s?{'
+        parsed = re.match(p, line)
         if parsed is None:
             continue
         l = list() # list of all the readin dsl lines
@@ -395,13 +391,13 @@ def parse_dslfile_string_only(dslfile):
             curr = next(dslfile, None)
         l.append(curr)
         print "LIST=" + str(l)
-        old_ver = parsed.group(3).strip()
-        new_ver = parsed.group(4).strip()
+        old_ver = parsed.group(3)
+        new_ver = parsed.group(4)
         # parse the stuff inside the "for" stanza
-        dict_key = (old_ver +"->" + new_ver + "|" + namespace)
+        dict_key = (old_ver, new_ver, namespace)
         dsl_dict.setdefault(dict_key, []).extend(l)
-        print "\n\nnew_ver: " + str(new_ver)
-    print dsl_dict
+        ##print "\n\nnew_ver: " + str(new_ver)
+    ##print dsl_dict
     return dsl_dict
 
 def parse_namespace(name):
