@@ -3,7 +3,7 @@ Load some test data in the database, update, and test for expected results.
 
 """
 import json
-import sys
+import sys, os
 import shutil
 sys.path.append("../src")
 sys.path.append("../generated")
@@ -325,9 +325,58 @@ def test5(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# Test default (no) namepsaces for backward compatibility
+def test6(actualredis):
+    tname = "test6_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+    #  connect to Redis using a default namespace
+    r = lazyupdredis.connect([("*", "fw_v0")])
 
-#TODO Nones with no namespaces
+    x = [ { "trusted_ip": "A", "trusted_port": "B", "untrusted_ip": "D", "untrusted_port": "C" },
+     { "trusted_ip": "A", "trusted_port": "B", "untrusted_ip": "D", "untrusted_port": "C" }]
+    r.set("fw_allowed", json.dumps(x))
+
+    # update with crazy_init, which uses no namespace
+    r.do_upd("data/example_json/crazy_init")
+
+    e = r.get("fw_allowed")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone[0].get("returned") == 0)
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+# Test that user provides the correct name for updating
+def test7(actualredis):
+    tname = "test7_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+
+    #  connect to Redis using a default namespace
+    r = lazyupdredis.connect([("*", "nonsense")])
+
+    x = [ { "trusted_ip": "A", "trusted_port": "B", "untrusted_ip": "D", "untrusted_port": "C" },
+     { "trusted_ip": "A", "trusted_port": "B", "untrusted_ip": "D", "untrusted_port": "C" }]
+    r.set("fw_allowed", json.dumps(x))
+
+    # This udpate specifies fw_v0->fw_v1, but we are are "nonsense" version
+    print "This should print a KeyError\":"
+    print "\t",
+    try:
+        r.do_upd("data/example_json/crazy_init")
+        assert False, "Should have thrown KeyError on previous line"
+    except KeyError as e:
+        print e
+    assert(actualredis.lrange("UPDATE_VERSIONS_*", 0 ,-1) == ["nonsense"])
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+
 def main():
+
+    # Remove the previous run's generated files, for sanity's sake.
+    os.system("rm gen*")
+
     # non-hooked redis commands to work as orginally specified
     actualredis = redis.StrictRedis()
 
@@ -342,6 +391,10 @@ def main():
     # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
     # Then have r2 try to do a get, and realize it's behind..
     test5(actualredis)
+    # Test default (no) namepsaces for backward compatibility
+    test6(actualredis)
+    # Test that user provides the correct name for updating
+    test7(actualredis)
 
     actualredis.execute_command('QUIT')
 

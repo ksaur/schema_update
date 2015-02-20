@@ -269,7 +269,7 @@ class LazyUpdateRedis(object):
         self.upd_dict = dict()
         self.load_upd_tuples()
  
-        print "Connected with the following versions: " + str(client_ns_versions)
+        print "Connected with the following versions: " + str(self.client_ns_versions)
 
     def append_new_version(self, v, ns, startup=False):
         """
@@ -305,13 +305,14 @@ class LazyUpdateRedis(object):
         Return the most current version from redis for namespace ns
         @param ns: the namespace
         """
-        return self.lindex("UPDATE_VERSIONS_"+ns, -1)
+        val = self.lindex("UPDATE_VERSIONS_"+ns, -1)
+        if val is not None:
+            return val
+        print "WARNING: no namespace found for \'" + ns + "\'. Checking default:"
+        return self.lindex("UPDATE_VERSIONS_*", -1)
 
     def namespace(self, name):
-        if (len(name.split(":", 1)) != 2):
-            return name
-        else:
-            return name.split(":", 1)[0]
+        return json_patch_creator.parse_namespace(name)
 
     def __repr__(self):
         return "%s<%s>" % (type(self).__name__, repr(self.connection_pool))
@@ -1061,16 +1062,11 @@ class LazyUpdateRedis(object):
             already exists.
         """
 
-
-        # TODO error checking
         ns = self.namespace(name)
-        if ns is None:
-            print "WARNING, COULD NOT ADD: " + name + ". BAD NAMESPACE."
-            return None
         curr_ver = self.global_curr_version(ns)
         if curr_ver is None:
-            print "WARNING, COULD NOT ADD: " + name + ". BAD VERSION."
-            return None
+            raise ValueError("ERROR, Bad for current version (None) for key \'" + name +\
+                  "\'. Global versions are: " + str(self.global_versions(ns)))
         ver_and_name = curr_ver + "|" + name
         pieces = [ver_and_name, value]
         if ex:
@@ -1989,10 +1985,17 @@ class LazyUpdateRedis(object):
    
     def do_upd(self, dsl_file, upd_file_out=None):
         """
-        Switch the version string and loadup the update functions for lazy updates.
+        Switch the version string and load up the update functions for lazy updates.
+           
+        In order for an update to be applied, there must exist a valid namespace.
+        Ex: If the update is for namespace = "foo" from "v0"->"v1", but the data
+            in redis is "ver0|foo", the update will be rejected, and this function
+            will return false 
 
         @type dsl_file: string
         @param dsl_file: The file with the update functions.
+
+        @return True for success, False for failure.
         
         """
         if upd_file_out == None:
@@ -2000,8 +2003,19 @@ class LazyUpdateRedis(object):
         
         print("parsing from" + str(dsl_file))
         dsl_for_redis = json_patch_creator.parse_dslfile_string_only(open(dsl_file, 'r'))
+
+        # Verify that these updates are sensible with the current database.
+        for k in dsl_for_redis:
+            ex = re.match('(.*)->(.*)\|(.*)', k)# oldver -> newver | namespace
+            if (ex is None):
+                raise KeyError("ERROR, Corrupted update at: "+ key)
+            if (ex.group(1) != self.global_curr_version(ex.group(3))):
+                error = "ERROR: Namespace " + ex.group(3) + " is at \'" +\
+                 self.global_curr_version(ex.group(3)) + "\' but update was for: " + ex.group(1)
+                raise KeyError(error)
+
         json_patch_creator.process_dsl(dsl_file, upd_file_out)
-        #strip off extention, if provided
+        # strip off extention, if provided
         upd_module = upd_file_out.replace(".py", "")
 
         # do the "add" functions now.

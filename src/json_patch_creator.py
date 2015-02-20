@@ -331,11 +331,7 @@ def parse_dslfile(dslfile):
             sys.exit("\n\nFatal - Parse error near line containing: " + line)
         cmd = parsed.group(1)
         keyglob = parsed.group(2).strip()
-        if (len(keyglob.split(":", 1)) != 2):
-            print("\n\nWARNING!!!! - Keyglob Should contain a \":\" to denote namespace\n")
-            namespace = keyglob.strip()
-        else:
-            namespace = keyglob.split(":", 1)[0]
+        namespace = parse_namespace(keyglob)
         curr = next(dslfile, None)
         while curr and "};" not in curr:
             l.append(curr)
@@ -392,11 +388,7 @@ def parse_dslfile_string_only(dslfile):
         l.append(line)
         cmd = parsed.group(1)
         keyglob = parsed.group(2).strip()
-        if (len(keyglob.split(":", 1)) != 2):
-            print("\n\nWARNING!!!! - Keyglob Should contain a \":\" to denote namespace\n")
-            namespace = keyglob.strip()
-        else:
-            namespace = keyglob.split(":", 1)[0]
+        namespace = parse_namespace(keyglob)
         curr = next(dslfile, None)
         while curr and "};" not in curr:
             l.append(curr)
@@ -412,6 +404,12 @@ def parse_dslfile_string_only(dslfile):
     print dsl_dict
     return dsl_dict
 
+def parse_namespace(name):
+    if (len(name.split(":", 1)) != 2):
+        print "WARNING: using default namespace (*) for \'" + name + "\'."
+        return "*"
+    else:
+        return name.split(":", 1)[0]
 
 def bulkload(f, jsonarr):
     for line in f:
