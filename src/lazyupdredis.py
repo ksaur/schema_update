@@ -1047,6 +1047,9 @@ class LazyUpdateRedis(object):
 
     def set(self, name, value, ex=None, px=None, nx=False, xx=False):
         """
+        If the client is at the correct version, then we don't need to run the
+        update function, since the client should only set the correct value.
+
         Set the value at key ``name`` to ``value``
 
         Prepends the current version string to key ``name``.
@@ -1061,7 +1064,6 @@ class LazyUpdateRedis(object):
         ``xx`` if set to True, set the value at key ``name`` to ``value`` if it
             already exists.
         """
-
         ns = self.namespace(name)
         curr_ver = self.global_curr_version(ns)
         if curr_ver is None:

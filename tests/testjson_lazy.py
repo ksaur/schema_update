@@ -54,8 +54,6 @@ def test1(actualredis):
     assert(len(r.keys("*")) == 3)
     assert(len(actualredis.keys("*")) == 5) # key:1 key:2 edgettr92 UPDV:key UPDV:edge
  
-    #TODO test "nones" with no namespaces
-
     # Make sure the versioning works for the udpate 
     print "Performing update for " + tname
     r.do_upd("data/example_json/lazy_1_init")
