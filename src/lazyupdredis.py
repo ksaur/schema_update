@@ -749,7 +749,7 @@ class LazyUpdateRedis(object):
         """ 
         Loop over the list of funcs and apply it to the value at currkey
 
-        @return: True on success (function found and called), else False
+        @return: A list [key, value] to feed to redis for setting
         """
         jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
         for funcname in funcs:
@@ -757,21 +757,13 @@ class LazyUpdateRedis(object):
                 func = getattr(m,funcname)
             except AttributeError as e:
                 print "(Could not find function: " + funcname + ")"
-                return False
+                return None
             # Call the function for the current key and current jsonsubkey
             (modkey, modjson) = func(currkey, jsonkey)
             print "GOT BACK: " + str(modkey) + " " + str(modjson)
 
-            # Now serialize it back, then write it back to redis.  
-            # (Note that the key was modified in place.)
-            modjsonstr = json.dumps(modjson)
-            if(modkey is not None):
-                self.set(modkey, modjsonstr)
-            # if key changed, delete the old
-            # TODO double check versioning
-            if(modkey != currkey):
-                self.delete(currkey)
-        return True
+        modjsonstr = json.dumps(modjson)
+        return [modkey, modjsonstr]
 
     def get(self, name):
         """
@@ -859,12 +851,16 @@ class LazyUpdateRedis(object):
                     # version string only gets written once.
                     if upd_funcs_combined:  
                         print "Applying some updates:" + str(upd_funcs_combined)
-                        if self.update(name, val, upd_funcs_combined, module):
+                        mod = self.update(name, val, upd_funcs_combined, module)
+                        if mod:
+                            mod[0] = upd_v + "|" + mod[0]
+                            print "SETTTING: " + mod[0] + " to " + str(mod[1])
+                            self.execute_command('SET', *mod)
+                            print "DELETING: " + curr_key_version+ "|" + name
+                            self.execute_command('DEL', curr_key_version+ "|" + name)
                             curr_key_version = new_ver
-                            self.execute_command('DEL', orig_name)
                         else:
-                            print "ERROR!!! Could not update key: " + name 
-                            return val
+                            raise ValueError( "ERROR!!! Could not update key: " + name )
                     # no functions matched, update version string only.                   
                     else:
                         print "\tNo functions matched.  Updating version str only"
