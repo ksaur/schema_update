@@ -85,6 +85,7 @@ from redis.exceptions import (
     TimeoutError,
     WatchError,
 )
+from redis.client import StrictPipeline
 
 class LazyUpdateRedis(object):
     """
@@ -1049,6 +1050,7 @@ class LazyUpdateRedis(object):
         """
         If the client is at the correct version, then we don't need to run the
         update function, since the client should only set the correct value.
+        We only need to update the version string.
 
         Set the value at key ``name`` to ``value``
 
@@ -1069,8 +1071,8 @@ class LazyUpdateRedis(object):
         if curr_ver is None:
             raise ValueError("ERROR, Bad for current version (None) for key \'" + name +\
                   "\'. Global versions are: " + str(self.global_versions(ns)))
-        ver_and_name = curr_ver + "|" + name
-        pieces = [ver_and_name, value]
+        new_name = curr_ver + "|" + name
+        pieces = [new_name, value]
         if ex:
             pieces.append('EX')
             if isinstance(ex, datetime.timedelta):
@@ -1088,17 +1090,31 @@ class LazyUpdateRedis(object):
         if xx:
             pieces.append('XX')
 
-        # Make sure that there is(are) no previous version(s) of this key
+        # Even though we're not doing the udpate on the value (since the client 
+        # was asserted to be at the correct verson), we still need to update the
+        # version string.
         prev = self.global_versions(ns)
-        for v in reversed(prev[:-1]):
-            oldname = v + "|" + name
-            old = self.execute_command('GET', oldname)
-            if old is not None:
-                self.execute_command('DEL', oldname)
-            else:
-                break
+        try:
+            pipe = self.pipeline()
+            pipe.watch(new_name)
+            pipe.multi()
+            for v in reversed(prev[:-1]):
+                oldname = v + "|" + name
+                old = pipe.execute_command('GET', oldname)
+                if old is not None:
+                    pipe.execute_command('DEL', oldname)
+                else:
+                    break
 
-        return self.execute_command('SET', *pieces)
+            pipe.execute_command('SET', *pieces)
+            rets = pipe.execute()
+            if rets:
+                return rets[-1]
+            return False
+        except WatchError:
+            print "WATCH ERROR, Value not set"
+            return False
+        
 
     def __setitem__(self, name, value):
         self.set(name, value)

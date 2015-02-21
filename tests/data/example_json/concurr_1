@@ -1,0 +1,3 @@
+for mykey:* v0->v1 {
+  #version number update only, placeholder
+};
