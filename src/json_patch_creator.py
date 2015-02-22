@@ -330,7 +330,7 @@ def parse_dslfile(dslfile):
         while curr and "};" not in curr:
             l.append(curr)
             curr = next(dslfile, None)
-        print "LIST=" + str(l)
+        #print "LIST=" + str(l)
         # parse the stuff inside the "for" stanza
         if (cmd == "for"):
             inner = parse_dslfile_inner(iter(l))
@@ -390,7 +390,7 @@ def parse_dslfile_string_only(dslfile_location):
             l.append(curr)
             curr = next(dslfile, None)
         l.append(curr)
-        print "LIST=" + str(l)
+        #print "LIST=" + str(l)
         old_ver = parsed.group(3)
         new_ver = parsed.group(4)
         # parse the stuff inside the "for" stanza

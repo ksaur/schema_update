@@ -46,7 +46,8 @@
          concatinated with namespaces to DSL strings (for generating to modules later by 
          other connected clients into the self.upd_dict 
          as clients connect)  One "UPDATE_DSL_STRINGS" hash total.
-         Ex:  "UPDATE_DSL_STRINGS" -> { "V1V2|NS" : "for ns:... v0->v1", "V1V2|NS2" : "add ns2....v0"}
+         Ex:  "UPDATE_DSL_STRINGS" -> { "(V1, V2, NS)" : "for ns:... v0->v1", 
+              "(V1, V2, NS2)" : "add ns2....v0"}
     * Update functions are stored in a dictionary named self.upd_dict
       This stores "version string+ -> (version module, dict of (keyglob->module function strings))
          Ex: TODO 
@@ -61,6 +62,7 @@
 import redis
 import json, re, sys, fnmatch, decode, time
 import json_patch_creator
+from ast import literal_eval
 
 from redis.client import (dict_merge, string_keys_to_dict, sort_return_tuples,
     float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
@@ -854,9 +856,7 @@ class LazyUpdateRedis(object):
                         mod = self.update(name, val, upd_funcs_combined, module)
                         if mod:
                             mod[0] = upd_v + "|" + mod[0]
-                            print "SETTTING: " + mod[0] + " to " + str(mod[1])
                             self.execute_command('SET', *mod)
-                            print "DELETING: " + curr_key_version+ "|" + name
                             self.execute_command('DEL', curr_key_version+ "|" + name)
                             curr_key_version = new_ver
                         else:
@@ -864,8 +864,7 @@ class LazyUpdateRedis(object):
                     # no functions matched, update version string only.                   
                     else:
                         print "\tNo functions matched.  Updating version str only"
-                        print "orig_name "+orig_name
-                        print "new_name " +new_name
+                        print "orig_name "+orig_name + " -> new_name " +new_name
                         self.rename(orig_name, new_name)
                 # now get and return the updated value
                 return self.execute_command('GET', new_name)
@@ -2070,23 +2069,25 @@ class LazyUpdateRedis(object):
         by generating the update functions and then loading them into self.upd_dict
         """
         dsl_files = self.hgetall("UPDATE_DSL_STRINGS")
-        for (k,v) in dsl_files.iteritems():
+        for vvn_string in dsl_files:
+            # Tuple of will be read in as string "("v0", "v1", "ns")". Convert to tuple ("v0", "v1", "ns")
+            vvn_tup = literal_eval(vvn_string) 
             # Ensure a unique name to checkout the generated code later if necessary
-            name = "gen_" + str(int(round(time.time() * 1000))) + k.replace("|","").replace("->","")
+            name = "gen_" + str(int(round(time.time() * 1000))) + "_"+ vvn_tup[2]
             # Write the contents of redis to a file
             dsl_file = open(name, "w")
-            dsl_file.write(v)
+            dsl_file.write(dsl_files[vvn_string])
             dsl_file.close()
 
             # Process the DSL file and generate the python update functions
-            json_patch_creator.process_dsl(name, name+"_gen.py")
+            json_patch_creator.process_dsl(name, name+".py")
 
             # Now load the generated update functions to be called lazily later
-            m = __import__ (name+"_gen") #m stores the module
+            m = __import__ (name) #m stores the module
             get_upd_tuples = getattr(m, "get_update_tuples")
             tups = get_upd_tuples()
             for (glob, funcs, ns, version_from, version_to) in tups:
-                self.upd_dict.setdefault(k, []).append((m, glob, funcs, version_to))
+                self.upd_dict.setdefault(vvn_tup, []).append((m, glob, funcs, version_to))
 
 
 # Utility function...may move this later...

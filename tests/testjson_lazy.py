@@ -213,6 +213,68 @@ def test3(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# test that updates can be performed by multiple clients.
+# (and that the upd_dict gets loaded properly)
+def test3b(actualredis):
+    tname = "test3b_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+    # connect to Redis
+    json_val = json.dumps({"outport": None, "inport": None})
+    r = lazyupdredis.connect([("edgeattr", "v0")])
+    for (i,j) in [("9","5"), ("2","3"), ("4","2")]:
+        r.set("edgeattr:n" + i + "@n" + j, json_val)
+
+    # load the update file v0->v1
+    r.do_upd("data/example_json/lazy_3_init")
+
+    # test combining "for" statements for the same update...
+    assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
+    e = r.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+    assert(jsone["inport"] == 999 )
+    assert(actualredis.get("v1|edgeattr:n9@n5") is not None)
+    assert(actualredis.get("v0|edgeattr:n9@n5") is None)
+
+
+    # test multi-version updates
+
+    # create the update file v1->v2
+    r2 = lazyupdredis.connect([("edgeattr", "v1")])
+    r2.do_upd("data/example_json/lazy_3b_init")
+
+    # test going from v1->v2 for (n9@n5)
+    print "\n**************** Testing going v1->v2 for n9@n5 *********************"
+    assert(actualredis.get("v1|edgeattr:n9@n5") is not None)
+    e = r2.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 555 )
+    assert(jsone["inport"] == 333 )
+    assert(actualredis.get("v2|edgeattr:n9@n5") is not None)
+    assert(actualredis.get("v1|edgeattr:n9@n5") is None)
+    assert(actualredis.get("v0|edgeattr:n9@n5") is None)
+    assert(len(actualredis.keys("*edgeattr:n9@n5")) == 1)
+
+    # r is now at ("edgeattr", "v1"), r2 is at ("edgeattr", "v2")
+    assert(len(r.upd_dict)==1)
+    assert(("v0", "v1", "edgeattr") in r.upd_dict)
+    assert(len(r2.upd_dict)==2)
+    assert(("v0", "v1", "edgeattr") in r2.upd_dict)
+    assert(("v1", "v2", "edgeattr") in r2.upd_dict)
+    assert((r2.upd_dict[("v1", "v2", "edgeattr")][0][3])=="v2")
+
+    # have r try to do the upate the r2 alreayd did
+    print ("Expecting an error for re-applying an update:")
+    try:
+        r.do_upd("data/example_json/lazy_3b_init")
+        assert False, "Should have thrown an exception on previous line"
+    except KeyError as e:
+        print "\t" + str(e)
+
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
 
 # Make sure to connect to the correct versions
 def test4(actualredis):
@@ -342,6 +404,7 @@ def test6(actualredis):
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone[0].get("returned") == 0)
 
+
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 # Test that user provides the correct name for updating
@@ -384,6 +447,8 @@ def main():
     test2(actualredis)
     # test multi update cmds; test multi updates.
     test3(actualredis)
+    # test that updates can be performed by multiple clients.
+    test3b(actualredis) #TODO
     # don't allow connect to previous version
     test4(actualredis)
     # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
