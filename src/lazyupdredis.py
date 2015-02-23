@@ -746,7 +746,6 @@ class LazyUpdateRedis(object):
         return self.execute_command('EXPIREAT', name, when)
 
    
-    #TODO lock the key!!
     def update(self, currkey, redisval, funcs, m):
         """ 
         Loop over the list of funcs and apply it to the value at currkey
@@ -769,18 +768,16 @@ class LazyUpdateRedis(object):
 
     def get(self, name):
         """
-        Return the value at key ``name`` (any version), or None if the key 
-        doesn't exist
+        Return the value at key ``name``, updating to most recent version if necessary,
+        or return None if the key doesn't exist
+  
+        Return False if there was a concurrency error. #TODO what is best here?!?!
         """
 
-        # LAZY UPDATES HERE!!!! :)  
         ns = self.namespace(name)
-        vers_list = self.global_versions(ns)
         global_ns_ver = self.global_curr_version(ns)
         client_ns_ver = self.client_ns_versions[ns]
 
-        #print "client ns version: " + client_ns_ver
-        #print "global ns version: " + global_ns_ver
         # Make sure the client has been updated to this version
         if global_ns_ver != client_ns_ver:
             err= "Could not update key:" + name + ".\nTo continue, " +\
@@ -788,87 +785,114 @@ class LazyUpdateRedis(object):
                 ".  Currently at namespace version " + client_ns_ver +\
                 " for \'" + ns + "\'"
             raise DeprecationWarning(err)
+        
+        # Check to see if we're already current
+        orig_name = global_ns_ver + "|" + name
+        val = self.execute_command('GET', orig_name)
+        # Return immediately if no update is necsesary
+        if(val):
+            print "\tNo update necessary for key: " + name + " (version = " + global_ns_ver + ")"
+            return val
 
-        # try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
-        for v in reversed(vers_list): # this will test the most current first
+        # No key found at the current version.
+        # Try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
+        vers_list = self.global_versions(ns)
+        curr_key_version = None
+        for v in reversed(vers_list[:-1]): # this will test the most current first
             orig_name = v + "|" + name
             val = self.execute_command('GET', orig_name)
             # Found a key!  Figure out which version and see if it needs updating
             if val is not None:
                 curr_key_version = orig_name.split("|", 1)[0]
                 ### print "key ns version: " + curr_key_version
-                print "GOT KEY " + name + " at VERSION: " + curr_key_version
+                print "GOT KEY " + name + " at VERSION: " + v
+                break
+        # no key at 'name' for any eversion.
+        if curr_key_version == None:
+            return None
 
-                # Check to see if update is necessary
-                # Return immediately if no update is necsesary
-                if(curr_key_version == vers_list[-1]):
-                    print "\tNo update necessary for key: " + name + " (version = " + curr_key_version + ")"
-                    return val
 
-                # Version isn't current.  Now check for updates
-                curr_idx = vers_list.index(curr_key_version)
-                new_name = vers_list[-1] + "|" + name
-                print "\tCurrent key is at position " + str(curr_idx) +\
-                    " in the udp list, which means that there is/are " + \
-                    str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
+        ######### LAZY UPDATES HERE!!!! :)  ########
 
-                # Apply 1 or multiple updates, if necessary
-                for upd_v in vers_list[curr_idx+1:]:
+        # Version isn't current.  Now check for updates
+        curr_idx = vers_list.index(curr_key_version)
+        new_name = vers_list[-1] + "|" + name
+        print "\tCurrent key is at position " + str(curr_idx) +\
+            " in the udp list, which means that there is/are " + \
+            str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
 
-                    # Make sure we have the update in the dictionary
-                    upd_name = (curr_key_version, upd_v, ns)
-                    if upd_name not in self.upd_dict:
-                        err= "Could not update key:" + name + ".  Could not find " +\
-                            "update \'" + str(upd_name) +"\' in update dictionary."
-                        raise KeyError(err)
+        try:
+            pipe = self.pipeline()
+            pipe.watch(orig_name)
+            # must call "watch" on all before calling multi.
+            for upd_v in vers_list[curr_idx+1:]:
+                pipe.watch(upd_v + "|" + name)
+            pipe.multi()
 
-                    # Grab all the information from the update dictionary...
-                    print "Updating to version " + upd_v + " using update \'" + str(upd_name) +"\'"
-                    # Combine all of the update functions into a list "upd_funcs_combined"
-                    #
-                    # There may be more than one command per update
-                    #   Ex: for edgeattr:n*@n5 v0->v1
-                    #       for edgeattr:n4@n* v0->v1
-                    upd_funcs_combined = list()
-                    for (module, glob, upd_funcs, new_ver) in self.upd_dict[upd_name]:
+            # Apply 1 or multiple updates, from oldest to newest, if necessary
+            for upd_v in vers_list[curr_idx+1:]:
 
-                        print "Found a rule."
-                        print "new_ver = " + new_ver + " upd_v = " + upd_v
-                        # Make sure we have the expected version
-                        if (new_ver != upd_v):
-                            print "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
-                            return val
-                        # Check if the keyglob matches this particular key
-                        # Ex: if the glob wanted key:[1-3] and we are key:4, no update,
-                        #     eventhough the namespace matches.
-                        print "Searching for a match with glob = " + glob 
-                        print "and name = " + name 
-                        if re.match(fnmatch.translate(glob), name):
-                            print "\tUpdating key " + name + " to version: " + upd_v
-                            print "\tusing the following functions:" + str(upd_funcs)
-                            print "\twith value:" + val
-                            upd_funcs_combined.extend(upd_funcs)
+                # Make sure we have the update in the dictionary
+                upd_name = (curr_key_version, upd_v, ns)
+                if upd_name not in self.upd_dict:
+                    err= "Could not update key:" + name + ".  Could not find " +\
+                        "update \'" + str(upd_name) +"\' in update dictionary."
+                    raise KeyError(err)
 
-                    # if we found some functions to call, then call them (all at once) so the
-                    # version string only gets written once.
-                    if upd_funcs_combined:  
-                        print "Applying some updates:" + str(upd_funcs_combined)
-                        mod = self.update(name, val, upd_funcs_combined, module)
-                        if mod:
-                            mod[0] = upd_v + "|" + mod[0]
-                            self.execute_command('SET', *mod)
-                            self.execute_command('DEL', curr_key_version+ "|" + name)
-                            curr_key_version = new_ver
-                        else:
-                            raise ValueError( "ERROR!!! Could not update key: " + name )
-                    # no functions matched, update version string only.                   
+                # Grab all the information from the update dictionary...
+                print "Updating to version " + upd_v + " using update \'" + str(upd_name) +"\'"
+                # Combine all of the update functions into a list "upd_funcs_combined"
+                #
+                # There may be more than one command per update
+                #   Ex: for edgeattr:n*@n5 v0->v1
+                #       for edgeattr:n4@n* v0->v1
+                upd_funcs_combined = list()
+                for (module, glob, upd_funcs, new_ver) in self.upd_dict[upd_name]:
+
+                    print "Found a rule."
+                    print "new_ver = " + new_ver + " upd_v = " + upd_v
+                    # Make sure we have the expected version
+                    if (new_ver != upd_v):
+                        print "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
+                        return val
+                    # Check if the keyglob matches this particular key
+                    # Ex: if the glob wanted key:[1-3] and we are key:4, no update,
+                    #     eventhough the namespace matches.
+                    print "Searching for a match with glob = " + glob 
+                    print "and name = " + name 
+                    if re.match(fnmatch.translate(glob), name):
+                        print "\tUpdating key " + name + " to version: " + upd_v
+                        print "\tusing the following functions:" + str(upd_funcs)
+                        print "\twith value:" + val
+                        upd_funcs_combined.extend(upd_funcs)
+
+                # if we found some functions to call, then call them (all at once) so the
+                # version string only gets written once.
+                if upd_funcs_combined:  
+                    print "Applying some updates:" + str(upd_funcs_combined)
+                    mod = self.update(name, val, upd_funcs_combined, module)
+                    if mod:
+                        mod[0] = upd_v + "|" + mod[0]
+                        pipe.execute_command('SET', *mod)
+                        pipe.execute_command('DEL', curr_key_version+ "|" + name)
+                        curr_key_version = new_ver
                     else:
-                        print "\tNo functions matched.  Updating version str only"
-                        print "orig_name "+orig_name + " -> new_name " +new_name
-                        self.rename(orig_name, new_name)
-                # now get and return the updated value
-                return self.execute_command('GET', new_name)
-        return None
+                        raise ValueError( "ERROR!!! Could not update key: " + name )
+                # no functions matched, update version string only.                   
+                else:
+                    print "\tNo functions matched.  Updating version str only"
+                    print "orig_name "+orig_name + " -> new_name " +new_name
+                    pipe.rename(orig_name, new_name)
+            # now get and return the updated value
+            pipe.execute_command('GET', new_name)
+            rets = pipe.execute()
+            if rets:
+                return rets[-1]
+            return None
+        except WatchError:
+            print "WATCH ERROR, Value not set"
+            return False #TODO what to return here?!?!
+        
 
     def __getitem__(self, name):
         """
@@ -1064,7 +1088,7 @@ class LazyUpdateRedis(object):
         ns = self.namespace(name)
         curr_ver = self.global_curr_version(ns)
         if curr_ver is None:
-            raise ValueError("ERROR, Bad for current version (None) for key \'" + name +\
+            raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
                   "\'. Global versions are: " + str(self.global_versions(ns)))
         new_name = curr_ver + "|" + name
         pieces = [new_name, value]

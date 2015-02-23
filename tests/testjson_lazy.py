@@ -332,6 +332,7 @@ def test4(actualredis):
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. Have r2 see the update.
+# Then have r2 try to do a get, and realize it's behind..
 def test5(actualredis):
     tname = "test5_z"
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
@@ -448,11 +449,10 @@ def main():
     # test multi update cmds; test multi updates.
     test3(actualredis)
     # test that updates can be performed by multiple clients.
-    test3b(actualredis) #TODO
+    test3b(actualredis)
     # don't allow connect to previous version
     test4(actualredis)
     # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
-    # Then have r2 try to do a get, and realize it's behind..
     test5(actualredis)
     # Test default (no) namepsaces for backward compatibility
     test6(actualredis)
