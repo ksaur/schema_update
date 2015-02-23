@@ -278,23 +278,33 @@ class LazyUpdateRedis(object):
         """
         Append the new version (v) to redis for namespace (ns)
         """
-        #TODO DEFAULT NAMESPACE!!!
-        curr_ver = self.global_curr_version(ns)
-        self.client_ns_versions[ns] = v
-        # Check if we're already at this namespace
-        if (v == curr_ver):
-            return 0
-        # Check to see if this version is old for this namespace
-        elif (startup and (v in self.global_versions(ns))):
-            raise ValueError('Fatal - Trying to connect to an old version')
-        # Check to see if we're trying to connect to a bogus version
-        elif (startup and (curr_ver is not None) and (v != curr_ver)):
-            raise ValueError('Fatal - Trying to connect to a bogus version for namespace: ' + ns)
-        # Either the namespace exists, and we need to add a new version
-        # or no such namespace exists, so create a version entry for new namespace
-        # This call will do either.
-        else:
-            return self.rpush("UPDATE_VERSIONS_"+ns, v)
+        try:
+            pipe = self.pipeline()
+            pipe.watch("UPDATE_VERSIONS_"+ns)
+            pipe.multi()
+            curr_ver = self.global_curr_version(ns)
+            self.client_ns_versions[ns] = v
+            # Check if we're already at this namespace
+            if (v == curr_ver):
+                return 0
+            # Check to see if this version is old for this namespace
+            elif (startup and (v in self.global_versions(ns))):
+                raise ValueError('Fatal - Trying to connect to an old version')
+            # Check to see if we're trying to connect to a bogus version
+            elif (startup and (curr_ver is not None) and (v != curr_ver)):
+                raise ValueError('Fatal - Trying to connect to a bogus version for namespace: ' + ns)
+            # Either the namespace exists, and we need to add a new version
+            # or no such namespace exists, so create a version entry for new namespace
+            # This call will do either.
+            else:
+                pipe.rpush("UPDATE_VERSIONS_"+ns, v)
+            rets = pipe.execute()
+            if rets:
+                return rets[-1]
+            return None
+        except WatchError:
+            print "WATCH ERROR, Value not set for UPDATE_VERSIONS"
+            return None
 
     def global_versions(self, ns):
         """
@@ -510,9 +520,7 @@ class LazyUpdateRedis(object):
 
     def flushall(self):
         "Delete all keys in all databases on the current host"
-        upds = self.lrange("UPDATE_VERSIONS", 0, -1)
-        ret = self.execute_command('FLUSHALL')
-        return ret
+        return self.execute_command('FLUSHALL')
 
     def flushdb(self):
         "Delete all keys in the current database"
@@ -786,7 +794,7 @@ class LazyUpdateRedis(object):
                 " for \'" + ns + "\'"
             raise DeprecationWarning(err)
         
-        # Check to see if we're already current
+        # Check to see if the requested key is already current
         orig_name = global_ns_ver + "|" + name
         val = self.execute_command('GET', orig_name)
         # Return immediately if no update is necsesary
@@ -2043,8 +2051,8 @@ class LazyUpdateRedis(object):
         # Verify that these updates are sensible with the current database.
         for (old,new,ns) in dsl_for_redis:
             if (old != self.global_curr_version(ns)):
-                error = "ERROR: Namespace " + ns + " is at \'" +\
-                    self.global_curr_version(ns) + "\' but update was for: " + old
+                error = "ERROR: Namespace " + str(ns) + " is at \'" +\
+                    str(self.global_curr_version(ns)) + "\' but update was for: " + str(old)
                 raise KeyError(error)
 
         json_patch_creator.process_dsl(dsl_file, upd_file_out)
@@ -2052,6 +2060,7 @@ class LazyUpdateRedis(object):
         upd_module = upd_file_out.replace(".py", "")
 
         # do the "add" functions now.
+        # NOTE: this code is ONLY for the "add" keys in the dsl, NOT the "for" keys!
         print "importing from " + upd_module
         m = __import__ (upd_module) #m stores the module
         get_newkey_tuples = getattr(m, "get_newkey_tuples")
@@ -2069,23 +2078,37 @@ class LazyUpdateRedis(object):
             for k in keys:
                 self.set(k,json.dumps(userjson))
 
+
+        # Now, onto the "for" keys.
         # store the update tuples to be called lazily later
-        # TODO lock this whole function together to be passed or aborted
         get_update_tuples = getattr(m, "get_update_tuples")
         tups = get_update_tuples()
 
+        
         for (glob, funcs, ns, version_from, version_to) in tups:
-            vOldvNewNs = (version_from, version_to, ns)
-            if vOldvNewNs not in dsl_for_redis:
-                raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))
-            prev = self.hget("UPDATE_DSL_STRINGS", vOldvNewNs)
-            joined = '\n'.join(dsl_for_redis[vOldvNewNs])
-            if ((prev is not None) and (prev != joined)):
-                raise ValueError("\n\nERROR!!! Already had an update at version " + str(vOldvNewNs) )
-            elif (prev != joined):
-                self.hset("UPDATE_DSL_STRINGS", vOldvNewNs, joined)
-            self.append_new_version(version_to, ns)
-            self.upd_dict.setdefault(vOldvNewNs, []).append((m, glob, funcs, version_to))
+            try:
+                pipe = self.pipeline()
+                pipe.watch("UPDATE_DSL_STRINGS")
+                pipe.multi()
+                vOldvNewNs = (version_from, version_to, ns)
+                if vOldvNewNs not in dsl_for_redis:
+                    raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))
+                prev = self.hget("UPDATE_DSL_STRINGS", vOldvNewNs)
+                joined = '\n'.join(dsl_for_redis[vOldvNewNs])
+                if ((prev is not None) and (prev != joined)):
+                    raise ValueError("\n\nERROR!!! Already had an update at version " + str(vOldvNewNs) )
+                elif (prev != joined):
+                    pipe.hset("UPDATE_DSL_STRINGS", vOldvNewNs, joined)
+                # make sure we can append to the version list without contention
+                if(self.append_new_version(version_to, ns) is None):
+                    pipe.reset()
+                    return False  #abort!!
+                self.upd_dict.setdefault(vOldvNewNs, []).append((m, glob, funcs, version_to))
+                pipe.execute()
+            except WatchError:
+                print "WATCH ERROR, UPD not completed"
+                return False
+        return True
 
     def load_upd_tuples(self):
         """

@@ -1,6 +1,7 @@
 import sys, os, re, fnmatch, json
 import redis
 from redis.exceptions import WatchError
+from threading import Thread
 
 sys.path.append("../src")
 import lazyupdredis
@@ -253,7 +254,6 @@ def test2_get_concurr(actualredis):
     actualredis.flushall()
 
     r = lazyupdredis.connect([("edgeattr", "v0")])
-    evilredis = lazyupdredis.connect([("edgeattr", "v0")])
     val = json.dumps({"outport" : None, "inport" : None})
     evilval = json.dumps({"outport" : 667, "inport" : 668})
     r.set("edgeattr:2", val)
@@ -285,10 +285,35 @@ def test2_get_concurr(actualredis):
     evilredis = lazyupdredis.connect([("edgeattr", "v1")])
 
     assert(test_get(r, "edgeattr:2", evilredis, evilval, True) == False)
-#    assert(actualredis.get("v0|mykey:1") == "evil1")
-#    assert(test_get(r, None, None, "mykey:2", "fafafa") == False)
-#    assert(actualredis.get("v0|mykey:2") == None)
 
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+def test3_list_concurr(actualredis):
+    """  This will faill...sometimes, but not always.  But it proves concurency is working.  """
+    tname = "test3_concurr"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+    #TODO threading returns, not working...gr..
+    def race(cli, ):
+        print cli.do_upd("data/example_json/concurr_3")
+
+    actualredis.flushall()
+
+    r = lazyupdredis.connect([("edgeattr", "v0"), ("key", "ver0")])
+    r2 = lazyupdredis.connect([("edgeattr", "v0"), ("key", "ver0")])
+    val = json.dumps({"outport" : None, "inport" : None})
+    r.set("edgeattr:2", val)
+    r.set("edgeattr:3", val)
+
+    # Let's Race!!!
+    thread = Thread(target = race, args = (r, ))
+    thread2 = Thread(target = race, args = (r2, ))
+    thread.start()
+    thread2.start()
+    for n in range(9999):
+        r2.append_new_version("v"+str(n), "edgeattr")
+    thread.join()
+    thread2.join()
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 
@@ -305,5 +330,8 @@ if __name__ == "__main__":
 
     # test getting
     test2_get_concurr(actualredis)
+
+    # test UPDATE_ lists
+    test3_list_concurr(actualredis)
 
 
