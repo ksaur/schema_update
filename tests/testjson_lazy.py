@@ -6,7 +6,6 @@ import json
 import sys, os
 import shutil
 sys.path.append("../src")
-sys.path.append("../generated")
 import decode
 import json_patch_creator
 import redis

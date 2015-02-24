@@ -1,0 +1,3 @@
+pyparsing
+redis
+json
