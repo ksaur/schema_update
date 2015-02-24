@@ -67,6 +67,12 @@ r = lazyupdredis.connect([("key", "ver0"), ("edgeattr", "v0")])
 ```
 Note that this is a list of tuples in the format of ```("namespace", "version")```
 
+**You can now use lazy redis exactly as you would use redis.**
+
+```python
+r.get("key:8282")
+```
+
 ## Performing the update:
 
 Once you have your DSL file, performing the update takes a single function call, with the DSL file as a parameter:
