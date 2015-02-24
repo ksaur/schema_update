@@ -39,3 +39,4 @@
 dsu.py
 generated_*
 gen_*
+*egg-info*

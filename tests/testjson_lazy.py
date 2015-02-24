@@ -5,11 +5,8 @@ Load some test data in the database, update, and test for expected results.
 import json
 import sys, os
 import shutil
-sys.path.append("../src")
-import decode
-import json_patch_creator
 import redis
-import lazyupdredis
+from lazyupdredis import *
 
 # Note: don't call flushall on actualredis.  This functionality isn't available
 # to the user and will blow away the version information
@@ -436,7 +433,7 @@ def test7(actualredis):
 def main():
 
     # Remove the previous run's generated files, for sanity's sake.
-    os.system("rm gen*")
+    os.system("rm /tmp/gen*")
 
     # non-hooked redis commands to work as orginally specified
     actualredis = redis.StrictRedis()

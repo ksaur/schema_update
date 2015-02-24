@@ -3,8 +3,7 @@ import redis
 from redis.exceptions import WatchError
 from threading import Thread
 
-sys.path.append("../src")
-import lazyupdredis
+from lazyupdredis import *
 
 
 def test_set(r, name, value, evilredis, evilval,  withpipe=False):

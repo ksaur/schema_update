@@ -19,6 +19,13 @@ $ src/redis-server
 $ pip install -r requirements.txt
 ```
 
+- You must then install the lazy redis update libary:
+
+```
+sudo python setup.py develop
+```
+
+
 ## Your Schema:
 This updating tool works for updating string keys that map to JSON values. 
 
@@ -85,11 +92,10 @@ This command will immediately perform any adding of new keys specified in the up
 ----
 **Directory/Repo Structure and import files:**
    
-- src/
+- lazyupdredis/
    * **lazyupdredis.py** - This is the wrapper around redis that performs all the lazy stuff
    * **json_patch_creator.py** - This is the main file to create the init dsl file and then generate the update functions
    * decode.py  - A helper library to get rid of unicode (may be deleted later?)
-   * do_upd_all_now.py - (Deprecated, here for backward compat) A non-lazy update for redis  
    * json_delta_diff.py  - (Deprecated, here for backward compat) Some nice json diff functions I borrowed from jsondelta for detecting the added/removed json fields automatically (thank you Philip J. Roberts)
 - doc/
    * dsl.html - some notes on the DSL for specifying updates.  This is a work in progress

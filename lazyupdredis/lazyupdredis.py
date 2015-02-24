@@ -63,6 +63,7 @@ import redis
 import json, re, sys, fnmatch, decode, time
 import json_patch_creator
 from ast import literal_eval
+sys.path.append("/tmp") # for generating update modules from dsl
 
 from redis.client import (dict_merge, string_keys_to_dict, sort_return_tuples,
     float_or_none, bool_ok, zset_score_pairs, int_or_none, parse_client_list,
@@ -481,7 +482,7 @@ class LazyUpdateRedis(StrictRedis):
         
         """
         if upd_file_out == None:
-            upd_file_out = "gen_" + str(int(round(time.time() * 1000))) + ".py"
+            upd_file_out = "/tmp/gen_" + str(int(round(time.time() * 1000))) + ".py"
         
         dsl_for_redis = json_patch_creator.parse_dslfile_string_only(dsl_file)
 
@@ -494,7 +495,7 @@ class LazyUpdateRedis(StrictRedis):
 
         json_patch_creator.process_dsl(dsl_file, upd_file_out)
         # strip off extention, if provided
-        upd_module = upd_file_out.replace(".py", "")
+        upd_module = upd_file_out.replace(".py", "").replace("/tmp/", "")
 
         # do the "add" functions now.
         # NOTE: this code is ONLY for the "add" keys in the dsl, NOT the "for" keys!
@@ -557,7 +558,7 @@ class LazyUpdateRedis(StrictRedis):
             # Tuple of will be read in as string "("v0", "v1", "ns")". Convert to tuple ("v0", "v1", "ns")
             vvn_tup = literal_eval(vvn_string) 
             # Ensure a unique name to checkout the generated code later if necessary
-            name = "gen_" + str(int(round(time.time() * 1000))) + "_"+ vvn_tup[2]
+            name = "/tmp/gen_" + str(int(round(time.time() * 1000))) + "_"+ vvn_tup[2]
             # Write the contents of redis to a file
             dsl_file = open(name, "w")
             dsl_file.write(dsl_files[vvn_string])
@@ -567,6 +568,7 @@ class LazyUpdateRedis(StrictRedis):
             json_patch_creator.process_dsl(name, name+".py")
 
             # Now load the generated update functions to be called lazily later
+            name = name.replace("/tmp/", "")
             m = __import__ (name) #m stores the module
             get_upd_tuples = getattr(m, "get_update_tuples")
             tups = get_upd_tuples()
