@@ -2,7 +2,7 @@
 
 (For information on usage and the DSL, see the README up one directory.  This readme is on the lazy update implementation and all the fun that goes with it.)
 
-### Versioning
+### **Versioning**
 
 ##### Namespaces
 
@@ -59,36 +59,81 @@ for *nonsense* v1.0->v1.1 {#some code here};
 then all keys that contain the word nonsense (```total_nonsense_schema, some_other_nonsense```) will have the code in the DSL rule above above applied to the value, but **all** keys will be updated from ```v1.0->v1.1```.
 
 
-### How the keys are actually stored
+### **How the keys are actually stored**
 Keys are actually stored in redis as: ```version|namespace:value```.  For example, in the edgeattr example above, keys will be stored in lazy redis as ```v0|edgeattr:n2@n3```.  In the non-namspace case, the keys are stored with the version only such as ```v1.0|some_other_entry```.  Lazy Update Redis then checks to make sure the default namespace was declared to allow these keys.
 
 These versions are added and removed on the fly behind the scenes by Lazy Update Redis so that Redis can be used as normal by clients, as described below.
 
-### The Update process
-##### The "for" keys
+### **The Update process**
 
-##### The "add" keys
+When a programmer calls for an update with the ```doupd('dslfilename')``` command, Lazy Update Redis stores part of DSL file for use by other clients, and also generates the update code for the client that requested the udpate.  
 
+#### Processing the DSL file:
+There are two types of DSL entries:
 
-### Establishing a new connection
-##### upd_dict per client
-##### lists of namespace versions
+- ##### The "add" keys
 
+  *Lazy Update Redis will compile the ```add``` commands and execute them immediately to create the new keys.  The ```add``` DSL code is not added to redis.*
 
-##### Generating the code from the stored update
+ Keys that the DSL writer wants to *add* are added non-lazily at update time...  This is because it would be difficult to track which keys have been added and which haven't, since normally these are  tracked for existing keys using a versioning string.  Adding an additional datastructure to track which keys have been added and which haven't adds almost as much overhead as simply just adding the keys.  (**TODO:** However, for adding very large amounts of keys and scaling things up, this may no longer be true.)  
 
+- ##### The "for" keys
 
-### Lazy Updates
+ *Keys that the DSL writer wants to **update** using the ```for``` command are queued up for lazy updates.  This DSL code is stored in redis for use by other clients*.
+ 
+ The queued-up updates are stored in a per-client internal data structure called ```upd_dict``` the is described below.
+ 
+After the update is requested and the keys are added or/and the lazy updates are queued up, execution returns to normal for the calling client.
+
+### The generated code/```upd_dict```
+
+When the user requests an update and provides the DSL file, Lazy Update Redis generates the update functions and information to be loaded as a dynamic module.
+
+The actual generated code is discussed in full in this <a href ="../tests/example/README.md">readme</a>. 
+Here is the basic idea about how the generated module is used:
+```python
+# generated module myupdate.py
+#
+# (....functions for updating here...)
+# (def group_1_update_category(.....), etc)
+
+def get_update_tuples():
+    return [('key:[1-4]', ['group_1_update_category', 'group_1_update__id', 'group_1_update_order'], 'key', 'ver0', 'ver1'), ...]
+```
+This ```get_update_tuples()``` function contains all of the information about the update functions in the generated file and to which keys to apply the update.  Then, during update, the generated function is called *automatically* by Lazy Update Redis  as follows:
+
+```python
+m = __import__ (upd_module_name) # in this case myupdate.py
+get_update_tuples = getattr(m, "get_update_tuples") # This gets a list of the functions to call
+tups = get_update_tuples() # This calls the function in the new module
+for (glob, funcs, ns, version_from, version_to) in tups:
+    # loop through and load this all up into upd_dict
+```
+
+As you can see from the generated code and the load function, the ```upd_dict``` contains a list of:
+* **keyglob** - This may be just ```namespace:*```, or something trickier with a range ```[]``` or a ```?```.  This is different from namespace in that it might just be a subset of keys in the namespace.
+* **functions** - This is a set of functions to call that match the keyglob.  *These are all loaded up and ready to call.*
+* **namespace** - This is stored separately from keyglob because things get a bit trickier when there is no namespace.  Keys must first match the namespace, and then they are matched agaisnt the keyglob.
+* **version_from** - This update applies only to keys at this version
+* **version_to** - This will update the kesy to this version.
+
+##### **Keeping up-to-date**
+
+For each call to Lazy Update Redis, a O(1) lookup in Redis is performed, to ensure that, the local copy of ```upd_dict```  local copy is up-to-date with the DSL stored in Redis.  (The local copy of```upd_dict``` is necessary because of module loading.)
+
+Also, each time a new client connects, Lazy Update Redis verifies the currentness of the namespace version info requested by the client (described above in *Versioning*), and then Lazy Update Redis builds up its local ```upd_dict``` by pulling the DSL from Redis for all existing updates.
+
+### **Lazy Updates**
 ##### sets
 ##### gets
 
-### Concurrency 
+### **Concurrency** 
 Redis provides some transaction methods described in the <a href = "http://redis.io/topics/transactions"> user manual</a>.  Lazy Update Redis uses these concurrency mechanisms to ensure correcteness in both the bookkeeping data (data used to facilitate updates, which may be used by multiple clients) and the actual data that is being lazily updated.
 ##### list concurrency
 
 
 ##### update concurrency
 
-### Pull thread
-TODO implement!!!
+### **Pull thread**
+*TODO implement!!!*
 

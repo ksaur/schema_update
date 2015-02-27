@@ -50,7 +50,7 @@ The DSL describes the update
 - The basic DSL format is this:
 ```
 #The basic template
-for namespace:someregex versionfrom->versionto {
+for namespace:keyglob versionfrom->versionto {
 COMMAND ["fieldname"] {somepython}
 }; #semicolon
 ```
@@ -60,11 +60,11 @@ for edgeattr:* v0->v1 {
 UPD ["outport"] {$out = 777}
 };
 ```
-
 - The first line is of the format ```for (keylob) version_old->version_new {```, where  <a href ="http://redis.io/commands/KEYS"> keyglob</a> which is a simplified regex (```?, *, []```).
 
+
 ## Connecting to Lazy Update Redis:
-Lazy update redis operates on namespaces and versions to know which keys have been been updated.  Lazy update redis is essentially a series of wrappers around normal redis functions.  When a user requests a key, lazy update redis will determine whether or not that a key is out of date for the namespace version, and perform the update if necessary.
+Lazy Update Redis operates on namespaces and versions to know which keys have been been updated.  Lazy Update Redis is essentially a series of wrappers around normal redis functions.  When a user requests a key, Lazy Update Redis will determine whether or not that a key is out of date for the namespace version, and perform the update if necessary.
 
 For this to work, the user must connect at a specific namespace and version.  For the example above (```for edgeattr:* v0->v1```), the user has namespace ```edgeattr``` and initial version ```v0```. If, for example, a user additionally has some keys such as ```key:n``` starting at ```ver0``` of an app, start redis as follows:
 
@@ -74,7 +74,7 @@ r = lazyupdredis.connect([("key", "ver0"), ("edgeattr", "v0")])
 ```
 Note that this is a list of tuples in the format of ```("namespace", "version")```
 
-**You can now use lazy redis exactly as you would use redis.**
+**You can now use Lazy Update Redis exactly as you would use normal Redis.**
 
 ```python
 r.get("key:8282")
