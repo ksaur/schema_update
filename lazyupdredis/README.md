@@ -1,4 +1,4 @@
-# **Internals of Lazy Update Redis with JSON**
+# **Internals of Lazy Update Redis (LUR) with JSON**
 
 (For information on usage and the DSL, see the README up one directory.  This readme is on the lazy update implementation and all the fun that goes with it.)
 
@@ -59,16 +59,40 @@ for *nonsense* v1.0->v1.1 {#some code here};
 then all keys that contain the word nonsense (```total_nonsense_schema, some_other_nonsense```) will have the code in the DSL rule above above applied to the value, but **all** keys will be updated from ```v1.0->v1.1```.
 
 
-### **How the keys are actually stored**
-Keys are actually stored in redis as: ```version|namespace:value```.  For example, in the edgeattr example above, keys will be stored in lazy redis as ```v0|edgeattr:n2@n3```.  In the non-namspace case, the keys are stored with the version only such as ```v1.0|some_other_entry```.  Lazy Update Redis then checks to make sure the default namespace was declared to allow these keys.
+### **Lazy Update Redis (LUR) entries** 
+This section describes the actual redis data keys and additional bookkeeping keys.
 
-These versions are added and removed on the fly behind the scenes by Lazy Update Redis so that Redis can be used as normal by clients, as described below.
+##### How the keys are actually stored:
+LUR adds/removes a version tag as the user calls ```get```/```set```, transparently to the user.  Keys are actually stored in redis as: ```version|namespace:value```.  For example, in the edgeattr example above, keys will be stored in lazy redis as ```v0|edgeattr:n2@n3```.  In the non-namspace case, the keys are stored with the version only such as ```v1.0|some_other_entry```.  Lazy Update Redis then checks to make sure the default namespace was declared to allow these keys.  More information on how ```get```/```set``` actually works is described in detail below.
+
+##### Bookkeeping keys:
+In addition to the actual data that a user my request to store in Redis, LUR stores some additional data for its internal bookkeeping.
+
+* ```UPDATE_DSL_STRINGS``` - This is a **single** redis hash key.  Each subkey of this hash is ```(v0, v1, edgeattr)```, and the value is the DSL code (string) necessary to build the update between the two versions for the namespace.  This is used to build update dictionaries (described later) for each LUR client. Ex:
+
+ ```python
+ # called by Lazy Update Redis
+ 
+ # returns "for edgeattr:* v0->v1 {...code ...};"  :
+ self.hget("UPDATE_DSL_STRINGS",  "(v0, v1, edgeattr)") 
+ 
+ # returns "for sillyns:* v1.0->v1.1 {#some code here};"  :
+ self.hget("UPDATE_DSL_STRINGS",  "(v1.0, v1.1, sillyns)") 
+ ```
+* ```UPDATE_VERSIONS_(namespace)``` for each namespace - This is a redis list key for EACH namespace of all the versions for the namespace.  For example:
+
+ ```python
+  # returns a list of all versions ["v0", "v1"] for namespace "edgeattr.
+  self.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) # -1 means end of list
+ ```
+
+** NOTE:** These bookkeeping functions are never called by the user directly, and are hidden from the user on queries.  (**TODO**: make sure hiding still works with default namespace...)
 
 ### **The Update process**
 
 When a programmer calls for an update with the ```doupd('dslfilename')``` command, Lazy Update Redis stores part of DSL file for use by other clients, and also generates the update code for the client that requested the udpate.  
 
-#### Processing the DSL file:
+##### Processing the DSL file:
 There are two types of DSL entries:
 
 - ##### The "add" keys
@@ -85,7 +109,7 @@ There are two types of DSL entries:
  
 After the update is requested and the keys are added or/and the lazy updates are queued up, execution returns to normal for the calling client.
 
-### The generated code/```upd_dict```
+##### The generated code/```upd_dict```
 
 When the user requests an update and provides the DSL file, Lazy Update Redis generates the update functions and information to be loaded as a dynamic module.
 
@@ -117,23 +141,38 @@ As you can see from the generated code and the load function, the ```upd_dict```
 * **version_from** - This update applies only to keys at this version
 * **version_to** - This will update the kesy to this version.
 
-##### **Keeping up-to-date**
+##### Keeping up-to-date
 
-For each call to Lazy Update Redis, a O(1) lookup in Redis is performed, to ensure that, the local copy of ```upd_dict```  local copy is up-to-date with the DSL stored in Redis.  (The local copy of```upd_dict``` is necessary because of module loading.)
+For each call to Lazy Update Redis, a O(1) lookup in Redis is performed to the bookeeping keys (```UPDATE_DSL_STRINGS``` / ```UPDATE_VERSIONS_(namespace)```), to ensure that, the local copy of ```upd_dict```  local copy is up-to-date with the DSL stored in Redis.  (The local copy of```upd_dict``` is necessary because of module loading.)
 
 Also, each time a new client connects, Lazy Update Redis verifies the currentness of the namespace version info requested by the client (described above in *Versioning*), and then Lazy Update Redis builds up its local ```upd_dict``` by pulling the DSL from Redis for all existing updates.
 
 ### **Lazy Updates**
+
+Keys are updated only as they are requested.  This applies primarily to ```gets```, but some checking is also necessary for ```sets```.  Lazy updates are implemented by subclassing  <a href="https://github.com/andymccurdy/redis-py/blob/master/redis/client.py">class StrictRedis</a> (by Andy McCurdy).  You can read all about the inherited/override methods in the <a href="../doc/lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html"> pydoc</a> for LazyUpdateRedis.
+
 ##### sets
+This is the simpler of the two lazy functions.  
+- First, LUR checks to make sure that the client is at the most current version of the namespace for the requested key.  If not, it raises an error.
+ - Since the client has been asserted to be at the current version,  assuming the versioning was established correctly by the programmer, the set-to value should match the current schema.
+- LUR then sets the key to the provided value, and deletes any previous versions of the key, which brings the key up-to-date if necessary.
+ - There is no need to apply the update function, because the user is setting the value specifically, blowing away the old data. 
+
 ##### gets
+This function actually performs updates as necessary.
+- First, LUR checks to make sure that the client is at the most current version of the namespace for the requested key.  If not, it raises an error.
+
+#TODO write this
 
 ### **Concurrency** 
 Redis provides some transaction methods described in the <a href = "http://redis.io/topics/transactions"> user manual</a>.  Lazy Update Redis uses these concurrency mechanisms to ensure correcteness in both the bookkeeping data (data used to facilitate updates, which may be used by multiple clients) and the actual data that is being lazily updated.
 ##### list concurrency
-
+#TODO write this
 
 ##### update concurrency
+#TODO write this
+TODO!!!! What to return if concurr error in "get"...how to distinguish from "no key found"?
 
 ### **Pull thread**
 *TODO implement!!!*
-
+#TODO write this
