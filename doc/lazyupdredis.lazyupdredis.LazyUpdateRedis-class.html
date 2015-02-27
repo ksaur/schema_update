@@ -1,0 +1,956 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>lazyupdredis.lazyupdredis.LazyUpdateRedis</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">Lazy Update Redis with JSON</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        Package&nbsp;lazyupdredis ::
+        <a href="lazyupdredis.lazyupdredis-module.html">Module&nbsp;lazyupdredis</a> ::
+        Class&nbsp;LazyUpdateRedis
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS DESCRIPTION ==================== -->
+<h1 class="epydoc">Class LazyUpdateRedis</h1><p class="nomargin-top"><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis">source&nbsp;code</a></span></p>
+<pre class="base-tree">
+              object --+    
+                       |    
+redis.client.StrictRedis --+
+                           |
+                          <strong class="uidshort">LazyUpdateRedis</strong>
+</pre>
+
+<hr />
+<p>Lazy implementation of the Redis protocol, with wrappers to add/remove
+  version strings to/from the keys, and to update the keys as 
+  necessary.</p>
+  <p>----------</p>
+  <p>From previous &quot;StrictRedis:&quot; This abstract class provides a 
+  Python interface to all Redis commands and an implementation of the Redis
+  protocol.</p>
+  <p>Connection and Pipeline derive from this, implementing how the 
+  commands are sent and received to the Redis server</p>
+
+<!-- ==================== INSTANCE METHODS ==================== -->
+<a name="section-InstanceMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Instance Methods</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-InstanceMethods"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#__init__" class="summary-sig-name">__init__</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">client_ns_versions</span>,
+        <span class="summary-sig-arg">host</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">localhost</code><code class="variable-quote">'</code></span>,
+        <span class="summary-sig-arg">port</span>=<span class="summary-sig-default">6379</span>,
+        <span class="summary-sig-arg">db</span>=<span class="summary-sig-default">0</span>,
+        <span class="summary-sig-arg">password</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">socket_timeout</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">socket_connect_timeout</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">socket_keepalive</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">socket_keepalive_options</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">connection_pool</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">unix_socket_path</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">encoding</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">utf-8</code><code class="variable-quote">'</code></span>,
+        <span class="summary-sig-arg">encoding_errors</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">strict</code><code class="variable-quote">'</code></span>,
+        <span class="summary-sig-arg">charset</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">errors</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">decode_responses</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">retry_on_timeout</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">ssl</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">ssl_keyfile</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">ssl_certfile</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">ssl_cert_reqs</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">ssl_ca_certs</span>=<span class="summary-sig-default">None</span>)</span><br />
+      x.__init__(...) initializes x; see help(type(x)) for signature</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.__init__">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="append_new_version"></a><span class="summary-sig-name">append_new_version</span>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">v</span>,
+        <span class="summary-sig-arg">ns</span>,
+        <span class="summary-sig-arg">startup</span>=<span class="summary-sig-default">False</span>)</span><br />
+      Append the new version (v) to redis for namespace (ns)</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.append_new_version">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#global_versions" class="summary-sig-name">global_versions</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">ns</span>)</span><br />
+      Return the LIST of ALL versions from redis for namespace ns</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.global_versions">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#global_curr_version" class="summary-sig-name">global_curr_version</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">ns</span>)</span><br />
+      Return the most current version from redis for namespace ns</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.global_curr_version">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="namespace"></a><span class="summary-sig-name">namespace</span>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">name</span>)</span></td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.namespace">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#delete" class="summary-sig-name">delete</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">*names</span>)</span><br />
+      Delete one or more keys specified by ``names``</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.delete">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#update" class="summary-sig-name">update</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">currkey</span>,
+        <span class="summary-sig-arg">redisval</span>,
+        <span class="summary-sig-arg">funcs</span>,
+        <span class="summary-sig-arg">m</span>)</span><br />
+      Loop over the list of funcs and apply it to the value at currkey</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.update">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#get" class="summary-sig-name">get</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">name</span>)</span><br />
+      Return the value at key ``name``, updating to most recent version if 
+      necessary, or return None if the key doesn't exist</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.get">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#keys" class="summary-sig-name">keys</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">pattern</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">*</code><code class="variable-quote">'</code></span>)</span><br />
+      Returns a list of keys matching ``pattern`` (update tracking version 
+      strings are stripped off before returning</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.keys">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#set" class="summary-sig-name">set</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">name</span>,
+        <span class="summary-sig-arg">value</span>,
+        <span class="summary-sig-arg">ex</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">px</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">nx</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">xx</span>=<span class="summary-sig-default">False</span>)</span><br />
+      If the client is at the correct version, then we don't need to run the
+update function, since the client should only set the correct value.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.set">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#do_upd" class="summary-sig-name">do_upd</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">dsl_file</span>,
+        <span class="summary-sig-arg">upd_file_out</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Switch the version string and load up the update functions for lazy updates.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.do_upd">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="load_upd_tuples"></a><span class="summary-sig-name">load_upd_tuples</span>(<span class="summary-sig-arg">self</span>)</span><br />
+      Load up (on client connect) the existing updates from redis (stored 
+      as user DSL) by generating the update functions and then loading them
+      into self.upd_dict</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.load_upd_tuples">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code>redis.client.StrictRedis</code></b>:
+      <code>__contains__</code>,
+      <code>__delitem__</code>,
+      <code>__getitem__</code>,
+      <code>__repr__</code>,
+      <code>__setitem__</code>,
+      <code>append</code>,
+      <code>bgrewriteaof</code>,
+      <code>bgsave</code>,
+      <code>bitcount</code>,
+      <code>bitop</code>,
+      <code>bitpos</code>,
+      <code>blpop</code>,
+      <code>brpop</code>,
+      <code>brpoplpush</code>,
+      <code>client_getname</code>,
+      <code>client_kill</code>,
+      <code>client_list</code>,
+      <code>client_setname</code>,
+      <code>config_get</code>,
+      <code>config_resetstat</code>,
+      <code>config_rewrite</code>,
+      <code>config_set</code>,
+      <code>dbsize</code>,
+      <code>debug_object</code>,
+      <code>decr</code>,
+      <code>dump</code>,
+      <code>echo</code>,
+      <code>eval</code>,
+      <code>evalsha</code>,
+      <code>execute_command</code>,
+      <code>exists</code>,
+      <code>expire</code>,
+      <code>expireat</code>,
+      <code>flushall</code>,
+      <code>flushdb</code>,
+      <code>getbit</code>,
+      <code>getrange</code>,
+      <code>getset</code>,
+      <code>hdel</code>,
+      <code>hexists</code>,
+      <code>hget</code>,
+      <code>hgetall</code>,
+      <code>hincrby</code>,
+      <code>hincrbyfloat</code>,
+      <code>hkeys</code>,
+      <code>hlen</code>,
+      <code>hmget</code>,
+      <code>hmset</code>,
+      <code>hscan</code>,
+      <code>hscan_iter</code>,
+      <code>hset</code>,
+      <code>hsetnx</code>,
+      <code>hvals</code>,
+      <code>incr</code>,
+      <code>incrby</code>,
+      <code>incrbyfloat</code>,
+      <code>info</code>,
+      <code>lastsave</code>,
+      <code>lindex</code>,
+      <code>linsert</code>,
+      <code>llen</code>,
+      <code>lock</code>,
+      <code>lpop</code>,
+      <code>lpush</code>,
+      <code>lpushx</code>,
+      <code>lrange</code>,
+      <code>lrem</code>,
+      <code>lset</code>,
+      <code>ltrim</code>,
+      <code>mget</code>,
+      <code>move</code>,
+      <code>mset</code>,
+      <code>msetnx</code>,
+      <code>object</code>,
+      <code>parse_response</code>,
+      <code>persist</code>,
+      <code>pexpire</code>,
+      <code>pexpireat</code>,
+      <code>pfadd</code>,
+      <code>pfcount</code>,
+      <code>pfmerge</code>,
+      <code>ping</code>,
+      <code>pipeline</code>,
+      <code>psetex</code>,
+      <code>pttl</code>,
+      <code>publish</code>,
+      <code>pubsub</code>,
+      <code>randomkey</code>,
+      <code>register_script</code>,
+      <code>rename</code>,
+      <code>renamenx</code>,
+      <code>restore</code>,
+      <code>rpop</code>,
+      <code>rpoplpush</code>,
+      <code>rpush</code>,
+      <code>rpushx</code>,
+      <code>sadd</code>,
+      <code>save</code>,
+      <code>scan</code>,
+      <code>scan_iter</code>,
+      <code>scard</code>,
+      <code>script_exists</code>,
+      <code>script_flush</code>,
+      <code>script_kill</code>,
+      <code>script_load</code>,
+      <code>sdiff</code>,
+      <code>sdiffstore</code>,
+      <code>sentinel</code>,
+      <code>sentinel_get_master_addr_by_name</code>,
+      <code>sentinel_master</code>,
+      <code>sentinel_masters</code>,
+      <code>sentinel_monitor</code>,
+      <code>sentinel_remove</code>,
+      <code>sentinel_sentinels</code>,
+      <code>sentinel_set</code>,
+      <code>sentinel_slaves</code>,
+      <code>set_response_callback</code>,
+      <code>setbit</code>,
+      <code>setex</code>,
+      <code>setnx</code>,
+      <code>setrange</code>,
+      <code>shutdown</code>,
+      <code>sinter</code>,
+      <code>sinterstore</code>,
+      <code>sismember</code>,
+      <code>slaveof</code>,
+      <code>slowlog_get</code>,
+      <code>slowlog_len</code>,
+      <code>slowlog_reset</code>,
+      <code>smembers</code>,
+      <code>smove</code>,
+      <code>sort</code>,
+      <code>spop</code>,
+      <code>srandmember</code>,
+      <code>srem</code>,
+      <code>sscan</code>,
+      <code>sscan_iter</code>,
+      <code>strlen</code>,
+      <code>substr</code>,
+      <code>sunion</code>,
+      <code>sunionstore</code>,
+      <code>time</code>,
+      <code>transaction</code>,
+      <code>ttl</code>,
+      <code>type</code>,
+      <code>unwatch</code>,
+      <code>watch</code>,
+      <code>zadd</code>,
+      <code>zcard</code>,
+      <code>zcount</code>,
+      <code>zincrby</code>,
+      <code>zinterstore</code>,
+      <code>zlexcount</code>,
+      <code>zrange</code>,
+      <code>zrangebylex</code>,
+      <code>zrangebyscore</code>,
+      <code>zrank</code>,
+      <code>zrem</code>,
+      <code>zremrangebylex</code>,
+      <code>zremrangebyrank</code>,
+      <code>zremrangebyscore</code>,
+      <code>zrevrange</code>,
+      <code>zrevrangebyscore</code>,
+      <code>zrevrank</code>,
+      <code>zscan</code>,
+      <code>zscan_iter</code>,
+      <code>zscore</code>,
+      <code>zunionstore</code>
+      </p>
+    <div class="private">    <p class="indent-wrapped-lines"><b>Inherited from <code>redis.client.StrictRedis</code></b> (private):
+      <code>_zaggregate</code>
+      </p></div>
+    <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
+      <code>__delattr__</code>,
+      <code>__format__</code>,
+      <code>__getattribute__</code>,
+      <code>__hash__</code>,
+      <code>__new__</code>,
+      <code>__reduce__</code>,
+      <code>__reduce_ex__</code>,
+      <code>__setattr__</code>,
+      <code>__sizeof__</code>,
+      <code>__str__</code>,
+      <code>__subclasshook__</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS METHODS ==================== -->
+<a name="section-ClassMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Class Methods</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-ClassMethods"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code>redis.client.StrictRedis</code></b>:
+      <code>from_url</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS VARIABLES ==================== -->
+<a name="section-ClassVariables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Class Variables</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-ClassVariables"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code>redis.client.StrictRedis</code></b>:
+      <code>RESPONSE_CALLBACKS</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== PROPERTIES ==================== -->
+<a name="section-Properties"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Properties</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Properties"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
+      <code>__class__</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== METHOD DETAILS ==================== -->
+<a name="section-MethodDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Method Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-MethodDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="__init__"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">__init__</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">client_ns_versions</span>,
+        <span class="sig-arg">host</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">localhost</code><code class="variable-quote">'</code></span>,
+        <span class="sig-arg">port</span>=<span class="sig-default">6379</span>,
+        <span class="sig-arg">db</span>=<span class="sig-default">0</span>,
+        <span class="sig-arg">password</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">socket_timeout</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">socket_connect_timeout</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">socket_keepalive</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">socket_keepalive_options</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">connection_pool</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">unix_socket_path</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">encoding</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">utf-8</code><code class="variable-quote">'</code></span>,
+        <span class="sig-arg">encoding_errors</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">strict</code><code class="variable-quote">'</code></span>,
+        <span class="sig-arg">charset</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">errors</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">decode_responses</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">retry_on_timeout</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">ssl</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">ssl_keyfile</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">ssl_certfile</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">ssl_cert_reqs</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">ssl_ca_certs</span>=<span class="sig-default">None</span>)</span>
+    <br /><em class="fname">(Constructor)</em>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.__init__">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>x.__init__(...) initializes x; see help(type(x)) for signature</p>
+  <dl class="fields">
+    <dt>Overrides:
+        object.__init__
+        <dd><em class="note">(inherited documentation)</em></dd>
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<a name="global_versions"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">global_versions</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">ns</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.global_versions">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Return the LIST of ALL versions from redis for namespace ns</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>ns</code></strong> - the namespace</li>
+    </ul></dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="global_curr_version"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">global_curr_version</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">ns</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.global_curr_version">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Return the most current version from redis for namespace ns</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>ns</code></strong> - the namespace</li>
+    </ul></dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="delete"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">delete</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">*names</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.delete">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Delete one or more keys specified by ``names``</p>
+  <dl class="fields">
+    <dt>Overrides:
+        redis.client.StrictRedis.delete
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<a name="update"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">update</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">currkey</span>,
+        <span class="sig-arg">redisval</span>,
+        <span class="sig-arg">funcs</span>,
+        <span class="sig-arg">m</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.update">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Loop over the list of funcs and apply it to the value at currkey</p>
+  <dl class="fields">
+    <dt>Returns:</dt>
+        <dd>A list [key, value] to feed to redis for setting</dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="get"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">get</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">name</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.get">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Return the value at key ``name``, updating to most recent version if 
+  necessary, or return None if the key doesn't exist</p>
+  <p>Return False if there was a concurrency error. #TODO what is best 
+  here?!?!</p>
+  <dl class="fields">
+    <dt>Overrides:
+        redis.client.StrictRedis.get
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<a name="keys"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">keys</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">pattern</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">*</code><code class="variable-quote">'</code></span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.keys">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Returns a list of keys matching ``pattern`` (update tracking version 
+  strings are stripped off before returning</p>
+  <dl class="fields">
+    <dt>Overrides:
+        redis.client.StrictRedis.keys
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<a name="set"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">set</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">name</span>,
+        <span class="sig-arg">value</span>,
+        <span class="sig-arg">ex</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">px</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">nx</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">xx</span>=<span class="sig-default">False</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.set">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+
+If the client is at the correct version, then we don't need to run the
+update function, since the client should only set the correct value.
+We only need to update the version string.
+
+Set the value at key ``name`` to ``value``
+
+Prepends the current version string to key ``name``.
+
+``ex`` sets an expire flag on key ``name`` for ``ex`` seconds.
+
+``px`` sets an expire flag on key ``name`` for ``px`` milliseconds.
+
+``nx`` if set to True, set the value at key ``name`` to ``value`` if it
+    does not already exist.
+
+``xx`` if set to True, set the value at key ``name`` to ``value`` if it
+    already exists.
+
+</pre>
+  <dl class="fields">
+    <dt>Overrides:
+        redis.client.StrictRedis.set
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<a name="do_upd"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">do_upd</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">dsl_file</span>,
+        <span class="sig-arg">upd_file_out</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#LazyUpdateRedis.do_upd">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+
+Switch the version string and load up the update functions for lazy updates.
+   
+In order for an update to be applied, there must exist a valid namespace.
+Ex: If the update is for namespace = &quot;foo&quot; from &quot;v0&quot;-&gt;&quot;v1&quot;, but the data
+    in redis is &quot;ver0|foo&quot;, the update will be rejected, and this function
+    will return false 
+
+@type dsl_file: string
+@param dsl_file: The file with the update functions.
+
+@return: True for success, False for failure.
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">Lazy Update Redis with JSON</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Fri Feb 27 10:24:57 2015
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

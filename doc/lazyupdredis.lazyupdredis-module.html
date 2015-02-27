@@ -3,7 +3,7 @@
           "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-  <title>src.do_upd_all_now</title>
+  <title>lazyupdredis.lazyupdredis</title>
   <link rel="stylesheet" href="epydoc.css" type="text/css" />
   <script type="text/javascript" src="epydoc.js"></script>
 </head>
@@ -31,7 +31,7 @@
       <th class="navbar" align="right" width="100%">
         <table border="0" cellpadding="0" cellspacing="0">
           <tr><th class="navbar" align="center"
-            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">TBD</a></th>
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">Lazy Update Redis with JSON</a></th>
           </tr></table></th>
   </tr>
 </table>
@@ -39,8 +39,8 @@
   <tr valign="top">
     <td width="100%">
       <span class="breadcrumbs">
-        Package&nbsp;src ::
-        Module&nbsp;do_upd_all_now
+        Package&nbsp;lazyupdredis ::
+        Module&nbsp;lazyupdredis
       </span>
     </td>
     <td>
@@ -50,18 +50,81 @@
     onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
         <tr><td align="right"><span class="options"
             >[<a href="frames.html" target="_top">frames</a
-            >]&nbsp;|&nbsp;<a href="src.do_upd_all_now-module.html"
+            >]&nbsp;|&nbsp;<a href="lazyupdredis.lazyupdredis-module.html"
             target="_top">no&nbsp;frames</a>]</span></td></tr>
       </table>
     </td>
   </tr>
 </table>
 <!-- ==================== MODULE DESCRIPTION ==================== -->
-<h1 class="epydoc">Module do_upd_all_now</h1><p class="nomargin-top"><span class="codelink"><a href="src.do_upd_all_now-pysrc.html">source&nbsp;code</a></span></p>
-<p>Call all of the generated functions for the specified key stanzas in 
-  the redis database...now, not lazy.</p>
-  <p>Usage: python doupd.py</p>
+<h1 class="epydoc">Module lazyupdredis</h1><p class="nomargin-top"><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html">source&nbsp;code</a></span></p>
+<pre class="literalblock">
 
+The following modifications were made to address key versioning:
+* All keys are prepended with a version number and pipe.  
+    ex:  key0 at version v0 becomes &quot;v0|key0&quot;.
+
+To make redis operation work, this class:
+* Tries prepending all possible version strings for:
+    delete, get
+* Prepends only the most recent version string for:
+    set
+* Prepend wildcard (*|) to keyglob for:
+    keys
+
+Also, 'flushall' preserves the stored list of versions
+
+Additional bookkeeping for lazy update:
+* A redis list called &quot;UPDATE_VERSIONS_NS&quot;, which is a list of version name strings
+     for each namespace NS.  (There will be a list of versions for each namespaces)
+     Ex: &quot;UPDATE_VERSIONS_NS&quot; -&gt; [&quot;V1&quot;]
+
+* A redis hash of &quot;UPDATE_DSL_STRINGS&quot;, which stores a hash mapping version name strings
+     concatinated with namespaces to DSL strings (for generating to modules later by 
+     other connected clients into the self.upd_dict 
+     as clients connect)  One &quot;UPDATE_DSL_STRINGS&quot; hash total.
+     Ex:  &quot;UPDATE_DSL_STRINGS&quot; -&gt; { &quot;(V1, V2, NS)&quot; : &quot;for ns:... v0-&gt;v1&quot;, 
+          &quot;(V1, V2, NS2)&quot; : &quot;add ns2....v0&quot;}
+* Update functions are stored in a dictionary named self.upd_dict
+  This stores &quot;version string+ -&gt; (version module, dict of (keyglob-&gt;module function strings))
+     Ex: TODO 
+
+
+The initial (preupdate) version is named &quot;INITIAL_V0&quot; 
+(global string &quot;initial_version&quot; for now).  Subsequent
+versions will be named when the user passes in the set of corresponding
+update functions.
+
+</pre>
+
+<!-- ==================== CLASSES ==================== -->
+<a name="section-Classes"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Classes</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Classes"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html" class="summary-name">LazyUpdateRedis</a><br />
+      Lazy implementation of the Redis protocol, with wrappers to 
+        add/remove version strings to/from the keys, and to update the keys
+        as necessary.
+    </td>
+  </tr>
+</table>
 <!-- ==================== FUNCTIONS ==================== -->
 <a name="section-Functions"></a>
 <table class="summary" border="1" cellpadding="3"
@@ -85,45 +148,10 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.do_upd_all_now-module.html#connect" class="summary-sig-name">connect</a>(<span class="summary-sig-arg">host</span>=<span class="summary-sig-default">None</span>,
-        <span class="summary-sig-arg">port</span>=<span class="summary-sig-default">None</span>)</span><br />
-      Connect to redis.</td>
+          <td><span class="summary-sig"><a href="lazyupdredis.lazyupdredis-module.html#connect" class="summary-sig-name">connect</a>(<span class="summary-sig-arg">client_ns_versions</span>)</span><br />
+      Connect to (lazy) redis.</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.do_upd_all_now-pysrc.html#connect">source&nbsp;code</a></span>
-            
-          </td>
-        </tr>
-      </table>
-      
-    </td>
-  </tr>
-<tr>
-    <td width="15%" align="right" valign="top" class="summary">
-      <span class="summary-type">&nbsp;</span>
-    </td><td class="summary">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td><span class="summary-sig"><a href="src.do_upd_all_now-module.html#do_upd_all_now" class="summary-sig-name">do_upd_all_now</a>(<span class="summary-sig-arg">r</span>,
-        <span class="summary-sig-arg">updfile</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">dsu</code><code class="variable-quote">'</code></span>)</span><br />
-      Perform the update.</td>
-          <td align="right" valign="top">
-            <span class="codelink"><a href="src.do_upd_all_now-pysrc.html#do_upd_all_now">source&nbsp;code</a></span>
-            
-          </td>
-        </tr>
-      </table>
-      
-    </td>
-  </tr>
-<tr>
-    <td width="15%" align="right" valign="top" class="summary">
-      <span class="summary-type">&nbsp;</span>
-    </td><td class="summary">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td><span class="summary-sig"><a name="main"></a><span class="summary-sig-name">main</span>()</span></td>
-          <td align="right" valign="top">
-            <span class="codelink"><a href="src.do_upd_all_now-pysrc.html#main">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#connect">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -153,7 +181,7 @@
     <td width="15%" align="right" valign="top" class="summary">
       <span class="summary-type">&nbsp;</span>
     </td><td class="summary">
-        <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'src'"><code class="variable-quote">'</code><code class="variable-string">src</code><code class="variable-quote">'</code></code>
+        <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'lazyupdredis'"><code class="variable-quote">'</code><code class="variable-string">lazyupdredis</code><code class="variable-quote">'</code></code>
     </td>
   </tr>
 </table>
@@ -182,49 +210,16 @@
 <tr><td>
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr valign="top"><td>
-  <h3 class="epydoc"><span class="sig"><span class="sig-name">connect</span>(<span class="sig-arg">host</span>=<span class="sig-default">None</span>,
-        <span class="sig-arg">port</span>=<span class="sig-default">None</span>)</span>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">connect</span>(<span class="sig-arg">client_ns_versions</span>)</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.do_upd_all_now-pysrc.html#connect">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.lazyupdredis-pysrc.html#connect">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
-  <p>Connect to redis. Default is localhost, port 6379. (Redis must be 
-  running.)</p>
+  <p>Connect to (lazy) redis. Default is localhost, port 6379. (Redis must 
+  be running.)</p>
   <dl class="fields">
-    <dt>Parameters:</dt>
-    <dd><ul class="nomargin-top">
-        <li><strong class="pname"><code>host</code></strong> - the address of redis, defaults to 'localhost</li>
-        <li><strong class="pname"><code>port</code></strong> - the port for redis, defaults to 6379</li>
-    </ul></dd>
-  </dl>
-</td></tr></table>
-</div>
-<a name="do_upd_all_now"></a>
-<div>
-<table class="details" border="1" cellpadding="3"
-       cellspacing="0" width="100%" bgcolor="white">
-<tr><td>
-  <table width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr valign="top"><td>
-  <h3 class="epydoc"><span class="sig"><span class="sig-name">do_upd_all_now</span>(<span class="sig-arg">r</span>,
-        <span class="sig-arg">updfile</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">dsu</code><code class="variable-quote">'</code></span>)</span>
-  </h3>
-  </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.do_upd_all_now-pysrc.html#do_upd_all_now">source&nbsp;code</a></span>&nbsp;
-    </td>
-  </tr></table>
-  
-  <p>Perform the update.</p>
-  <dl class="fields">
-    <dt>Parameters:</dt>
-    <dd><ul class="nomargin-top">
-        <li><strong class="pname"><code>r</code></strong> - The instance of redis to update (already connected)</li>
-        <li><strong class="pname"><code>updfile</code></strong> (string) - The file with the update functions.  Defaults to &quot;dsu&quot;.</li>
-    </ul></dd>
-    <dt>Returns:</dt>
-        <dd>the number of keys updated</dd>
   </dl>
 </td></tr></table>
 </div>
@@ -250,14 +245,14 @@
       <th class="navbar" align="right" width="100%">
         <table border="0" cellpadding="0" cellspacing="0">
           <tr><th class="navbar" align="center"
-            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">TBD</a></th>
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">Lazy Update Redis with JSON</a></th>
           </tr></table></th>
   </tr>
 </table>
 <table border="0" cellpadding="0" cellspacing="0" width="100%%">
   <tr>
     <td align="left" class="footer">
-    Generated by Epydoc 3.0.1 on Thu Feb 19 15:20:04 2015
+    Generated by Epydoc 3.0.1 on Fri Feb 27 10:24:57 2015
     </td>
     <td align="right" class="footer">
       <a target="mainFrame" href="http://epydoc.sourceforge.net"

@@ -20,11 +20,9 @@ $ pip install -r requirements.txt
 ```
 
 - You must then install the lazy redis update libary:
-
 ```
-sudo python setup.py develop
+$ sudo python setup.py develop
 ```
-
 
 ## Your Schema:
 This updating tool works for updating string keys that map to JSON values. 
@@ -45,9 +43,9 @@ for edgeattr:* v0->v1 {...more below...};
 ## DSL:
 The DSL describes the update
 
-- The basic DSL doc is <a href ="https://github.com/plum-umd/schema_update/blob/master/doc/dsl.html">here</a>
+- The basic DSL doc is <a href ="doc">here</a>
 
-- However, it's probably easiest to check out some <a href="https://github.com/plum-umd/schema_update/tree/master/tests/data/example_json">examples</a> (see any file in that directory ending in a *_init*)
+- However, it's probably easiest to check out some <a href="tests/data/example_json">contrived examples</a> (see any file in that directory ending in a *_init*)
 
 - The basic DSL format is this:
 ```
@@ -62,6 +60,8 @@ for edgeattr:* v0->v1 {
 UPD ["outport"] {$out = 777}
 };
 ```
+
+- The first line is of the format ```for (keylob) version_old->version_new {```, where  <a href ="http://redis.io/commands/KEYS"> keyglob</a> which is a simplified regex (```?, *, []```).
 
 ## Connecting to Lazy Update Redis:
 Lazy update redis operates on namespaces and versions to know which keys have been been updated.  Lazy update redis is essentially a series of wrappers around normal redis functions.  When a user requests a key, lazy update redis will determine whether or not that a key is out of date for the namespace version, and perform the update if necessary.
@@ -79,6 +79,7 @@ Note that this is a list of tuples in the format of ```("namespace", "version")`
 ```python
 r.get("key:8282")
 ```
+
 
 ## Performing the update:
 

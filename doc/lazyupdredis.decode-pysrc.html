@@ -3,7 +3,7 @@
           "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-  <title>src.decode</title>
+  <title>lazyupdredis.decode</title>
   <link rel="stylesheet" href="epydoc.css" type="text/css" />
   <script type="text/javascript" src="epydoc.js"></script>
 </head>
@@ -31,7 +31,7 @@
       <th class="navbar" align="right" width="100%">
         <table border="0" cellpadding="0" cellspacing="0">
           <tr><th class="navbar" align="center"
-            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">TBD</a></th>
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">Lazy Update Redis with JSON</a></th>
           </tr></table></th>
   </tr>
 </table>
@@ -39,7 +39,7 @@
   <tr valign="top">
     <td width="100%">
       <span class="breadcrumbs">
-        Package&nbsp;src ::
+        Package&nbsp;lazyupdredis ::
         Module&nbsp;decode
       </span>
     </td>
@@ -50,13 +50,13 @@
     onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
         <tr><td align="right"><span class="options"
             >[<a href="frames.html" target="_top">frames</a
-            >]&nbsp;|&nbsp;<a href="src.decode-pysrc.html"
+            >]&nbsp;|&nbsp;<a href="lazyupdredis.decode-pysrc.html"
             target="_top">no&nbsp;frames</a>]</span></td></tr>
       </table>
     </td>
   </tr>
 </table>
-<h1 class="epydoc">Source Code for <a href="src.decode-module.html">Module src.decode</a></h1>
+<h1 class="epydoc">Source Code for <a href="lazyupdredis.decode-module.html">Module lazyupdredis.decode</a></h1>
 <pre class="py-src">
 <a name="L1"></a><tt class="py-lineno"> 1</tt>  <tt class="py-line"><tt class="py-docstring">"""</tt> </tt>
 <a name="L2"></a><tt class="py-lineno"> 2</tt>  <tt class="py-line"><tt class="py-docstring">This file contains some helper functions.</tt> </tt>
@@ -66,7 +66,7 @@
 <a name="L6"></a><tt class="py-lineno"> 6</tt>  <tt class="py-line"><tt class="py-docstring">(stackoverflow post by Mike Brennan)</tt> </tt>
 <a name="L7"></a><tt class="py-lineno"> 7</tt>  <tt class="py-line"><tt class="py-docstring">"""</tt> </tt>
 <a name="L8"></a><tt class="py-lineno"> 8</tt>  <tt class="py-line"> </tt>
-<a name="decode_list"></a><div id="decode_list-def"><a name="L9"></a><tt class="py-lineno"> 9</tt> <a class="py-toggle" href="#" id="decode_list-toggle" onclick="return toggle('decode_list');">-</a><tt class="py-line"><tt class="py-keyword">def</tt> <a class="py-def-name" href="src.decode-module.html#decode_list">decode_list</a><tt class="py-op">(</tt><tt class="py-param">data</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+<a name="decode_list"></a><div id="decode_list-def"><a name="L9"></a><tt class="py-lineno"> 9</tt> <a class="py-toggle" href="#" id="decode_list-toggle" onclick="return toggle('decode_list');">-</a><tt class="py-line"><tt class="py-keyword">def</tt> <a class="py-def-name" href="lazyupdredis.decode-module.html#decode_list">decode_list</a><tt class="py-op">(</tt><tt class="py-param">data</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
 </div><div id="decode_list-collapsed" style="display:none;" pad="++" indent="++++"></div><div id="decode_list-expanded"><a name="L10"></a><tt class="py-lineno">10</tt>  <tt class="py-line">    <tt class="py-docstring">"""</tt> </tt>
 <a name="L11"></a><tt class="py-lineno">11</tt>  <tt class="py-line"><tt class="py-docstring">    Remove unicode from lists.</tt> </tt>
 <a name="L12"></a><tt class="py-lineno">12</tt>  <tt class="py-line"><tt class="py-docstring"></tt> </tt>
@@ -76,13 +76,13 @@
 <a name="L16"></a><tt class="py-lineno">16</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt class="py-name">isinstance</tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">,</tt> <tt class="py-name">unicode</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
 <a name="L17"></a><tt class="py-lineno">17</tt>  <tt class="py-line">            <tt class="py-name">item</tt> <tt class="py-op">=</tt> <tt class="py-name">item</tt><tt class="py-op">.</tt><tt class="py-name">encode</tt><tt class="py-op">(</tt><tt class="py-string">'utf-8'</tt><tt class="py-op">)</tt> </tt>
 <a name="L18"></a><tt class="py-lineno">18</tt>  <tt class="py-line">        <tt class="py-keyword">elif</tt> <tt class="py-name">isinstance</tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">,</tt> <tt class="py-name">list</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
-<a name="L19"></a><tt class="py-lineno">19</tt>  <tt class="py-line">            <tt class="py-name">item</tt> <tt class="py-op">=</tt> <tt id="link-0" class="py-name" targets="Function src.decode.decode_list()=src.decode-module.html#decode_list"><a title="src.decode.decode_list" class="py-name" href="#" onclick="return doclink('link-0', 'decode_list', 'link-0');">decode_list</a></tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">)</tt> </tt>
+<a name="L19"></a><tt class="py-lineno">19</tt>  <tt class="py-line">            <tt class="py-name">item</tt> <tt class="py-op">=</tt> <tt id="link-0" class="py-name" targets="Function lazyupdredis.decode.decode_list()=lazyupdredis.decode-module.html#decode_list"><a title="lazyupdredis.decode.decode_list" class="py-name" href="#" onclick="return doclink('link-0', 'decode_list', 'link-0');">decode_list</a></tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">)</tt> </tt>
 <a name="L20"></a><tt class="py-lineno">20</tt>  <tt class="py-line">        <tt class="py-keyword">elif</tt> <tt class="py-name">isinstance</tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">,</tt> <tt class="py-name">dict</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
-<a name="L21"></a><tt class="py-lineno">21</tt>  <tt class="py-line">            <tt class="py-name">item</tt> <tt class="py-op">=</tt> <tt id="link-1" class="py-name" targets="Function src.decode.decode_dict()=src.decode-module.html#decode_dict"><a title="src.decode.decode_dict" class="py-name" href="#" onclick="return doclink('link-1', 'decode_dict', 'link-1');">decode_dict</a></tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">)</tt> </tt>
-<a name="L22"></a><tt class="py-lineno">22</tt>  <tt class="py-line">        <tt class="py-name">rv</tt><tt class="py-op">.</tt><tt id="link-2" class="py-name" targets="Method src.lazyupdredis.LazyUpdateRedis.append()=src.lazyupdredis.LazyUpdateRedis-class.html#append"><a title="src.lazyupdredis.LazyUpdateRedis.append" class="py-name" href="#" onclick="return doclink('link-2', 'append', 'link-2');">append</a></tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">)</tt> </tt>
+<a name="L21"></a><tt class="py-lineno">21</tt>  <tt class="py-line">            <tt class="py-name">item</tt> <tt class="py-op">=</tt> <tt id="link-1" class="py-name" targets="Function lazyupdredis.decode.decode_dict()=lazyupdredis.decode-module.html#decode_dict"><a title="lazyupdredis.decode.decode_dict" class="py-name" href="#" onclick="return doclink('link-1', 'decode_dict', 'link-1');">decode_dict</a></tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">)</tt> </tt>
+<a name="L22"></a><tt class="py-lineno">22</tt>  <tt class="py-line">        <tt class="py-name">rv</tt><tt class="py-op">.</tt><tt class="py-name">append</tt><tt class="py-op">(</tt><tt class="py-name">item</tt><tt class="py-op">)</tt> </tt>
 <a name="L23"></a><tt class="py-lineno">23</tt>  <tt class="py-line">    <tt class="py-keyword">return</tt> <tt class="py-name">rv</tt> </tt>
 </div><a name="L24"></a><tt class="py-lineno">24</tt>  <tt class="py-line"> </tt>
-<a name="decode_dict"></a><div id="decode_dict-def"><a name="L25"></a><tt class="py-lineno">25</tt> <a class="py-toggle" href="#" id="decode_dict-toggle" onclick="return toggle('decode_dict');">-</a><tt class="py-line"><tt class="py-keyword">def</tt> <a class="py-def-name" href="src.decode-module.html#decode_dict">decode_dict</a><tt class="py-op">(</tt><tt class="py-param">data</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+<a name="decode_dict"></a><div id="decode_dict-def"><a name="L25"></a><tt class="py-lineno">25</tt> <a class="py-toggle" href="#" id="decode_dict-toggle" onclick="return toggle('decode_dict');">-</a><tt class="py-line"><tt class="py-keyword">def</tt> <a class="py-def-name" href="lazyupdredis.decode-module.html#decode_dict">decode_dict</a><tt class="py-op">(</tt><tt class="py-param">data</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
 </div><div id="decode_dict-collapsed" style="display:none;" pad="++" indent="++++"></div><div id="decode_dict-expanded"><a name="L26"></a><tt class="py-lineno">26</tt>  <tt class="py-line">    <tt class="py-docstring">"""</tt> </tt>
 <a name="L27"></a><tt class="py-lineno">27</tt>  <tt class="py-line"><tt class="py-docstring">    Remove unicode from dict.</tt> </tt>
 <a name="L28"></a><tt class="py-lineno">28</tt>  <tt class="py-line"><tt class="py-docstring"></tt> </tt>
@@ -102,9 +102,9 @@
 <a name="L42"></a><tt class="py-lineno">42</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt class="py-name">isinstance</tt><tt class="py-op">(</tt><tt class="py-name">value</tt><tt class="py-op">,</tt> <tt class="py-name">unicode</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
 <a name="L43"></a><tt class="py-lineno">43</tt>  <tt class="py-line">            <tt class="py-name">value</tt> <tt class="py-op">=</tt> <tt class="py-name">value</tt><tt class="py-op">.</tt><tt class="py-name">encode</tt><tt class="py-op">(</tt><tt class="py-string">'utf-8'</tt><tt class="py-op">)</tt> </tt>
 <a name="L44"></a><tt class="py-lineno">44</tt>  <tt class="py-line">        <tt class="py-keyword">elif</tt> <tt class="py-name">isinstance</tt><tt class="py-op">(</tt><tt class="py-name">value</tt><tt class="py-op">,</tt> <tt class="py-name">list</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
-<a name="L45"></a><tt class="py-lineno">45</tt>  <tt class="py-line">            <tt class="py-name">value</tt> <tt class="py-op">=</tt> <tt id="link-3" class="py-name"><a title="src.decode.decode_list" class="py-name" href="#" onclick="return doclink('link-3', 'decode_list', 'link-0');">decode_list</a></tt><tt class="py-op">(</tt><tt class="py-name">value</tt><tt class="py-op">)</tt> </tt>
+<a name="L45"></a><tt class="py-lineno">45</tt>  <tt class="py-line">            <tt class="py-name">value</tt> <tt class="py-op">=</tt> <tt id="link-2" class="py-name"><a title="lazyupdredis.decode.decode_list" class="py-name" href="#" onclick="return doclink('link-2', 'decode_list', 'link-0');">decode_list</a></tt><tt class="py-op">(</tt><tt class="py-name">value</tt><tt class="py-op">)</tt> </tt>
 <a name="L46"></a><tt class="py-lineno">46</tt>  <tt class="py-line">        <tt class="py-keyword">elif</tt> <tt class="py-name">isinstance</tt><tt class="py-op">(</tt><tt class="py-name">value</tt><tt class="py-op">,</tt> <tt class="py-name">dict</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
-<a name="L47"></a><tt class="py-lineno">47</tt>  <tt class="py-line">            <tt class="py-name">value</tt> <tt class="py-op">=</tt> <tt id="link-4" class="py-name"><a title="src.decode.decode_dict" class="py-name" href="#" onclick="return doclink('link-4', 'decode_dict', 'link-1');">decode_dict</a></tt><tt class="py-op">(</tt><tt class="py-name">value</tt><tt class="py-op">)</tt> </tt>
+<a name="L47"></a><tt class="py-lineno">47</tt>  <tt class="py-line">            <tt class="py-name">value</tt> <tt class="py-op">=</tt> <tt id="link-3" class="py-name"><a title="lazyupdredis.decode.decode_dict" class="py-name" href="#" onclick="return doclink('link-3', 'decode_dict', 'link-1');">decode_dict</a></tt><tt class="py-op">(</tt><tt class="py-name">value</tt><tt class="py-op">)</tt> </tt>
 <a name="L48"></a><tt class="py-lineno">48</tt>  <tt class="py-line">        <tt class="py-name">rv</tt><tt class="py-op">[</tt><tt class="py-name">key</tt><tt class="py-op">]</tt> <tt class="py-op">=</tt> <tt class="py-name">value</tt> </tt>
 <a name="L49"></a><tt class="py-lineno">49</tt>  <tt class="py-line">    <tt class="py-keyword">return</tt> <tt class="py-name">rv</tt> </tt>
 </div><a name="L50"></a><tt class="py-lineno">50</tt>  <tt class="py-line"> </tt><script type="text/javascript">
@@ -135,14 +135,14 @@ expandto(location.href);
       <th class="navbar" align="right" width="100%">
         <table border="0" cellpadding="0" cellspacing="0">
           <tr><th class="navbar" align="center"
-            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">TBD</a></th>
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">Lazy Update Redis with JSON</a></th>
           </tr></table></th>
   </tr>
 </table>
 <table border="0" cellpadding="0" cellspacing="0" width="100%%">
   <tr>
     <td align="left" class="footer">
-    Generated by Epydoc 3.0.1 on Thu Feb 19 15:20:04 2015
+    Generated by Epydoc 3.0.1 on Fri Feb 27 10:24:57 2015
     </td>
     <td align="right" class="footer">
       <a target="mainFrame" href="http://epydoc.sourceforge.net"

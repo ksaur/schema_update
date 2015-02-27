@@ -3,7 +3,7 @@
           "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-  <title>src.json_patch_creator</title>
+  <title>lazyupdredis.json_patch_creator</title>
   <link rel="stylesheet" href="epydoc.css" type="text/css" />
   <script type="text/javascript" src="epydoc.js"></script>
 </head>
@@ -31,7 +31,7 @@
       <th class="navbar" align="right" width="100%">
         <table border="0" cellpadding="0" cellspacing="0">
           <tr><th class="navbar" align="center"
-            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">TBD</a></th>
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">Lazy Update Redis with JSON</a></th>
           </tr></table></th>
   </tr>
 </table>
@@ -39,7 +39,7 @@
   <tr valign="top">
     <td width="100%">
       <span class="breadcrumbs">
-        Package&nbsp;src ::
+        Package&nbsp;lazyupdredis ::
         Module&nbsp;json_patch_creator
       </span>
     </td>
@@ -50,14 +50,14 @@
     onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
         <tr><td align="right"><span class="options"
             >[<a href="frames.html" target="_top">frames</a
-            >]&nbsp;|&nbsp;<a href="src.json_patch_creator-module.html"
+            >]&nbsp;|&nbsp;<a href="lazyupdredis.json_patch_creator-module.html"
             target="_top">no&nbsp;frames</a>]</span></td></tr>
       </table>
     </td>
   </tr>
 </table>
 <!-- ==================== MODULE DESCRIPTION ==================== -->
-<h1 class="epydoc">Module json_patch_creator</h1><p class="nomargin-top"><span class="codelink"><a href="src.json_patch_creator-pysrc.html">source&nbsp;code</a></span></p>
+<h1 class="epydoc">Module json_patch_creator</h1><p class="nomargin-top"><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html">source&nbsp;code</a></span></p>
 <p>This is the main file for generating the update code.</p>
   <p>Two modes:</p>
   <ol start="1">
@@ -95,13 +95,13 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#generate_add_key" class="summary-sig-name">generate_add_key</a>(<span class="summary-sig-arg">keyglob</span>,
+          <td><span class="summary-sig"><a href="lazyupdredis.json_patch_creator-module.html#generate_add_key" class="summary-sig-name">generate_add_key</a>(<span class="summary-sig-arg">keyglob</span>,
         <span class="summary-sig-arg">usercode</span>,
         <span class="summary-sig-arg">outfile</span>,
         <span class="summary-sig-arg">prefix</span>)</span><br />
       Generate code to add databasekeys.</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_add_key">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#generate_add_key">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -115,12 +115,12 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#generate_upd" class="summary-sig-name">generate_upd</a>(<span class="summary-sig-arg">cmddict</span>,
+          <td><span class="summary-sig"><a href="lazyupdredis.json_patch_creator-module.html#generate_upd" class="summary-sig-name">generate_upd</a>(<span class="summary-sig-arg">cmddict</span>,
         <span class="summary-sig-arg">outfile</span>,
         <span class="summary-sig-arg">prefix</span>)</span><br />
       Generate the update functions for each keyset.</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_upd">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#generate_upd">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -139,7 +139,7 @@
       Compute a diff and generate some stubs of INIT/DEL for the user to 
       get started with</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_dsltemplate">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#generate_dsltemplate">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -153,11 +153,11 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#parse_dslfile_inner" class="summary-sig-name">parse_dslfile_inner</a>(<span class="summary-sig-arg">dslfile</span>)</span><br />
+          <td><span class="summary-sig"><a href="lazyupdredis.json_patch_creator-module.html#parse_dslfile_inner" class="summary-sig-name">parse_dslfile_inner</a>(<span class="summary-sig-arg">dslfile</span>)</span><br />
       parses the inner portion of dsl funtions: {  .....(Rules beginning 
       with INIT, UPD, REN, DEL).....</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile_inner">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#parse_dslfile_inner">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -171,11 +171,11 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#parse_dslfile" class="summary-sig-name">parse_dslfile</a>(<span class="summary-sig-arg">dslfile</span>)</span><br />
+          <td><span class="summary-sig"><a href="lazyupdredis.json_patch_creator-module.html#parse_dslfile" class="summary-sig-name">parse_dslfile</a>(<span class="summary-sig-arg">dslfile</span>)</span><br />
       Takes as input the DSL file in the format of: for * {  .....(Rules 
       beginning with INIT, UPD, REN, DEL).....</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#parse_dslfile">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -189,11 +189,27 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#parse_dslfile_string_only" class="summary-sig-name">parse_dslfile_string_only</a>(<span class="summary-sig-arg">dslfile</span>)</span><br />
-      Takes as input the DSL file in the format of: for * {  .....(Rules 
-      beginning with INIT, UPD, REN, DEL).....</td>
+          <td><span class="summary-sig"><a href="lazyupdredis.json_patch_creator-module.html#parse_dslfile_string_only" class="summary-sig-name">parse_dslfile_string_only</a>(<span class="summary-sig-arg">dslfile_location</span>)</span><br />
+      Takes as input the name of a DSL file in the format of: for * {  
+      .....(Rules beginning with INIT, UPD, REN, DEL).....</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile_string_only">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#parse_dslfile_string_only">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="parse_namespace"></a><span class="summary-sig-name">parse_namespace</span>(<span class="summary-sig-arg">name</span>)</span></td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#parse_namespace">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -210,7 +226,7 @@
           <td><span class="summary-sig"><a name="bulkload"></a><span class="summary-sig-name">bulkload</span>(<span class="summary-sig-arg">f</span>,
         <span class="summary-sig-arg">jsonarr</span>)</span></td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#bulkload">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#bulkload">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -224,11 +240,11 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#make_template" class="summary-sig-name">make_template</a>(<span class="summary-sig-arg">file1</span>,
+          <td><span class="summary-sig"><a href="lazyupdredis.json_patch_creator-module.html#make_template" class="summary-sig-name">make_template</a>(<span class="summary-sig-arg">file1</span>,
         <span class="summary-sig-arg">file2</span>)</span><br />
       This function is the entry point for generating the template</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#make_template">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#make_template">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -242,11 +258,11 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#process_dsl" class="summary-sig-name">process_dsl</a>(<span class="summary-sig-arg">file1</span>,
+          <td><span class="summary-sig"><a href="lazyupdredis.json_patch_creator-module.html#process_dsl" class="summary-sig-name">process_dsl</a>(<span class="summary-sig-arg">file1</span>,
         <span class="summary-sig-arg">outfile</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">dsu.py</code><code class="variable-quote">'</code></span>)</span><br />
       This function is the entry point for generating the update code.</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#process_dsl">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#process_dsl">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -260,11 +276,11 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a href="src.json_patch_creator-module.html#main" class="summary-sig-name">main</a>()</span><br />
+          <td><span class="summary-sig"><a href="lazyupdredis.json_patch_creator-module.html#main" class="summary-sig-name">main</a>()</span><br />
       To generate a template to fill out (containing the added/deleted 
       fields between 2 json files):</td>
           <td align="right" valign="top">
-            <span class="codelink"><a href="src.json_patch_creator-pysrc.html#main">source&nbsp;code</a></span>
+            <span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#main">source&nbsp;code</a></span>
             
           </td>
         </tr>
@@ -301,7 +317,7 @@
     <td width="15%" align="right" valign="top" class="summary">
       <span class="summary-type">&nbsp;</span>
     </td><td class="summary">
-        <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'src'"><code class="variable-quote">'</code><code class="variable-string">src</code><code class="variable-quote">'</code></code>
+        <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'lazyupdredis'"><code class="variable-quote">'</code><code class="variable-string">lazyupdredis</code><code class="variable-quote">'</code></code>
     </td>
   </tr>
 </table>
@@ -336,7 +352,7 @@
         <span class="sig-arg">prefix</span>)</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_add_key">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#generate_add_key">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
@@ -367,7 +383,7 @@
         <span class="sig-arg">prefix</span>)</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#generate_upd">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#generate_upd">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
@@ -394,7 +410,7 @@
   <h3 class="epydoc"><span class="sig"><span class="sig-name">parse_dslfile_inner</span>(<span class="sig-arg">dslfile</span>)</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile_inner">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#parse_dslfile_inner">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
@@ -416,7 +432,7 @@
   <h3 class="epydoc"><span class="sig"><span class="sig-name">parse_dslfile</span>(<span class="sig-arg">dslfile</span>)</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#parse_dslfile">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
@@ -435,20 +451,25 @@
 <tr><td>
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr valign="top"><td>
-  <h3 class="epydoc"><span class="sig"><span class="sig-name">parse_dslfile_string_only</span>(<span class="sig-arg">dslfile</span>)</span>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">parse_dslfile_string_only</span>(<span class="sig-arg">dslfile_location</span>)</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#parse_dslfile_string_only">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#parse_dslfile_string_only">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
-  <p>Takes as input the DSL file in the format of: for * {  .....(Rules 
-  beginning with INIT, UPD, REN, DEL).....}</p>
+  <p>Takes as input the name of a DSL file in the format of: for * {  
+  .....(Rules beginning with INIT, UPD, REN, DEL).....}</p>
   <p>Ignores the &quot;adds&quot;, these will be done right way, not 
   lazily, so no need to store.</p>
   <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>dslfile_location</code></strong> (string) - The location of the DSL file for the update</li>
+    </ul></dd>
     <dt>Returns:</dt>
-        <dd>a dictionary of {oldvernewver|namespace : [DSL String, ...], }</dd>
+        <dd>a dictionary of {(oldver, newver, namespace) : [DSL String, ...],
+          }</dd>
   </dl>
 </td></tr></table>
 </div>
@@ -463,7 +484,7 @@
         <span class="sig-arg">file2</span>)</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#make_template">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#make_template">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
@@ -490,7 +511,7 @@
         <span class="sig-arg">outfile</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">dsu.py</code><code class="variable-quote">'</code></span>)</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#process_dsl">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#process_dsl">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
@@ -512,7 +533,7 @@
   <h3 class="epydoc"><span class="sig"><span class="sig-name">main</span>()</span>
   </h3>
   </td><td align="right" valign="top"
-    ><span class="codelink"><a href="src.json_patch_creator-pysrc.html#main">source&nbsp;code</a></span>&nbsp;
+    ><span class="codelink"><a href="lazyupdredis.json_patch_creator-pysrc.html#main">source&nbsp;code</a></span>&nbsp;
     </td>
   </tr></table>
   
@@ -549,14 +570,14 @@
       <th class="navbar" align="right" width="100%">
         <table border="0" cellpadding="0" cellspacing="0">
           <tr><th class="navbar" align="center"
-            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">TBD</a></th>
+            ><a class="navbar" target="_top" href="https://github.com/plum-umd/schema_update">Lazy Update Redis with JSON</a></th>
           </tr></table></th>
   </tr>
 </table>
 <table border="0" cellpadding="0" cellspacing="0" width="100%%">
   <tr>
     <td align="left" class="footer">
-    Generated by Epydoc 3.0.1 on Thu Feb 19 15:20:04 2015
+    Generated by Epydoc 3.0.1 on Fri Feb 27 10:24:57 2015
     </td>
     <td align="right" class="footer">
       <a target="mainFrame" href="http://epydoc.sourceforge.net"

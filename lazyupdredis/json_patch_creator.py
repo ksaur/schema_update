@@ -358,8 +358,8 @@ def parse_dslfile_string_only(dslfile_location):
 
     Ignores the "adds", these will be done right way, not lazily, so no need to store.
     
-    @param dslfile: The location of the DSL file for the update
-    @type dslfile: string
+    @param dslfile_location: The location of the DSL file for the update
+    @type dslfile_location: string
     
     @return: a dictionary of {(oldver, newver, namespace) : [DSL String, ...], }
     """

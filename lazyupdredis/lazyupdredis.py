@@ -478,7 +478,7 @@ class LazyUpdateRedis(StrictRedis):
         @type dsl_file: string
         @param dsl_file: The file with the update functions.
 
-        @return True for success, False for failure.
+        @return: True for success, False for failure.
         
         """
         if upd_file_out == None:
