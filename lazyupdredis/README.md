@@ -1,5 +1,8 @@
 # **Internals of Lazy Update Redis (LUR) with JSON**
 
+
+![(flow diagram goes here)](https://github.com/plum-umd/schema_update/tree/master/doc/flow.jpeg)
+
 (For information on usage and the DSL, see the README up one directory.  This readme is on the lazy update implementation and all the fun that goes with it.)
 
 ### **Versioning**
