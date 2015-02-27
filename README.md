@@ -43,7 +43,7 @@ for edgeattr:* v0->v1 {...more below...};
 ## DSL:
 The DSL describes the update
 
-- The basic DSL doc is <a href ="doc">here</a>
+- The basic DSL doc is <a href ="doc/dsl.html">here</a>
 
 - However, it's probably easiest to check out some <a href="tests/data/example_json">contrived examples</a> (see any file in that directory ending in a *_init*)
 

@@ -26,7 +26,9 @@ If a client tries to connect at a version not yet seen by Redis, it will be reje
 Inside the DSL, updates are labeled by their  versions.  A programmer is allowed to update any subset of clients.  Say a programmer applies the following update (by calling ```r1.do_upd("update_1.dsl")```):
 ```
 # file update_1.dsl
-for edgeattr:* v0->v1 {#somecode};
+for edgeattr:* v0->v1 {
+# code here as described in DSL doc
+};
 ```
 Globally in Redis, this will bring the version of namespace ```edgeattr``` up to version ```v1```.  The namespace ```node``` will still be at ```ver0```.   
 
@@ -66,7 +68,7 @@ This section describes the actual redis data keys and additional bookkeeping key
 LUR adds/removes a version tag as the user calls ```get```/```set```, transparently to the user.  Keys are actually stored in redis as: ```version|namespace:value```.  For example, in the edgeattr example above, keys will be stored in lazy redis as ```v0|edgeattr:n2@n3```.  In the non-namspace case, the keys are stored with the version only such as ```v1.0|some_other_entry```.  Lazy Update Redis then checks to make sure the default namespace was declared to allow these keys.  More information on how ```get```/```set``` actually works is described in detail below.
 
 ##### Bookkeeping keys:
-In addition to the actual data that a user my request to store in Redis, LUR stores some additional data for its internal bookkeeping.
+In addition to the actual data that a user my request to store in Redis, LUR stores some additional data for its internal bookkeeping:
 
 * ```UPDATE_DSL_STRINGS``` - This is a **single** redis hash key.  Each subkey of this hash is ```(v0, v1, edgeattr)```, and the value is the DSL code (string) necessary to build the update between the two versions for the namespace.  This is used to build update dictionaries (described later) for each LUR client. Ex:
 
@@ -82,8 +84,11 @@ In addition to the actual data that a user my request to store in Redis, LUR sto
 * ```UPDATE_VERSIONS_(namespace)``` for each namespace - This is a redis list key for EACH namespace of all the versions for the namespace.  For example:
 
  ```python
-  # returns a list of all versions ["v0", "v1"] for namespace "edgeattr.
+  # returns a list of all versions ["v0", "v1"] for namespace "edgeattr".
   self.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) # -1 means end of list
+  
+    # returns a list of all versions ["v1.0", "v1.1"] for namespace " sillyns".
+  self.lrange("UPDATE_VERSIONS_sillyns", 0, -1) # -1 means end of list
  ```
 
 ** NOTE:** These bookkeeping functions are never called by the user directly, and are hidden from the user on queries.  (**TODO**: make sure hiding still works with default namespace...)
@@ -151,18 +156,25 @@ Also, each time a new client connects, Lazy Update Redis verifies the currentnes
 
 Keys are updated only as they are requested.  This applies primarily to ```gets```, but some checking is also necessary for ```sets```.  Lazy updates are implemented by subclassing  <a href="https://github.com/andymccurdy/redis-py/blob/master/redis/client.py">class StrictRedis</a> (by Andy McCurdy).  You can read all about the inherited/override methods in the <a href="../doc/lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html"> pydoc</a> for LazyUpdateRedis.
 
-##### sets
+##### set
 This is the simpler of the two lazy functions.  
-- First, LUR checks to make sure that the client is at the most current version of the namespace for the requested key.  If not, it raises an error.
- - Since the client has been asserted to be at the current version,  assuming the versioning was established correctly by the programmer, the set-to value should match the current schema.
-- LUR then sets the key to the provided value, and deletes any previous versions of the key, which brings the key up-to-date if necessary.
+- First, LUR checks to make sure that the client is at the most current version of the namespace for the requested key.  
+ - If not, it raises a ```DeprecationWarning```.  (The client may choose to catch this and gracefully update.)
+- Since the client has been asserted to be at the current version, assuming the versioning was established correctly by the programmer, the set-to value should match the current schema.
+ - LUR then sets the key to the provided value, and deletes any previous versions of the key, which brings the key up-to-date if necessary.
  - There is no need to apply the update function, because the user is setting the value specifically, blowing away the old data. 
 
-##### gets
-This function actually performs updates as necessary.
-- First, LUR checks to make sure that the client is at the most current version of the namespace for the requested key.  If not, it raises an error.
-
-#TODO write this
+##### get
+This function actually performs lazy updates as necessary.
+- First, LUR checks to make sure that the client is at the most current version of the namespace for the requested key. 
+ - If not, it raises a ```DeprecationWarning```. (The client may choose to catch this and gracefully update.)
+- LUR then checks to see if the requested key is already at the current version.  
+ - If so, it returns the value and does nothing else.  (This should happen in the majority of the casese, which minimizes overhead.)
+- If LUR does not find a key at the current version, then it tries to get a matching key at a previous version by iterating backwards through the version list from most current to least current.  
+ - If no key is found, it returns None
+- When a key is found at a previous version, LUR notes at which version, and looks up the update(s) to apply to bring the key up to the current version for the key's namespace.
+ - If the client is at the current version, it is guaranteed to have the proper update modules loaded in its local ```upd_dict```. LUR then loops through the update functions (first matching the namespace, and then matching the keyglob), applying oldest to newest.
+- After all of the updates are applied, LUR returns the updated value for the requested key. 
 
 ### **Concurrency** 
 Redis provides some transaction methods described in the <a href = "http://redis.io/topics/transactions"> user manual</a>.  Lazy Update Redis uses these concurrency mechanisms to ensure correcteness in both the bookkeeping data (data used to facilitate updates, which may be used by multiple clients) and the actual data that is being lazily updated.
