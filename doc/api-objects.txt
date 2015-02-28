@@ -26,6 +26,7 @@ print_redis.print_all_keys	print_redis-module.html#print_all_keys
 print_redis.__package__	print_redis-module.html#__package__
 lazyupdredis.lazyupdredis.LazyUpdateRedis	lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html
 lazyupdredis.lazyupdredis.LazyUpdateRedis.global_curr_version	lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#global_curr_version
+lazyupdredis.lazyupdredis.LazyUpdateRedis.do_upd_all_now	lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#do_upd_all_now
 lazyupdredis.lazyupdredis.LazyUpdateRedis.get	lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#get
 lazyupdredis.lazyupdredis.LazyUpdateRedis.do_upd	lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#do_upd
 lazyupdredis.lazyupdredis.LazyUpdateRedis.set	lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html#set
