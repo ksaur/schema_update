@@ -200,6 +200,8 @@ class LazyUpdateRedis(StrictRedis):
             # or no such namespace exists, so create a version entry for new namespace
             # This call will do either.
             else:
+                if curr_ver is None:
+                    print("Creating new namespace: " + ns)
                 pipe.rpush("UPDATE_VERSIONS_"+ns, v)
             rets = pipe.execute()
             if rets:
@@ -471,8 +473,38 @@ class LazyUpdateRedis(StrictRedis):
             print "WATCH ERROR, Value not set"
             return False
         
+    def do_upd_all_now(self, dsl_file=None):
+        """
+        Scan through all keys in the database and update as necessary
+ 
+        @param dsl_file: If you haven't already loaded in the update, this will do that
+        """ 
+
+        if dsl_file:
+            self.do_upd(dsl_file)
+ 
+        arr = self.scan(0)
+        if len(arr) is not 2:
+            print "WARNING: Could not update...error starting iterator"
+            return 0
+        updated = 0
+        while True:
+            for e in arr[1]:
+                if "|" not in e:
+                    continue
+                # Strip off namespace
+                (vers, name) = e.split('|',1)
+                # Skip current keys
+                if ":" in name:
+                    if(vers == self.global_curr_version(self.namespace(name))):
+                        continue
+                updated+=1
+            if arr[0] == 0:
+                break
+            arr = self.scan(arr[0])
+        return updated
    
-    def do_upd(self, dsl_file, upd_file_out=None):
+    def do_upd(self, dsl_file):
         """
         Switch the version string and load up the update functions for lazy updates.
            
@@ -487,9 +519,8 @@ class LazyUpdateRedis(StrictRedis):
         @return: True for success, False for failure.
         
         """
-        if upd_file_out == None:
-            upd_file_out = "/tmp/gen_" + str(int(round(time.time() * 1000))) + ".py"
-        
+
+        upd_file_out = "/tmp/gen_" + str(int(round(time.time() * 1000))) + ".py"
         dsl_for_redis = json_patch_creator.parse_dslfile_string_only(dsl_file)
 
         # Verify that these updates are sensible with the current database.
@@ -539,6 +570,8 @@ class LazyUpdateRedis(StrictRedis):
                     pipe.reset()
                     raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))
                 prev = self.hget("UPDATE_DSL_STRINGS", vOldvNewNs)
+                print dsl_for_redis[vOldvNewNs]
+                print '\n'.join(dsl_for_redis[vOldvNewNs])
                 joined = '\n'.join(dsl_for_redis[vOldvNewNs])
                 if ((prev is not None) and (prev != joined)):
                     pipe.reset()

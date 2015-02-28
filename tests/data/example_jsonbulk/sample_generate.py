@@ -5,6 +5,7 @@ import random, string
 import datetime
 from datetime import timedelta
 from random import randint
+from lazyupdredis import *
 
 
 def random_date(start, end):
@@ -12,7 +13,12 @@ def random_date(start, end):
         seconds=randint(0, int((end - start).total_seconds())))
 
 
-def gen_1_sadalage(r, num_entries):
+def gen_1_sadalage(num_entries):
+
+    actualredis = redis.StrictRedis()
+    actualredis.flushall()
+
+    r = lazyupdredis.connect([("customer", "v0")])
 
     for i in range(num_entries):
         s = dict()
@@ -26,7 +32,8 @@ def gen_1_sadalage(r, num_entries):
         o["orderdate"] = str(random_date(since, datetime.date(2015,1,1)))
         l = list()
         for it in range(random.randint(1,4)):
-            price = "{:.2f}".format(random.randint(2000,5000)/100.00)
+            price = random.randint(2000,5000)/100.00
+            #price = "{:.2f}".format(random.randint(2000,5000)/100.00)
             prod = ''.join(random.choice(string.ascii_uppercase) for j in range(9))
             items = {"product" : prod, "price": price}
             l.append(items)
@@ -49,15 +56,7 @@ def main():
         print "using default number of entries (1000)" 
         num_entries = 1000
 
-    r = redis.StrictRedis()
-    try:
-        r.ping()
-    except r.ConnectionError as e:
-        print(e)
-        sys.exit(-1)
-    r.flushall()
-
-    gen_1_sadalage(r, num_entries)
+    gen_1_sadalage(num_entries)
 
 
     

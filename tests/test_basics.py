@@ -4,7 +4,6 @@ Load some test data in the database, update, and test for expected results.
 """
 import json
 import sys, os
-import shutil
 import redis
 from lazyupdredis import *
 
