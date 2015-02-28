@@ -152,7 +152,7 @@ In addition to the actual data that a user my request to store in Redis, LUR sto
   self.lrange("UPDATE_VERSIONS_sillyns", 0, -1) # -1 means end of list
  ```
 
-** NOTE:** These bookkeeping functions are never called by the user directly, and are hidden from the user on queries.  (**TODO**: make sure hiding still works with default namespace...)
+** NOTE:** These bookkeeping functions are never called by the user directly, and are hidden from the user on queries.
 
 ##### Keeping up-to-date
 
@@ -220,7 +220,12 @@ For additional details, see <a href="https://github.com/plum-umd/schema_update/b
 
 (*Note:* Lazy Update Redis does not automatically handle read/write collisions that would occur in the applications regardless of the use of LUR...those are left up to the application writer to write normal Redis concurrency as necessary when using any database in a distributed system.)
 
-### **Pull thread**
-*TODO implement!!!*
-This thread updates all of the stale keys that haven't been lazily retrieved....*TODO write*
+### **Updating all the keys right now (not lazily)**
+If the user wants to update all of the keys at once (without waiting for laziness, for example, if you want to to force stale entries to be updated), then the user can call ```r.do_upd_all_now()``` to force all keys to update.  This function uses Redis' ```scan``` <a href = "http://redis.io/commands/scan#scan-guarantees">guarantees</a> to ensure that "A full iteration always retrieves all the elements that were present in the collection from the start to the end of a full iteration.".  This is particularly important, since the update changes the keyname when it changes the version string as part of the keyname.
+
+To avoid blocking in the primary client application, the programmer may start a new thread and then call the ```do_upd_all_now()``` function; Redis continues to operate as normal during update.
+
+TODO: How to notify all clients to clean out their update dictionaries?  (They will never be used again...) At this point, do we remove the old version and old DSL from Redis?  After this function runs, we should be able to essentially wipe out all of the DSL from Redis (since no new entries at the old version can be added once an update is loaded).  Should we also wipe out all of the old versions from the namespace lists?
+
+
 
