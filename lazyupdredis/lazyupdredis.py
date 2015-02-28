@@ -349,9 +349,9 @@ class LazyUpdateRedis(StrictRedis):
                     print "new_ver = " + new_ver + " upd_v = " + upd_v
                     # Make sure we have the expected version
                     if (new_ver != upd_v):
-                        print "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
+                        err = "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
                         pipe.reset()
-                        return val
+                        raise KeyError(err)
                     # Check if the keyglob matches this particular key
                     # Ex: if the glob wanted key:[1-3] and we are key:4, no update,
                     #     eventhough the namespace matches.
