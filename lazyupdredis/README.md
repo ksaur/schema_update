@@ -24,24 +24,26 @@ r1 = lazyupdredis.connect([("node", "ver0"), ("edgeattr", "v0")])
 ```
 This establishes the namespaces of ```node``` and ```edgeattr```.   Any additional hosts that attempt to connect to these namespaces must connect at ```ver0``` and ```v0``` respectively.
 
-If a client tries to connect at a version not yet seen by Redis, it will be rejected.  As updates are applied, the version is updated from the dsl.
+If a client tries to connect at a version not yet seen by Redis, it will be rejected.  As updates are applied, the version is updated to match a tag from the DSL,
+where updates are labeled by their versions.  
 
-Inside the DSL, updates are labeled by their  versions.  A programmer is allowed to update any subset of clients.  Say a programmer applies the following update (by calling ```r1.do_upd("update_1.dsl")```):
+A programmer is allowed to update any subset of namespaces.  Say a programmer applies the following update (by calling ```r1.do_upd("update_1.dsl")```):
 ```
 # file update_1.dsl
 for edgeattr:* v0->v1 {
 # code here as described in DSL doc
 };
 ```
-Globally in Redis, this will bring the version of namespace ```edgeattr``` up to version ```v1```.  The namespace ```node``` will still be at ```ver0```.   
+Globally in Redis, this will bring the version of namespace ```edgeattr``` up to version ```v1```.  The namespace ```node``` will still be at ```ver0```.  (The keys are not yet updated to the new versions; this is done lazily.) 
 
-The client that called the update (in this case ```r1```) will automatically be brought up to the versions that are in the updates it calls (```r1``` is now at ```v1``` for ```egdeattr``` and still at ```ver0``` for ```node```).
+The client that called the update (in this case ```r1```) will automatically be brought up to the versions that are in the updates it calls (```r1``` is now at ```v1``` for ```egdeattr``` and still at ```ver0``` for ```node```).  **TODO**: This is not quite how things should be, but there's a bootstrapping problem about what/where calls the update.  This is currently magically assuming that the client updates to the new version after calling ```do_upd```
 
-Any new client that tries to connect must now connect at the current versions, or it will be rejected:
-
+Any new client that tries to connect must now connect at the current versions, or it will be rejected.  In this example, new clients should connect as:
 ```python
 r2 = lazyupdredis.connect([("node", "ver0"), ("edgeattr", "v1")])
 ```
+New clients can choose to connect to only a subset of existing namespaces, or create new namespaces, but they cannot connect to any other versions of the current namespaces.
+
 
 ##### No namespaces
 
@@ -61,7 +63,7 @@ Then, if the user wants to update some of the keys based on glob matching, they 
 # file update_1.dsl
 for *nonsense* v1.0->v1.1 {#some code here};
 ```
-then all keys that contain the word nonsense (```total_nonsense_schema, some_other_nonsense```) will have the code in the DSL rule above above applied to the value, but **all** keys will be updated from ```v1.0->v1.1```.
+then all keys that contain the word nonsense (```total_nonsense_schema, some_other_nonsense```) will have the code in the DSL rule above above applied to the value, but **all** keys will be updated from ```v1.0->v1.1```.  (This adds overhead, so having namespaces is the more efficient way forward.)
 
 
 ### **Lazy Update Redis (LUR) entries** 
