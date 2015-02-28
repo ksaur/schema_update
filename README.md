@@ -14,11 +14,6 @@ $ make
 $ src/redis-server
 ```
  
-- Also, you'll need some python libraries for the update functionality to build: 
-```
-$ pip install -r requirements.txt
-```
-
 - You must then install the lazy redis update libary:
 ```
 $ sudo python setup.py develop

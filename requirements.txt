@@ -1,3 +1,0 @@
-pyparsing
-redis
-json

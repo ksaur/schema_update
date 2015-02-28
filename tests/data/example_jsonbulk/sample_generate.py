@@ -34,7 +34,7 @@ def gen_1_sadalage(r, num_entries):
         s["order"] = o
         r.set("customer:"+str(i), json.dumps(s))
 
-    print r.keys("customer:*")
+    r.save()
 
 
 def main():
