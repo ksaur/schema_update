@@ -186,12 +186,15 @@ class LazyUpdateRedis(StrictRedis):
             self.client_ns_versions[ns] = v
             # Check if we're already at this namespace
             if (v == curr_ver):
+                pipe.reset()
                 return 0
             # Check to see if this version is old for this namespace
             elif (startup and (v in self.global_versions(ns))):
+                pipe.reset()
                 raise ValueError('Fatal - Trying to connect to an old version')
             # Check to see if we're trying to connect to a bogus version
             elif (startup and (curr_ver is not None) and (v != curr_ver)):
+                pipe.reset()
                 raise ValueError('Fatal - Trying to connect to a bogus version for namespace: ' + ns)
             # Either the namespace exists, and we need to add a new version
             # or no such namespace exists, so create a version entry for new namespace
@@ -329,6 +332,7 @@ class LazyUpdateRedis(StrictRedis):
                 if upd_name not in self.upd_dict:
                     err= "Could not update key:" + name + ".  Could not find " +\
                         "update \'" + str(upd_name) +"\' in update dictionary."
+                    pipe.reset()
                     raise KeyError(err)
 
                 # Grab all the information from the update dictionary...
@@ -346,6 +350,7 @@ class LazyUpdateRedis(StrictRedis):
                     # Make sure we have the expected version
                     if (new_ver != upd_v):
                         print "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
+                        pipe.reset()
                         return val
                     # Check if the keyglob matches this particular key
                     # Ex: if the glob wanted key:[1-3] and we are key:4, no update,
@@ -369,6 +374,7 @@ class LazyUpdateRedis(StrictRedis):
                         pipe.execute_command('DEL', curr_key_version+ "|" + name)
                         curr_key_version = new_ver
                     else:
+                        pipe.reset()
                         raise ValueError( "ERROR!!! Could not update key: " + name )
                 # no functions matched, update version string only.                   
                 else:
@@ -530,10 +536,12 @@ class LazyUpdateRedis(StrictRedis):
                 pipe.multi()
                 vOldvNewNs = (version_from, version_to, ns)
                 if vOldvNewNs not in dsl_for_redis:
+                    pipe.reset()
                     raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))
                 prev = self.hget("UPDATE_DSL_STRINGS", vOldvNewNs)
                 joined = '\n'.join(dsl_for_redis[vOldvNewNs])
                 if ((prev is not None) and (prev != joined)):
+                    pipe.reset()
                     raise ValueError("\n\nERROR!!! Already had an update at version " + str(vOldvNewNs) )
                 elif (prev != joined):
                     pipe.hset("UPDATE_DSL_STRINGS", vOldvNewNs, joined)
