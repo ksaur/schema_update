@@ -1,6 +1,6 @@
 # **Internals of Lazy Update Redis (LUR) with JSON**
 
-For information on usage and the DSL, see the README up one directory.  This README describes the lazy update implementation and all the fun that goes with it.
+For information on usage and the DSL, see the <a href="../README.md">README</a> up one directory.  This README describes the lazy update implementation and all the fun that goes with it.
 
 ![flow diagram goes here](../doc/flow.jpeg)
 This is a very simplified diagram of the basic control flow.  (Actual a lot more version checking, concurrency, etc.)
@@ -12,7 +12,7 @@ This is a very simplified diagram of the basic control flow.  (Actual a lot more
 
 ##### Namespaces
 
-Lazy Redis Updates uses namespaces to track versioning of keyspaces.  The namespace is separated from the main keyname with a colon (```:```).  This namespace practice is a common preferred practice as documented in the Redis manual (under "<a href="http://redis.io/topics/data-types-intro">Redis keys</a>").
+Lazy Redis Updates uses namespaces to track versioning of keyspaces.  The namespace is separated from the main keyname with a colon (```:```).  This namespace practice is a common preferred practice as documented in the Redis manual (under "<a href="http://redis.io/topics/data-types-intro#redis-keys">Redis keys</a>").
 
 For example, a user might have some keys describing edge attributes with namespace ```edgeattr```, and some keys describing nodes with namespace ```node```:
 ```
@@ -162,7 +162,7 @@ Also, each time a new client connects, Lazy Update Redis verifies the currentnes
 
 ### **Lazy Updates**
 
-Keys are updated only as they are requested.  This applies primarily to ```gets```, but some checking is also necessary for ```sets```.  Lazy updates are implemented by subclassing  <a href="https://github.com/andymccurdy/redis-py/blob/master/redis/client.py">class StrictRedis</a> (by Andy McCurdy).  You can read all about the inherited/override methods in the <a href="../doc/lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html"> pydoc</a> for LazyUpdateRedis.
+Keys are updated only as they are requested.  This applies primarily to ```gets```, but some checking is also necessary for ```sets```.  Lazy updates are implemented by subclassing  <a href="https://github.com/andymccurdy/redis-py/blob/bc61eb925af5de3317937529413cca4a49c4cd3b/redis/client.py#L281">class StrictRedis</a> (by Andy McCurdy).  You can read all about the inherited/override methods in the <a href="../doc/lazyupdredis.lazyupdredis.LazyUpdateRedis-class.html"> pydoc</a> for LazyUpdateRedis.
 
 ##### set
 This is the simpler of the two lazy functions.  
