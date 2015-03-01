@@ -135,6 +135,7 @@ def test_get(r, name, evilredis, evilval, withpipe=False):
             if upd_name not in r.upd_dict:
                 err= "Could not update key:" + name + ".  Could not find " +\
                     "update \'" + str(upd_name) +"\' in update dictionary."
+                pipe.reset()
                 raise KeyError(err)
 
             # Grab all the information from the update dictionary...
@@ -152,6 +153,7 @@ def test_get(r, name, evilredis, evilval, withpipe=False):
                 # Make sure we have the expected version
                 if (new_ver != upd_v):
                     print "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
+                    pipe.reset()
                     return val
                 # Check if the keyglob matches this particular key
                 # Ex: if the glob wanted key:[1-3] and we are key:4, no update,
@@ -194,6 +196,7 @@ def test_get(r, name, evilredis, evilval, withpipe=False):
                         pipe.execute_command('DEL', curr_key_version+ "|" + name)
                     curr_key_version = new_ver
                 else:
+                    pipe.reset()
                     raise ValueError( "ERROR!!! Could not update key: " + name )
             # no functions matched, update version string only.                   
             else:
