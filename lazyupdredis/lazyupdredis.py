@@ -230,11 +230,7 @@ class LazyUpdateRedis(StrictRedis):
         Return the most current version from redis for namespace ns
         @param ns: the namespace
         """
-        val = self.lindex("UPDATE_VERSIONS_"+ns, -1)
-        if val is not None:
-            return val
-        print "WARNING: no namespace found for \'" + ns + "\'. Checking default:"
-        return self.lindex("UPDATE_VERSIONS_*", -1)
+        return self.lindex("UPDATE_VERSIONS_"+ns, -1)
 
     def namespace(self, name):
         return json_patch_creator.parse_namespace(name)
@@ -279,28 +275,31 @@ class LazyUpdateRedis(StrictRedis):
         """
 
         ns = self.namespace(name)
-        global_ns_ver = self.global_curr_version(ns)
+        vers_list = self.global_versions(ns)
+        if vers_list is None:
+            raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
+                  "\'. Global versions are: " + str(self.global_versions(ns)))
+        curr_ver = vers_list[-1]
         client_ns_ver = self.client_ns_versions[ns]
 
         # Make sure the client has been updated to this version
-        if global_ns_ver != client_ns_ver:
+        if curr_ver != client_ns_ver:
             err= "Could not update key:" + name + ".\nTo continue, " +\
-                "you must update namespace \'" + ns + "\' to version " + global_ns_ver +\
+                "you must update namespace \'" + ns + "\' to version " + curr_ver +\
                 ".  Currently at namespace version " + client_ns_ver +\
                 " for \'" + ns + "\'"
             raise DeprecationWarning(err)
         
         # Check to see if the requested key is already current
-        orig_name = global_ns_ver + "|" + name
+        orig_name = curr_ver + "|" + name
         val = self.execute_command('GET', orig_name)
         # Return immediately if no update is necsesary
         if(val):
-            #print "\tNo update necessary for key: " + name + " (version = " + global_ns_ver + ")"
+            #print "\tNo update necessary for key: " + name + " (version = " + curr_ver + ")"
             return val
 
         # No key found at the current version.
         # Try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
-        vers_list = self.global_versions(ns)
         curr_key_version = None
         for v in reversed(vers_list[:-1]): # this will test the most current first
             orig_name = v + "|" + name
@@ -432,10 +431,12 @@ class LazyUpdateRedis(StrictRedis):
             already exists.
         """
         ns = self.namespace(name)
-        curr_ver = self.global_curr_version(ns)
-        if curr_ver is None:
+        vers_list = self.global_versions(ns)
+        if vers_list is None:
             raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
                   "\'. Global versions are: " + str(self.global_versions(ns)))
+        curr_ver = vers_list[-1]
+
         new_name = curr_ver + "|" + name
         pieces = [new_name, value]
         if ex:
@@ -455,18 +456,18 @@ class LazyUpdateRedis(StrictRedis):
         if xx:
             pieces.append('XX')
 
-        if (self.global_versions_len(ns) == 1):
+        # if there is only one version, don't bother with a pipeline
+        if (len(vers_list) == 1):
             return self.execute_command('SET', *pieces) 
 
         # Even though we're not doing the update on the value (since the client 
         # was asserted to be at the correct verson), we still need to update the
         # version string.
-        prev = self.global_versions(ns)
         try:
             pipe = self.pipeline()
             pipe.watch(new_name)
             pipe.multi()
-            for v in reversed(prev[:-1]):
+            for v in reversed(vers_list[:-1]):
                 oldname = v + "|" + name
                 old = pipe.execute_command('GET', oldname)
                 if old is not None:
