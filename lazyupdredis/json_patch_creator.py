@@ -401,11 +401,12 @@ def parse_dslfile_string_only(dslfile_location):
     return dsl_dict
 
 def parse_namespace(name):
-    if (len(name.split(":", 1)) != 2):
+    spl = name.split(":", 1)
+    if (len(spl) != 2):
         print "WARNING: using default namespace (*) for \'" + name + "\'."
         return "*"
     else:
-        return name.split(":", 1)[0]
+        return spl[0]
 
 def bulkload(f, jsonarr):
     for line in f:

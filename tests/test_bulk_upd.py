@@ -19,7 +19,7 @@ def test_1_sadalage_upd():
     print "Updating....."
 
     # Update all the keys now.
-    print "UPDATED: " + str(r.do_upd_all_now("data/example_jsonbulk/gen_1_sadalage_init"))
+    print "UPDATED: " + str(r.do_upd_all_now("data/example_jsonbulk/sample_1_sadalage_init"))
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
