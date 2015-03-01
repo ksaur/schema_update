@@ -218,6 +218,13 @@ class LazyUpdateRedis(StrictRedis):
         """
         return self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
 
+    def global_versions_len(self, ns):
+        """
+        Return the length list of all versions from redis for namespace ns
+        @param ns: the namespace
+        """
+        return self.llen("UPDATE_VERSIONS_"+ns)
+
     def global_curr_version(self, ns):
         """
         Return the most current version from redis for namespace ns
@@ -288,7 +295,7 @@ class LazyUpdateRedis(StrictRedis):
         val = self.execute_command('GET', orig_name)
         # Return immediately if no update is necsesary
         if(val):
-            print "\tNo update necessary for key: " + name + " (version = " + global_ns_ver + ")"
+            #print "\tNo update necessary for key: " + name + " (version = " + global_ns_ver + ")"
             return val
 
         # No key found at the current version.
@@ -448,7 +455,10 @@ class LazyUpdateRedis(StrictRedis):
         if xx:
             pieces.append('XX')
 
-        # Even though we're not doing the udpate on the value (since the client 
+        if (self.global_versions_len(ns) == 1):
+            return self.execute_command('SET', *pieces) 
+
+        # Even though we're not doing the update on the value (since the client 
         # was asserted to be at the correct verson), we still need to update the
         # version string.
         prev = self.global_versions(ns)
