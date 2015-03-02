@@ -502,6 +502,7 @@ class LazyUpdateRedis(StrictRedis):
             return 0
         updated = 0
         while True:
+            logging.debug("looping over " + str(len(arr[1])))
             for e in arr[1]:
                 if "|" not in e:
                     continue
@@ -510,7 +511,9 @@ class LazyUpdateRedis(StrictRedis):
                 # Skip current keys
                 if ":" in name:
                     if(vers == self.global_curr_version(self.namespace(name))):
+                        logging.debug("Skipping current " + name)
                         continue
+                self.get(name)
                 updated+=1
             if arr[0] == 0:
                 break

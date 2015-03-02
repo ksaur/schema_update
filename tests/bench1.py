@@ -87,15 +87,15 @@ def main():
     print bench("lazy_redis_getset", do_getset, num_clients, num_keys, num_funcalls, [("edgeattr", "v0")])
 
 
-#    # test do all now
-#    actualredis.flushall()
-#    num_keys = 5000    # keys to add
-#    num_funcalls = 1
-#    num_clients = 1
-#    sample_generate.gen_1_sadalage(num_keys)
-#    print bench("RIGHTNOW_redis_sadalage1", do_updnow, num_clients, num_funcalls, num_keys, [("customer", "v0")])
-#    print str(len(actualredis.keys("v0*"))) + " keys not updated, ",
-#    print str(len(actualredis.keys("v1*"))) + " keys updated."
+    # test do all now
+    actualredis.flushall()
+    num_keys = 5000    # keys to add
+    num_funcalls = 1
+    num_clients = 1
+    sample_generate.gen_1_sadalage(num_keys)
+    print bench("RIGHTNOW_redis_sadalage1", do_updnow, num_clients, num_funcalls, num_keys, [("customer", "v0")])
+    print str(len(actualredis.keys("v0*"))) + " keys not updated, ",
+    print str(len(actualredis.keys("v1*"))) + " keys updated."
 
 
     # test lazy
