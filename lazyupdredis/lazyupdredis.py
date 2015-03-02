@@ -501,6 +501,10 @@ class LazyUpdateRedis(StrictRedis):
             logging.warning( "WARNING: Could not update...error starting iterator")
             return 0
         updated = 0
+        # Memorize the ns version info from the database to cut down on hits to Redis.
+        # This assumes that any update triggered AFTER "do_upd_all_now" can be ignored
+        # due to the ordering of the calls.
+        memo = dict()
         while True:
             logging.debug("looping over " + str(len(arr[1])))
             for e in arr[1]:
@@ -510,7 +514,11 @@ class LazyUpdateRedis(StrictRedis):
                 (vers, name) = e.split('|',1)
                 # Skip current keys
                 if ":" in name:
-                    if(vers == self.global_curr_version(self.namespace(name))):
+                    ns = self.namespace(name)
+                    if ns not in memo:
+                        memo[ns] = self.global_curr_version(ns)
+                        logging.info("memoized " + str(memo))
+                    if(vers == memo[ns]):
                         logging.debug("Skipping current " + name)
                         continue
                 self.get(name)
