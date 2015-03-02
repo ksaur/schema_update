@@ -59,7 +59,7 @@
     update functions.
 """
 
-import redis
+import redis, logging
 import json, re, sys, fnmatch, decode, time
 import json_patch_creator
 from ast import literal_eval
@@ -172,7 +172,7 @@ class LazyUpdateRedis(StrictRedis):
         self.upd_dict = dict()
         self.load_upd_tuples()
  
-        print "Connected with the following versions: " + str(self.client_ns_versions)
+        logging.info("Connected with the following versions: " + str(self.client_ns_versions))
 
     def append_new_version(self, v, ns, startup=False):
         """
@@ -201,14 +201,14 @@ class LazyUpdateRedis(StrictRedis):
             # This call will do either.
             else:
                 if curr_ver is None:
-                    print("Creating new namespace: " + ns)
+                    logging.info("Creating new namespace: " + ns)
                 pipe.rpush("UPDATE_VERSIONS_"+ns, v)
             rets = pipe.execute()
             if rets:
                 return rets[-1]
             return None
         except WatchError:
-            print "WATCH ERROR, Value not set for UPDATE_VERSIONS"
+            logging.warning("WATCH ERROR, Value not set for UPDATE_VERSIONS")
             return None
 
     def global_versions(self, ns):
@@ -257,11 +257,11 @@ class LazyUpdateRedis(StrictRedis):
             try:
                 func = getattr(m,funcname)
             except AttributeError as e:
-                print "(Could not find function: " + funcname + ")"
+                logging.warning("(Could not find function: " + funcname + ")")
                 return None
             # Call the function for the current key and current jsonsubkey
             (modkey, modjson) = func(currkey, jsonkey)
-            print "GOT BACK: " + str(modkey) + " " + str(modjson)
+            logging.debug("GOT BACK: " + str(modkey) + " " + str(modjson))
 
         modjsonstr = json.dumps(modjson)
         return [modkey, modjsonstr]
@@ -278,7 +278,7 @@ class LazyUpdateRedis(StrictRedis):
         vers_list = self.global_versions(ns)
         # This could happen if the client asked for some bogus key, don't raise Error
         if vers_list == []:
-            print("ERROR, Bad current version (None) for key \'" + name +\
+            logging.warning("ERROR, Bad current version (None) for key \'" + name +\
                   "\' at namespace \'" + ns + "\'. Global versions are: " + str(vers_list))
             #raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
             #      "\' at namespace \'" + ns + "\'. Global versions are: " + str(vers_list))
@@ -299,7 +299,7 @@ class LazyUpdateRedis(StrictRedis):
         val = self.execute_command('GET', orig_name)
         # Return immediately if no update is necsesary
         if(val):
-            #print "\tNo update necessary for key: " + name + " (version = " + curr_ver + ")"
+            logging.debug("\tNo update necessary for key: " + name + " (version = " + curr_ver + ")")
             return val
 
         # No key found at the current version.
@@ -311,8 +311,7 @@ class LazyUpdateRedis(StrictRedis):
             # Found a key!  Figure out which version and see if it needs updating
             if val is not None:
                 curr_key_version = orig_name.split("|", 1)[0]
-                ### print "key ns version: " + curr_key_version
-                print "GOT KEY " + name + " at VERSION: " + v
+                logging.debug("GOT KEY " + name + " at VERSION: " + v)
                 break
         # no key at 'name' for any eversion.
         if curr_key_version == None:
@@ -324,9 +323,9 @@ class LazyUpdateRedis(StrictRedis):
         # Version isn't current.  Now check for updates
         curr_idx = vers_list.index(curr_key_version)
         new_name = vers_list[-1] + "|" + name
-        print "\tCurrent key is at position " + str(curr_idx) +\
+        logging.info("\tCurrent key is at position " + str(curr_idx) +\
             " in the udp list, which means that there is/are " + \
-            str(len(vers_list)-curr_idx-1) + " more update(s) to apply"
+            str(len(vers_list)-curr_idx-1) + " more update(s) to apply")
 
         try:
             pipe = self.pipeline()
@@ -348,7 +347,8 @@ class LazyUpdateRedis(StrictRedis):
                     raise KeyError(err)
 
                 # Grab all the information from the update dictionary...
-                print "Updating to version " + upd_v + " using update \'" + str(upd_name) +"\'"
+                logging.info("Updating \'"+ name +"\' to version " + upd_v +\
+                    " using update \'" + str(upd_name) +"\'")
                 # Combine all of the update functions into a list "upd_funcs_combined"
                 #
                 # There may be more than one command per update
@@ -357,8 +357,7 @@ class LazyUpdateRedis(StrictRedis):
                 upd_funcs_combined = list()
                 for (module, glob, upd_funcs, new_ver) in self.upd_dict[upd_name]:
 
-                    print "Found a rule."
-                    print "new_ver = " + new_ver + " upd_v = " + upd_v
+                    logging.debug("Found a rule. new_ver = " + new_ver + " upd_v = " + upd_v)
                     # Make sure we have the expected version
                     if (new_ver != upd_v):
                         err = "ERROR!!! Version mismatch at : " + name + "ver=" + upd_v 
@@ -367,18 +366,17 @@ class LazyUpdateRedis(StrictRedis):
                     # Check if the keyglob matches this particular key
                     # Ex: if the glob wanted key:[1-3] and we are key:4, no update,
                     #     eventhough the namespace matches.
-                    print "Searching for a match with glob = " + glob 
-                    print "and name = " + name 
+                    logging.debug("Searching for a match with glob = " + glob +"and name = " + name )
                     if re.match(fnmatch.translate(glob), name):
-                        print "\tUpdating key " + name + " to version: " + upd_v
-                        print "\tusing the following functions:" + str(upd_funcs)
-                        print "\twith value:" + val
+                        logging.debug( "\tUpdating key " + name + " to version: " + upd_v)
+                        logging.debug( "\tusing the following functions:" + str(upd_funcs))
+                        logging.debug( "\twith value:" + val)
                         upd_funcs_combined.extend(upd_funcs)
 
                 # if we found some functions to call, then call them (all at once) so the
                 # version string only gets written once.
                 if upd_funcs_combined:  
-                    print "Applying some updates:" + str(upd_funcs_combined)
+                    logging.debug("Applying some updates:" + str(upd_funcs_combined))
                     mod = self.update(name, val, upd_funcs_combined, module)
                     if mod:
                         mod[0] = upd_v + "|" + mod[0]
@@ -390,8 +388,8 @@ class LazyUpdateRedis(StrictRedis):
                         raise ValueError( "ERROR!!! Could not update key: " + name )
                 # no functions matched, update version string only.                   
                 else:
-                    print "\tNo functions matched.  Updating version str only"
-                    print "orig_name "+orig_name + " -> new_name " +new_name
+                    logging.debug("\tNo functions matched.  Updating version str only")
+                    logging.debug("orig_name "+orig_name + " -> new_name " +new_name)
                     pipe.rename(orig_name, new_name)
             # now get and return the updated value
             pipe.execute_command('GET', new_name)
@@ -400,7 +398,7 @@ class LazyUpdateRedis(StrictRedis):
                 return rets[-1]
             return None
         except WatchError:
-            print "WATCH ERROR, Value not set"
+            logging.warning("WATCH ERROR, Value not set")
             return False #TODO what to return here?!?!
         
 
@@ -485,7 +483,7 @@ class LazyUpdateRedis(StrictRedis):
                 return rets[-1]
             return False
         except WatchError:
-            print "WATCH ERROR, Value not set"
+            logging.warning("WATCH ERROR, Value not set")
             return False
         
     def do_upd_all_now(self, dsl_file=None):
@@ -500,7 +498,7 @@ class LazyUpdateRedis(StrictRedis):
  
         arr = self.scan(0)
         if len(arr) is not 2:
-            print "WARNING: Could not update...error starting iterator"
+            logging.warning( "WARNING: Could not update...error starting iterator")
             return 0
         updated = 0
         while True:
@@ -551,7 +549,7 @@ class LazyUpdateRedis(StrictRedis):
 
         # do the "add" functions now.
         # NOTE: this code is ONLY for the "add" keys in the dsl, NOT the "for" keys!
-        print "importing from " + upd_module
+        logging.debug("importing from " + upd_module)
         m = __import__ (upd_module) #m stores the module
         get_newkey_tuples = getattr(m, "get_newkey_tuples")
         tups = get_newkey_tuples()
@@ -561,7 +559,7 @@ class LazyUpdateRedis(StrictRedis):
             try:
                 func = getattr(m,funcs[0])
             except AttributeError as e:
-                print "(Could not find function: " + funcs[0] + ")"
+                logging.error("(Could not find function: " + funcs[0] + ")")
                 continue
             # retrieve the list of keys to add, and the usercode to set it to
             (keys, userjson) = func()
@@ -585,8 +583,8 @@ class LazyUpdateRedis(StrictRedis):
                     pipe.reset()
                     raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))
                 prev = self.hget("UPDATE_DSL_STRINGS", vOldvNewNs)
-                print dsl_for_redis[vOldvNewNs]
-                print '\n'.join(dsl_for_redis[vOldvNewNs])
+                logging.debug(dsl_for_redis[vOldvNewNs])
+                logging.debug('\n'.join(dsl_for_redis[vOldvNewNs]))
                 joined = '\n'.join(dsl_for_redis[vOldvNewNs])
                 if ((prev is not None) and (prev != joined)):
                     pipe.reset()
@@ -600,7 +598,7 @@ class LazyUpdateRedis(StrictRedis):
                 self.upd_dict.setdefault(vOldvNewNs, []).append((m, glob, funcs, version_to))
                 pipe.execute()
             except WatchError:
-                print "WATCH ERROR, UPD not completed"
+                logging.warning("WATCH ERROR, UPD not completed")
                 return False
         return True
 
@@ -643,7 +641,7 @@ def connect(client_ns_versions):
     try:
         r.ping()
     except r.ConnectionError as e:
-        print(e)
+        logging.error(e)
         sys.exit(-1)
     return r
 

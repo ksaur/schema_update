@@ -5,6 +5,7 @@ Load some test data in the database, update, and test for expected results.
 import json
 import sys, os
 import redis
+import logging
 from lazyupdredis import *
 
 # Note: don't call flushall on actualredis.  This functionality isn't available
@@ -430,6 +431,9 @@ def test7(actualredis):
 
 
 def main():
+
+    ##logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     # Remove the previous run's generated files, for sanity's sake.
     os.system("rm /tmp/gen*")

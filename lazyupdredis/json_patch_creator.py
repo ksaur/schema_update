@@ -8,7 +8,7 @@ Two modes:
 
 Requires Python 2.7.
 '''
-import bisect, copy, sys, re
+import bisect, copy, sys, re, logging
 import json
 import decode
 import argparse
@@ -54,10 +54,10 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
         for p in patterns:
             cmd = re.match(p,estr)
             if cmd is not None:
-                print "outer Group 1  = " +  cmd.group(1)
+                logging.debug( "outer Group 1  = " +  cmd.group(1))
                 return cmd.group(1)
             else:
-                print sys.exit("No output command ($dbkey, $outkey) specified for dbkey" + keyglob)
+                sys.exit("No output command ($dbkey, $outkey) specified for dbkey" + keyglob)
 
 
     # remove weird chars from keyglob to use as function name
@@ -65,18 +65,18 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
     if "[" in keyglob:
         # use this library call to grab all the ranges (not actually nested)
         ranges = nestedExpr('[',']').parseString("[" + keyglob + "]").asList()[0]
-        print "RANGES" + str(ranges) + " len " + str(len(ranges))
+        logging.debug("RANGES" + str(ranges) + " len " + str(len(ranges)))
         # We'll need nested appends for multiple ranges
         app = list()
         for r in ranges:
-            print  "r = " + str(r) + str(type(r))
+            logging.debug(  "r = " + str(r) + str(type(r)))
             # (ermm, it's not ideal to use type to see if it's a range or not...)
             # no range here, just apppend
             if type(r) is str:
-                print "STRRRR" + r
+                logging.debug( "STRRRR" + r)
                 if len(app) == 0:
                     app.append(r)
-                    print "app" + str(app)
+                    logging.debug( "app" + str(app))
                 else:
                     app = [x+r for x in app]
             # contains range.  loopy time.
@@ -88,7 +88,7 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
                     for j in curr_range:
                         combo.append(str(i)+str(j))
                 app = combo
-        print app
+        logging.debug(app)
     # not sure why anyone would use this update function to add a single key, but whatever
     else:
         app = list(keyglob)
@@ -99,7 +99,7 @@ def generate_add_key(keyglob, usercode, outfile, prefix):
     valstring = str(extract_for_keys(usercode))
     # Make sure the user provided a valid dictionary
     try:
-        print ast.literal_eval(valstring)  #str to dict
+        logging.debug( ast.literal_eval(valstring))  #str to dict
     except ValueError:
         sys.exit("You must provide a valid json string as a python dict: " + valstring)
     #barf. json to python and back ' vs " nastiness.
@@ -149,7 +149,7 @@ def generate_upd(cmddict, outfile, prefix):
             tabstop = "    "
             codeline = tabstop + pos + " = jsonobj"
             
-            print keys
+            logging.debug(keys)
             if (len(keys) is 1 and type(keys[0]) is list):
                 nextpos = chr(ord(pos) + 1) # increment the variable name
                 codeline += "\n" +tabstop + "for " + nextpos +" in " + pos + ":"
@@ -157,7 +157,7 @@ def generate_upd(cmddict, outfile, prefix):
                 pos = nextpos
             elif(len(keys)>0):
                 for s in keys[0:(len(keys)-1)]:
-                    print type(s)
+                    logging.debug(type(s))
                     if (type(s) is not list):
                         codeline += ".get(\'" + s + "\')"
                     else: # arrays
@@ -180,7 +180,7 @@ def generate_upd(cmddict, outfile, prefix):
 
             # Replace $out's with the variable to assign to
             if(len(keys)>0):
-                print type(keys[len(keys)-1])
+                logging.debug(type(keys[len(keys)-1]))
                 if(type(keys[len(keys)-1]) is list):
                     vartoassign = pos+"[\'" + keys[len(keys)-1][0] + "\']"
                 else:
@@ -222,7 +222,7 @@ def generate_dsltemplate(thediff, outfile):
     """
     Compute a diff and generate some stubs of INIT/DEL for the user to get started with
     """
-    print len(thediff)
+    logging.debug(len(thediff))
     for l in thediff:
         assert(len(l) in (1,2))
         keys = l[0]
@@ -257,12 +257,12 @@ def parse_dslfile_inner(dslfile):
             if cmd is not None:
                 return cmd
             else:
-                print "FAIL"
+                logging.debug("FAIL")
 
     for line in dslfile:
-        print "first line" + line
+        logging.debug("first line" + line)
         line = line.rstrip('\n')
-        print "next line" + line
+        logging.debug("next line" + line)
         
         # parse multiline cmds. INIT and UPD and DEL have usercode, REN does not.
         if (("INIT" in line) or ("UPD" in line) or ("DEL" in line)): 
@@ -270,14 +270,14 @@ def parse_dslfile_inner(dslfile):
                 tmp = next(dslfile, None)
                 if tmp is not None:
                     line += '|' + tmp.rstrip('\n')
-                    print line
+                    logging.debug(line)
                 else: # EOF
                     break
-        print "=========================================\n\nline = " + line
+        logging.debug("=========================================\n\nline = " + line)
         curr = extract_from_re(line)
         if curr is not None:
-            print "found " + str(len(curr.groups())) + " groups"
-            print curr.group(2)
+            logging.debug("found " + str(len(curr.groups())) + " groups")
+            logging.debug(curr.group(2))
             keys = json.loads(curr.group(2),object_hook=decode.decode_dict)
             #test for empty keys, meaning fullpath ([])
             if (len(keys) == 0):
@@ -288,7 +288,7 @@ def parse_dslfile_inner(dslfile):
                 dsldict[keys[0]] = [curr]
             else:
                 dsldict[keys[0]].append(curr)
-    print dsldict
+    logging.debug(dsldict)
     return dsldict
 
 def parse_dslfile(dslfile):
@@ -305,10 +305,10 @@ def parse_dslfile(dslfile):
         for p in patterns:
             cmd = re.match(p,estr)
             if cmd is not None:
-                print "outer Group 2  = " +  cmd.group(2)
+                logging.debug("outer Group 2  = " +  cmd.group(2))
                 return cmd
             else:
-                print "FAIL (for/add)"
+                logging.debug("FAIL (for/add)")
 
     tups = list() # for returning
     for line in dslfile:
@@ -330,11 +330,10 @@ def parse_dslfile(dslfile):
         while curr and "};" not in curr:
             l.append(curr)
             curr = next(dslfile, None)
-        #print "LIST=" + str(l)
         # parse the stuff inside the "for" stanza
         if (cmd == "for"):
             inner = parse_dslfile_inner(iter(l))
-            print "for INNER = " + str(inner)
+            logging.debug("for INNER = " + str(inner))
             old_ver = parsed.group(3).strip()
             new_ver = parsed.group(4).strip()
         else: #guaranteed cmd == "add", else would have failed in 'extract'
@@ -344,11 +343,11 @@ def parse_dslfile(dslfile):
             old_ver = None
             new_ver = parsed.group(3).strip()
         tups.append((cmd, keyglob, inner, namespace, old_ver, new_ver))
-        print "\n\ncmd: " + cmd
-        print "\n\nold_ver: " + str(old_ver)
-        print "\n\nnew_ver: " + str(new_ver)
-        print tups
-    print tups
+        logging.debug("\n\ncmd: " + cmd)
+        logging.debug("\n\nold_ver: " + str(old_ver))
+        logging.debug("\n\nnew_ver: " + str(new_ver))
+        logging.debug(tups)
+    logging.info(tups)
     return tups
 
 def parse_dslfile_string_only(dslfile_location):
@@ -366,7 +365,7 @@ def parse_dslfile_string_only(dslfile_location):
     try:
        dslfile = open(dslfile_location, 'r')
     except IOError as e:
-       print "I/O error({0}): {1}".format(e.errno, e.strerror)
+       logging.error("I/O error({0}): {1}".format(e.errno, e.strerror))
        return
 
     dsl_dict = dict() # for returning
@@ -390,20 +389,18 @@ def parse_dslfile_string_only(dslfile_location):
             l.append(curr)
             curr = next(dslfile, None)
         l.append(curr)
-        #print "LIST=" + str(l)
         old_ver = parsed.group(3)
         new_ver = parsed.group(4)
         # parse the stuff inside the "for" stanza
         dict_key = (old_ver, new_ver, namespace)
         dsl_dict.setdefault(dict_key, []).extend(l)
-        ##print "\n\nnew_ver: " + str(new_ver)
-    ##print dsl_dict
+    logging.debug(dsl_dict)
     return dsl_dict
 
 def parse_namespace(name):
     spl = name.split(":", 1)
     if (len(spl) != 2):
-        print "WARNING: using default namespace (*) for \'" + name + "\'."
+        logging.warning("WARNING: using default namespace (*) for \'" + name + "\'.")
         return "*"
     else:
         return spl[0]
@@ -425,8 +422,8 @@ def bulkload(f, jsonarr):
                     line +=tmp
                 else: # EOF
                     break
-        print "loaded:"
-        print jfile
+        logging.debug("loaded:")
+        logging.debug(jfile)
         jsonarr.append(jfile)
 
 
@@ -450,16 +447,15 @@ def make_template(file1, file2):
 
     bulkload(f1, jsonarray1)
     bulkload(f2, jsonarray2)
-    print "ARRRAY IS:"
-    print jsonarray1
+    logging.debug("ARRRAY IS:" + str(jsonarray1))
 
     assert len(jsonarray1) == len(jsonarray2), \
      "Files should contain the same number of json templates..."
 
     for json1, json2 in zip(jsonarray1, jsonarray2):
         thediff = json_delta_diff.diff(json1, json2)
-        print ("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
-        print (thediff)
+        logging.info("\nTHE DIFF IS: (len " + str(len(thediff)) + ")")
+        logging.info(thediff)
 
     # generate the template file here
     generate_dsltemplate(thediff, outfile)
