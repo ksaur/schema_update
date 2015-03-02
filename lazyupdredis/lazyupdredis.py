@@ -276,9 +276,13 @@ class LazyUpdateRedis(StrictRedis):
 
         ns = self.namespace(name)
         vers_list = self.global_versions(ns)
-        if vers_list is None:
-            raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
-                  "\'. Global versions are: " + str(self.global_versions(ns)))
+        # This could happen if the client asked for some bogus key, don't raise Error
+        if vers_list == []:
+            print("ERROR, Bad current version (None) for key \'" + name +\
+                  "\' at namespace \'" + ns + "\'. Global versions are: " + str(vers_list))
+            #raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
+            #      "\' at namespace \'" + ns + "\'. Global versions are: " + str(vers_list))
+            return None
         curr_ver = vers_list[-1]
         client_ns_ver = self.client_ns_versions[ns]
 
