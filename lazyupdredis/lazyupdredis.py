@@ -253,14 +253,8 @@ class LazyUpdateRedis(StrictRedis):
         @return: A list [key, value] to feed to redis for setting
         """
         jsonkey = json.loads(redisval, object_hook=decode.decode_dict)
-        for funcname in funcs:
-            try:
-                func = getattr(m,funcname)
-            except AttributeError as e:
-                logging.warning("(Could not find function: " + funcname + ")")
-                return None
-            # Call the function for the current key and current jsonsubkey
-            (modkey, modjson) = func(currkey, jsonkey)
+        for func_ptr in funcs:
+            (modkey, modjson) = func_ptr(currkey, jsonkey)
             logging.debug("GOT BACK: " + str(modkey) + " " + str(modjson))
 
         modjsonstr = json.dumps(modjson)
@@ -557,11 +551,11 @@ class LazyUpdateRedis(StrictRedis):
         json_patch_creator.process_dsl(dsl_file, upd_file_out)
         # strip off extention, if provided
         upd_module = upd_file_out.replace(".py", "").replace("/tmp/", "")
+        logging.debug("importing from " + upd_module)
+        m = __import__ (upd_module) #m stores the module
 
         # do the "add" functions now.
         # NOTE: this code is ONLY for the "add" keys in the dsl, NOT the "for" keys!
-        logging.debug("importing from " + upd_module)
-        m = __import__ (upd_module) #m stores the module
         get_newkey_tuples = getattr(m, "get_newkey_tuples")
         tups = get_newkey_tuples()
         for (glob, funcs, ns, version) in tups:
@@ -606,7 +600,13 @@ class LazyUpdateRedis(StrictRedis):
                 if(self.append_new_version(version_to, ns) is None):
                     pipe.reset()
                     return False  #abort!!
-                self.upd_dict.setdefault(vOldvNewNs, []).append((m, glob, funcs, version_to))
+                try:
+                    func_ptrs = map(lambda x: getattr(m,x), funcs)
+                except AttributeError as e:
+                    logging.warning("(Could not find function: " + funcname + ")")
+                    pipe.reset()
+                    return False  #abort!!
+                self.upd_dict.setdefault(vOldvNewNs, []).append((m, glob, func_ptrs, version_to))
                 pipe.execute()
             except WatchError:
                 logging.warning("WATCH ERROR, UPD not completed")
@@ -638,7 +638,8 @@ class LazyUpdateRedis(StrictRedis):
             get_upd_tuples = getattr(m, "get_update_tuples")
             tups = get_upd_tuples()
             for (glob, funcs, ns, version_from, version_to) in tups:
-                self.upd_dict.setdefault(vvn_tup, []).append((m, glob, funcs, version_to))
+                func_ptrs = map(lambda x: getattr(m,x), funcs)
+                self.upd_dict.setdefault(vvn_tup, []).append((m, glob, func_ptrs, version_to))
 
 
 # Utility function...may move this later...
