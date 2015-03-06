@@ -139,7 +139,7 @@ def generate_upd(cmddict, outfile, prefix):
                 name = re.sub(r'\W+', '', str(prefix + entry))
                 outfile.write("\ndef "+ name + "(rediskey, jsonobj):\n")
                 # store the name of the function to call
-                funname_list.append(name)
+                funname_list.insert(0, name)
                 function = entry
                 getter = ""
 
@@ -291,7 +291,7 @@ def parse_dslfile_inner(dslfile):
     logging.debug(dsldict)
     return dsldict
 
-def parse_dslfile(dslfile):
+def parse_dslfile(dslfile, outfile):
     """
     Takes as input the DSL file in the format of: 
     for * {  .....(Rules beginning with INIT, UPD, REN, DEL).....}
@@ -314,9 +314,14 @@ def parse_dslfile(dslfile):
     for line in dslfile:
         l = list() # list of all the readin dsl lines
 
+    # Grab any imports the user may have included
+        if line.startswith("import"):
+            outfile.write(line)
+            continue
+      
         # skip blank lines in between "for key *{...};" stanzas
         if line == "\n":
-           continue
+            continue
 
         # get the "for/add ..." line,
 
@@ -476,7 +481,7 @@ def process_dsl(file1, outfile="dsu.py"):
     outfile = open(outfile, 'w')
 
     # parse DSL file
-    dsllist = parse_dslfile(dslfile)
+    dsllist = parse_dslfile(dslfile, outfile)
 
     # create a list to store the parsed dsl output
     kv_update_pairs = list()
