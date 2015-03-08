@@ -314,7 +314,7 @@ def parse_dslfile(dslfile, outfile):
     for line in dslfile:
         l = list() # list of all the readin dsl lines
 
-    # Grab any imports the user may have included
+        # Grab any imports the user may have included
         if line.startswith("import"):
             outfile.write(line)
             continue
@@ -374,6 +374,15 @@ def parse_dslfile_string_only(dslfile_location):
        return
 
     dsl_dict = dict() # for returning
+    # Grab any imports the user may have included
+    imp = list()
+    line = dslfile.readline()
+    while line.startswith("import"):
+        imp.append(line)
+        line = dslfile.readline()
+    print "IMP:" + str(imp)
+    dslfile.seek(0)
+
     for line in dslfile:
 
         # skip blank lines in between "for key *{...};" stanzas
@@ -394,6 +403,7 @@ def parse_dslfile_string_only(dslfile_location):
             l.append(curr)
             curr = next(dslfile, None)
         l.append(curr)
+        l.insert(0,"\n".join(imp))
         old_ver = parsed.group(3)
         new_ver = parsed.group(4)
         # parse the stuff inside the "for" stanza
