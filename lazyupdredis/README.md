@@ -12,7 +12,7 @@ This is a very simplified diagram of the basic control flow.  (Actual a lot more
 
 ##### Namespaces
 
-Lazy Redis Updates uses namespaces to track versioning of keyspaces.  The namespace is separated from the main keyname with a colon (```:```).  This namespace practice is a common preferred practice as documented in the Redis manual (under "<a href="http://redis.io/topics/data-types-intro#redis-keys">Redis keys</a>").
+Lazy Update Redis (LUR) uses namespaces to track versioning of keyspaces. This is useful so that LUR can tell which specific keys an update may apply to, rather than having to worry about updating all of the keys in the database.  The namespace is separated from the main keyname with a colon (```:```).  This namespace practice is a common preferred practice as documented in the Redis manual (under "<a href="http://redis.io/topics/data-types-intro#redis-keys">Redis keys</a>").
 
 For example, a user might have some keys describing edge attributes with namespace ```edgeattr```, and some keys describing nodes with namespace ```node```:
 ```
