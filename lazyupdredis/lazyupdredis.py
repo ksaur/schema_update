@@ -447,6 +447,15 @@ class LazyUpdateRedis(StrictRedis):
             raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
                   "\'. Global versions are: " + str(self.global_versions(ns)))
         curr_ver = vers_list[-1]
+        client_ns_ver = self.client_ns_versions[ns]
+
+        # Make sure the client has been updated to this version
+        if curr_ver != client_ns_ver:
+            err= "Could not update key:" + name + ".\nTo continue, " +\
+                "you must update namespace \'" + ns + "\' to version " + curr_ver +\
+                ".  Currently at namespace version " + client_ns_ver +\
+                " for \'" + ns + "\'"
+            raise DeprecationWarning(err)
 
         new_name = curr_ver + "|" + name
         pieces = [new_name, value]
@@ -671,4 +680,5 @@ def connect(client_ns_versions):
         logging.error(e)
         sys.exit(-1)
     return r
+
 
