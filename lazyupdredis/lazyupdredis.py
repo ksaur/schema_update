@@ -62,6 +62,7 @@
 import redis, logging
 import json, re, sys, fnmatch, decode, time
 import json_patch_creator
+import socket
 from ast import literal_eval
 sys.path.append("/tmp") # for generating update modules from dsl
 
@@ -76,7 +77,7 @@ from redis._compat import (basestring, iteritems, iterkeys, itervalues, long,
     nativestr)
 
 from redis.connection import (ConnectionPool, UnixDomainSocketConnection,
-    SSLConnection, Token)
+    SSLConnection, Token, Connection)
 from redis.exceptions import (
     ConnectionError,
     DataError,
@@ -89,6 +90,17 @@ from redis.exceptions import (
     WatchError,
 )
 from redis.client import StrictPipeline, StrictRedis
+
+
+class NoReConnection(Connection):
+    """
+    When we kill clients with redis because they are deprecated, don't let
+    them simply grab a new connection from the pool!!!!
+    """
+    def disconnect(self):
+        "Disconnects from the Redis server"
+        raise DeprecationWarning("Client Schema deprecated.  Please reconnect at new version.")
+
 
 class LazyUpdateRedis(StrictRedis):
     """
@@ -158,7 +170,7 @@ class LazyUpdateRedis(StrictRedis):
                         'ssl_cert_reqs': ssl_cert_reqs,
                         'ssl_ca_certs': ssl_ca_certs,
                     })
-            connection_pool = ConnectionPool(**kwargs)
+            connection_pool = ConnectionPool(connection_class=NoReConnection, **kwargs)
         self.connection_pool = connection_pool
         self._use_lua_lock = None
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
@@ -167,12 +179,53 @@ class LazyUpdateRedis(StrictRedis):
         # check to see if we are the initial version and must init
         for (ns, v) in client_ns_versions:
             self.append_new_version(v, ns, startup=True)
+        logging.debug(self.client_ns_versions)
+        self.client_setname(self.dict_to_name(self.client_ns_versions))
 
         # check to see if existing updates need to be loaded into this client
         self.upd_dict = dict()
         self.load_upd_tuples()
  
         logging.info("Connected with the following versions: " + str(self.client_ns_versions))
+
+    def get_connected_client_list_at_ns(self, ns):
+        clients = list()
+        for c in self.client_list():
+            if c["name"] == "": #control channel
+                continue
+            d = self.name_to_dict(c["name"])
+            for e in d:
+                if d[e] == ns:
+                    clients.append(c)
+        return clients
+
+    def kill_connected_clients_at(self, updated_ns):
+        """
+        @param updated_ns: a set of namespaces to kill the client
+        """
+        for c in self.client_list():
+            if c["name"] == "": #control channel
+                continue
+            d = self.name_to_dict(c["name"])
+            for e in d:
+                if (e, d[e]) in updated_ns:
+                    logging.info("Killing deprecated client" + str(c["addr"]))
+                    self.client_kill(c["addr"])
+            logging.debug(self.client_list())
+        
+
+    def dict_to_name(self, d):
+        ret = ""
+        for e in d:
+            ret += e + ":" + d[e] + "|"
+        return ret[:-1]
+
+    def name_to_dict(self, name):
+        ret = dict()
+        for s in name.split('|'):
+            p = s.split(':')
+            ret[p[0]] = p[1]
+        return ret
 
     def append_new_version(self, v, ns, startup=False):
         """
@@ -204,6 +257,7 @@ class LazyUpdateRedis(StrictRedis):
                     logging.info("Creating new namespace: " + ns)
                 pipe.rpush("UPDATE_VERSIONS_"+ns, v)
             rets = pipe.execute()
+            pipe.reset()
             if rets:
                 return rets[-1]
             return None
@@ -388,6 +442,7 @@ class LazyUpdateRedis(StrictRedis):
             # now get and return the updated value
             pipe.execute_command('GET', new_name)
             rets = pipe.execute()
+            pipe.reset()
             if rets:
                 return rets[-1]
             return None
@@ -497,6 +552,7 @@ class LazyUpdateRedis(StrictRedis):
 
             pipe.execute_command('SET', *pieces)
             rets = pipe.execute()
+            pipe.reset()
             if rets:
                 return rets[-1]
             return False
@@ -504,15 +560,14 @@ class LazyUpdateRedis(StrictRedis):
             logging.warning("WATCH ERROR, Value not set")
             return False
         
-    def do_upd_all_now(self, dsl_file=None):
+    def do_upd_all_now(self, dsl_file):
         """
         Scan through all keys in the database and update as necessary
  
         @param dsl_file: If you haven't already loaded in the update, this will do that
         """ 
 
-        if dsl_file:
-            self.do_upd(dsl_file)
+        self.do_upd(dsl_file)
  
         arr = self.scan(0)
         if len(arr) is not 2:
@@ -601,9 +656,10 @@ class LazyUpdateRedis(StrictRedis):
         get_update_tuples = getattr(m, "get_update_tuples")
         tups = get_update_tuples()
 
-        
+        updated_ns = set() 
         for (glob, funcs, ns, version_from, version_to) in tups:
             try:
+                updated_ns.add((ns,version_from))
                 pipe = self.pipeline()
                 pipe.watch("UPDATE_DSL_STRINGS")
                 pipe.multi()
@@ -632,9 +688,16 @@ class LazyUpdateRedis(StrictRedis):
                     return False  #abort!!
                 self.upd_dict.setdefault(vOldvNewNs, []).append((m, glob, func_ptrs, version_to))
                 pipe.execute()
+                pipe.reset()
             except WatchError:
                 logging.warning("WATCH ERROR, UPD not completed")
                 return False
+
+		# Ok great.  Now disconnect all the clients at old namespaces by
+		# killing the connection, erm, but not us.
+        self.client_setname(self.dict_to_name(self.client_ns_versions))
+        self.kill_connected_clients_at(updated_ns)
+
         return True
 
     def load_upd_tuples(self):
