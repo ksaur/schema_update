@@ -175,10 +175,12 @@ class LazyUpdateRedis(StrictRedis):
         self._use_lua_lock = None
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         self.client_ns_versions = dict()
+        self.ns_versions_dict = dict()
 
         # check to see if we are the initial version and must init
         for (ns, v) in client_ns_versions:
             self.append_new_version(v, ns, startup=True)
+        logging.debug(self.ns_versions_dict)
         logging.debug(self.client_ns_versions)
         self.client_setname(self.dict_to_name(self.client_ns_versions))
 
@@ -235,14 +237,20 @@ class LazyUpdateRedis(StrictRedis):
             pipe = self.pipeline()
             pipe.watch("UPDATE_VERSIONS_"+ns)
             pipe.multi()
-            curr_ver = self.global_curr_version(ns)
+            global_versions = self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
+            if global_versions != []:
+                curr_ver = global_versions[-1]
+            else:
+                curr_ver = None
             self.client_ns_versions[ns] = v
             # Check if we're already at this namespace
             if (v == curr_ver):
+                if startup:
+                    self.ns_versions_dict[ns] = global_versions
                 pipe.reset()
                 return 0
             # Check to see if this version is old for this namespace
-            elif (startup and (v in self.global_versions(ns))):
+            elif (startup and (v in global_versions)):
                 pipe.reset()
                 raise ValueError('Fatal - Trying to connect to an old version')
             # Check to see if we're trying to connect to a bogus version
@@ -256,6 +264,8 @@ class LazyUpdateRedis(StrictRedis):
                 if curr_ver is None:
                     logging.info("Creating new namespace: " + ns)
                 pipe.rpush("UPDATE_VERSIONS_"+ns, v)
+            global_versions.append(v) 
+            self.ns_versions_dict[ns] = global_versions
             rets = pipe.execute()
             pipe.reset()
             if rets:
@@ -267,24 +277,17 @@ class LazyUpdateRedis(StrictRedis):
 
     def global_versions(self, ns):
         """
-        Return the LIST of ALL versions from redis for namespace ns
+        Return the LIST of ALL versions from local for namespace ns
         @param ns: the namespace
         """
-        return self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
-
-    def global_versions_len(self, ns):
-        """
-        Return the length list of all versions from redis for namespace ns
-        @param ns: the namespace
-        """
-        return self.llen("UPDATE_VERSIONS_"+ns)
+        return self.ns_versions_dict[ns]
 
     def global_curr_version(self, ns):
         """
-        Return the most current version from redis for namespace ns
+        Return the most current version from local for namespace ns
         @param ns: the namespace
         """
-        return self.lindex("UPDATE_VERSIONS_"+ns, -1)
+        return self.ns_versions_dict[ns][-1]
 
     def namespace(self, name):
         return json_patch_creator.parse_namespace(name)
@@ -324,23 +327,7 @@ class LazyUpdateRedis(StrictRedis):
 
         ns = self.namespace(name)
         vers_list = self.global_versions(ns)
-        # This could happen if the client asked for some bogus key, don't raise Error
-        if vers_list == []:
-            logging.warning("ERROR, Bad current version (None) for key \'" + name +\
-                  "\' at namespace \'" + ns + "\'. Global versions are: " + str(vers_list))
-            #raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
-            #      "\' at namespace \'" + ns + "\'. Global versions are: " + str(vers_list))
-            return None
         curr_ver = vers_list[-1]
-        client_ns_ver = self.client_ns_versions[ns]
-
-        # Make sure the client has been updated to this version
-        if curr_ver != client_ns_ver:
-            err= "Could not update key:" + name + ".\nTo continue, " +\
-                "you must update namespace \'" + ns + "\' to version " + curr_ver +\
-                ".  Currently at namespace version " + client_ns_ver +\
-                " for \'" + ns + "\'"
-            raise DeprecationWarning(err)
         
         # Check to see if the requested key is already current
         orig_name = curr_ver + "|" + name
@@ -467,9 +454,6 @@ class LazyUpdateRedis(StrictRedis):
         """
         ns = self.namespace(name)
         vers_list = self.global_versions(ns)
-        if vers_list is None:
-            raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
-                  "\'. Global versions are: " + str(self.global_versions(ns)))
         curr_ver = vers_list[-1]
 
         new_name = curr_ver + "|" + name
@@ -498,19 +482,7 @@ class LazyUpdateRedis(StrictRedis):
         """
         ns = self.namespace(name)
         vers_list = self.global_versions(ns)
-        if vers_list is None:
-            raise ValueError("ERROR, Bad current version (None) for key \'" + name +\
-                  "\'. Global versions are: " + str(self.global_versions(ns)))
         curr_ver = vers_list[-1]
-        client_ns_ver = self.client_ns_versions[ns]
-
-        # Make sure the client has been updated to this version
-        if curr_ver != client_ns_ver:
-            err= "Could not update key:" + name + ".\nTo continue, " +\
-                "you must update namespace \'" + ns + "\' to version " + curr_ver +\
-                ".  Currently at namespace version " + client_ns_ver +\
-                " for \'" + ns + "\'"
-            raise DeprecationWarning(err)
 
         new_name = curr_ver + "|" + name
         pieces = [new_name, value]

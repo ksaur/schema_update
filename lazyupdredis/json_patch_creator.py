@@ -380,7 +380,6 @@ def parse_dslfile_string_only(dslfile_location):
     while line.startswith("import"):
         imp.append(line)
         line = dslfile.readline()
-    print "IMP:" + str(imp)
     dslfile.seek(0)
 
     for line in dslfile:
