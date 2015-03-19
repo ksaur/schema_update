@@ -92,14 +92,62 @@ from redis.exceptions import (
 from redis.client import StrictPipeline, StrictRedis
 
 
-class NoReConnection(Connection):
-    """
-    When we kill clients with redis because they are deprecated, don't let
-    them simply grab a new connection from the pool!!!!
-    """
-    def disconnect(self):
-        "Disconnects from the Redis server"
-        raise DeprecationWarning("Client Schema deprecated.  Please reconnect at new version.")
+class NoReConnectionPool(ConnectionPool):
+    def __init__(self, fun_ptr, connection_class=Connection, max_connections=None,
+                 **connection_kwargs):
+        """
+        Create a connection pool. If max_connections is set, then this
+        object raises redis.ConnectionError when the pool's limit is reached.
+
+        By default, TCP connections are created connection_class is specified.
+        Use redis.UnixDomainSocketConnection for unix sockets.
+
+        Any additional keyword arguments are passed to the constructor of
+        connection_class.
+        """
+        max_connections = max_connections or 2 ** 31
+        if not isinstance(max_connections, (int, long)) or max_connections < 0:
+            raise ValueError('"max_connections" must be a positive integer')
+
+        self.connection_class = connection_class
+        self.connection_kwargs = connection_kwargs
+        self.max_connections = max_connections
+        self.getname = fun_ptr
+
+        self.reset()
+
+    def get_connection(self, command_name, *keys, **options):
+        "Get a connection from the pool"
+        logging.debug("trying to get a connection")
+        self._checkpid()
+        try:
+            connection = self._available_connections.pop()
+            logging.debug("popped existing connection")
+        except IndexError:
+            connection = self.make_connection()
+        (vers_dict, namestring) = self.getname()
+        logging.debug("setting connection namestring as: " + namestring)
+        # this is not ideal, but we can't call "EXEC", this would call get_connection; infinite loop.
+        if (namestring != ""):
+            try:
+                connection.send_command('CLIENT SETNAME '+ namestring)
+                # Jankyness....discard the "OK".
+                connection.read_response()
+                logging.info("verifying new connection")
+                for ns in vers_dict:
+                    connection.send_command('LINDEX', 'UPDATE_VERSIONS_'+ns, -1)
+                    globalv = connection.read_response()
+                    if (globalv != vers_dict[ns]):
+                         raise DeprecationWarning ("You are at \'" + vers_dict[ns] + "\' but system is at \'" + globalv + "\' for namespace \'" + ns + "\'")
+            except ConnectionError:
+                # Retry, grab another connection
+                logging.info("Disconnected.  Retrying.")
+                connection.disconnect()
+                self.get_connection(command_name, keys, options)
+        self._in_use_connections.add(connection)
+        logging.debug( "RETURNING connection!")
+        return connection
+
 
 
 class LazyUpdateRedis(StrictRedis):
@@ -127,68 +175,47 @@ class LazyUpdateRedis(StrictRedis):
                  decode_responses=False, retry_on_timeout=False,
                  ssl=False, ssl_keyfile=None, ssl_certfile=None,
                  ssl_cert_reqs=None, ssl_ca_certs=None):
-        if not connection_pool:
-            if charset is not None:
-                warnings.warn(DeprecationWarning(
-                    '"charset" is deprecated. Use "encoding" instead'))
-                encoding = charset
-            if errors is not None:
-                warnings.warn(DeprecationWarning(
-                    '"errors" is deprecated. Use "encoding_errors" instead'))
-                encoding_errors = errors
 
-            kwargs = {
-                'db': db,
-                'password': password,
-                'socket_timeout': socket_timeout,
-                'encoding': encoding,
-                'encoding_errors': encoding_errors,
-                'decode_responses': decode_responses,
-                'retry_on_timeout': retry_on_timeout
-            }
-            # based on input, setup appropriate connection args
-            if unix_socket_path is not None:
-                kwargs.update({
-                    'path': unix_socket_path,
-                    'connection_class': UnixDomainSocketConnection
-                })
-            else:
-                # TCP specific options
-                kwargs.update({
-                    'host': host,
-                    'port': port,
-                    'socket_connect_timeout': socket_connect_timeout,
-                    'socket_keepalive': socket_keepalive,
-                    'socket_keepalive_options': socket_keepalive_options,
-                })
+        kwargs = {
+            'db': db,
+            'password': password,
+            'socket_timeout': socket_timeout,
+            'encoding': encoding,
+            'encoding_errors': encoding_errors,
+            'decode_responses': decode_responses,
+            'retry_on_timeout': retry_on_timeout
+        }
+        # TCP specific options
+        kwargs.update({
+            'host': host,
+            'port': port,
+            'socket_connect_timeout': socket_connect_timeout,
+            'socket_keepalive': socket_keepalive,
+            'socket_keepalive_options': socket_keepalive_options,
+        })
 
-                if ssl:
-                    kwargs.update({
-                        'connection_class': SSLConnection,
-                        'ssl_keyfile': ssl_keyfile,
-                        'ssl_certfile': ssl_certfile,
-                        'ssl_cert_reqs': ssl_cert_reqs,
-                        'ssl_ca_certs': ssl_ca_certs,
-                    })
-            connection_pool = ConnectionPool(connection_class=NoReConnection, **kwargs)
-        self.connection_pool = connection_pool
+        self.connection_pool = NoReConnectionPool(self.get_redconn_name, connection_class=Connection, **kwargs)
         self._use_lua_lock = None
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         self.client_ns_versions = dict()
+        #dict of lists of namespace versions
         self.ns_versions_dict = dict()
 
         # check to see if we are the initial version and must init
         for (ns, v) in client_ns_versions:
             self.append_new_version(v, ns, startup=True)
-        logging.debug(self.ns_versions_dict)
+        logging.debug("redis connection name is: " + self.get_redconn_name()[1])
         logging.debug(self.client_ns_versions)
-        self.client_setname(self.dict_to_name(self.client_ns_versions))
 
         # check to see if existing updates need to be loaded into this client
         self.upd_dict = dict()
         self.load_upd_tuples()
  
         logging.info("Connected with the following versions: " + str(self.client_ns_versions))
+
+
+    def get_redconn_name(self):
+        return (self.client_ns_versions, self.ns_dict_as_string())
 
     def get_connected_client_list_at_ns(self, ns):
         clients = list()
@@ -216,10 +243,11 @@ class LazyUpdateRedis(StrictRedis):
             logging.debug(self.client_list())
         
 
-    def dict_to_name(self, d):
+    def ns_dict_as_string(self):
+        d = self.ns_versions_dict
         ret = ""
         for e in d:
-            ret += e + ":" + d[e] + "|"
+            ret += e + ":" + d[e][-1] + "|"
         return ret[:-1]
 
     def name_to_dict(self, name):
@@ -239,6 +267,8 @@ class LazyUpdateRedis(StrictRedis):
             pipe.multi()
             global_versions = self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
             if global_versions != []:
+                logging.info("setting curr_ver to: " + str(global_versions[-1]))
+                logging.info("global_versions "  + str(global_versions))
                 curr_ver = global_versions[-1]
             else:
                 curr_ver = None
@@ -256,6 +286,9 @@ class LazyUpdateRedis(StrictRedis):
             # Check to see if we're trying to connect to a bogus version
             elif (startup and (curr_ver is not None) and (v != curr_ver)):
                 pipe.reset()
+                logging.critical("FATAL. conn was " + self.get_redconn_name()[1])
+                logging.critical("curr_ver = " + curr_ver)
+                logging.critical("v = " + v)
                 raise ValueError('Fatal - Trying to connect to a bogus version for namespace: ' + ns)
             # Either the namespace exists, and we need to add a new version
             # or no such namespace exists, so create a version entry for new namespace
@@ -264,6 +297,7 @@ class LazyUpdateRedis(StrictRedis):
                 if curr_ver is None:
                     logging.info("Creating new namespace: " + ns)
                 pipe.rpush("UPDATE_VERSIONS_"+ns, v)
+            logging.debug("Appending new version: " + v)
             global_versions.append(v) 
             self.ns_versions_dict[ns] = global_versions
             rets = pipe.execute()
@@ -667,7 +701,7 @@ class LazyUpdateRedis(StrictRedis):
 
 		# Ok great.  Now disconnect all the clients at old namespaces by
 		# killing the connection, erm, but not us.
-        self.client_setname(self.dict_to_name(self.client_ns_versions))
+        self.client_setname(self.ns_dict_as_string())
         self.kill_connected_clients_at(updated_ns)
 
         return True
