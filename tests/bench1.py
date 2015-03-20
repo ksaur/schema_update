@@ -18,25 +18,29 @@ sys.path.append("data/example_jsonbulk/")
 import sample_generate
 
 
-def do_updnow(r, unused1, unused2, unused3):
+def do_updnow(r, unused1, unused2, unused3, unused4):
     upd = r.do_upd_all_now("data/example_jsonbulk/sample_1_sadalage_init")
     logging.info("updated" + str(upd))
     return None
 
-def do_lazyupd(r, unused, num_iters, key_range):
+def do_lazyupd(r, unused, num_iters, key_range, unused2):
 
     for i in range(num_iters):
-        rand1 = str(random.randint(0, key_range))
+        rand1 = str(random.randint(1, key_range))
         r.get("customer:" + rand1)
 
 
-def do_getset(r, unused, num_getsets, key_range, data):
+def do_get(r, unused, num_getsets, key_range, unused2):
 
     for i in range(num_getsets):
-        rand1 = str(random.randint(0, key_range))
-        rand2 = str(random.randint(0, key_range))
-        r.set("edgeattr:" + rand1, data)
-        r.get("edgeattr:" + rand2)
+        rand = str(random.randint(1, key_range))
+        r.get("edgeattr:" + rand)
+
+def do_set(r, unused, num_getsets, key_range, data):
+
+    for i in range(num_getsets):
+        rand = str(random.randint(1, key_range))
+        r.set("edgeattr:" + rand, data)
     
 
 def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, data):
@@ -104,13 +108,20 @@ def main():
     # in python, one char alone is like...14 bytes.  but...we'll just use the same string.
     data = "xxxxxxxx"
      
-    start_redis(redis_loc)
-    print bench("normal_redis_getset", do_getset, num_clients, num_keys, num_funcalls, None, data)
-    stop_redis()
+    f = open('normal.txt', 'w')
+    g = open('lazy.txt', 'w')
+    for i in range(3):
+        start_redis(redis_loc)
+        f.write(str( bench("normal_redis_getset", do_set, num_clients,  num_funcalls, num_keys, None, data)) +"\t ")
+        f.write(str( bench("normal_redis_getset", do_get, num_clients,  num_funcalls, num_keys, None, None)) +"\t ")
+        stop_redis()
 
-    start_redis(redis_loc)
-    print bench("lazy_redis_getset", do_getset, num_clients, num_keys, num_funcalls, [("edgeattr", "v0")], data)
-    stop_redis()
+        start_redis(redis_loc)
+        g.write(str( bench("lazy_redis_getset", do_set, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], data))+"\t ")
+        g.write(str( bench("lazy_redis_getset", do_get, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], None))+"\t ")
+        stop_redis()
+    f.close()
+    g.close()
 
 #    # test do all now
 #    start_redis(redis_loc)
