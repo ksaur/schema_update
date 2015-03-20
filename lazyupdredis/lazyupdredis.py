@@ -197,7 +197,7 @@ class LazyUpdateRedis(StrictRedis):
 
     def verify_ns_info(self):
         for ns in self.client_ns_versions:
-            globalv = self.lindex("UPDATE_VERSIONS_"+ns, -1)
+            globalv = self.lindex("UPDATE_VERSIONS_"+ns, 0)
             if (globalv != self.client_ns_versions[ns]):
                  raise DeprecationWarning ("You are at \'" + self.client_ns_versions[ns] + "\' but system is at \'" + globalv + "\' for namespace \'" + ns + "\'")
 
@@ -231,7 +231,7 @@ class LazyUpdateRedis(StrictRedis):
         d = self.ns_versions_dict
         ret = ""
         for e in d:
-            ret += e + ":" + d[e][-1] + "|"
+            ret += e + ":" + d[e][0] + "|"
         return ret[:-1]
 
     def name_to_dict(self, name):
@@ -251,9 +251,9 @@ class LazyUpdateRedis(StrictRedis):
             pipe.multi()
             global_versions = self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
             if global_versions != []:
-                logging.info("setting curr_ver to: " + str(global_versions[-1]))
+                logging.info("setting curr_ver to: " + str(global_versions[0]))
                 logging.info("global_versions "  + str(global_versions))
-                curr_ver = global_versions[-1]
+                curr_ver = global_versions[0]
             else:
                 curr_ver = None
             self.client_ns_versions[ns] = v
@@ -279,9 +279,9 @@ class LazyUpdateRedis(StrictRedis):
             else:
                 if curr_ver is None:
                     logging.info("Creating new namespace: " + ns)
-                pipe.rpush("UPDATE_VERSIONS_"+ns, v)
-            logging.debug("Appending new version: " + v)
-            global_versions.append(v) 
+                pipe.lpush("UPDATE_VERSIONS_"+ns, v)
+            logging.debug("Prepending new version: " + v)
+            global_versions.insert(0, v) 
             self.ns_versions_dict[ns] = global_versions
             rets = pipe.execute()
             pipe.reset()
@@ -304,7 +304,7 @@ class LazyUpdateRedis(StrictRedis):
         Return the most current version from local for namespace ns
         @param ns: the namespace
         """
-        return self.ns_versions_dict[ns][-1]
+        return self.ns_versions_dict[ns][0]
 
     def namespace(self, name):
         return json_patch_creator.parse_namespace(name)
@@ -344,7 +344,7 @@ class LazyUpdateRedis(StrictRedis):
 
         ns = self.namespace(name)
         vers_list = self.global_versions(ns)
-        curr_ver = vers_list[-1]
+        curr_ver = vers_list[0]
         
         # Check to see if the requested key is already current
         orig_name = curr_ver + "|" + name
@@ -357,12 +357,12 @@ class LazyUpdateRedis(StrictRedis):
         # No key found at the current version.
         # Try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
         curr_key_version = None
-        for v in reversed(vers_list[:-1]): # this will test the most current first
+        for v in vers_list: # this will test the most current first
             orig_name = v + "|" + name
             val = self.execute_command('GET', orig_name)
             # Found a key!  Figure out which version and see if it needs updating
             if val is not None:
-                curr_key_version = orig_name.split("|", 1)[0]
+                curr_key_version = v
                 logging.debug("GOT KEY " + name + " at VERSION: " + v)
                 break
         # no key at 'name' for any eversion.
@@ -373,22 +373,24 @@ class LazyUpdateRedis(StrictRedis):
         ######### LAZY UPDATES HERE!!!! :)  ########
 
         # Version isn't current.  Now check for updates
+        ret = None
         curr_idx = vers_list.index(curr_key_version)
-        new_name = vers_list[-1] + "|" + name
+        new_name = vers_list[0] + "|" + name
         logging.info("\tCurrent key is at position " + str(curr_idx) +\
             " in the udp list, which means that there is/are " + \
-            str(len(vers_list)-curr_idx-1) + " more update(s) to apply")
+            str(curr_idx) + " more update(s) to apply")
 
         try:
             pipe = self.pipeline()
             pipe.watch(orig_name)
             # must call "watch" on all before calling multi.
-            for upd_v in vers_list[curr_idx+1:]:
+            for upd_v in vers_list[:(curr_idx+1)]:
                 pipe.watch(upd_v + "|" + name)
             pipe.multi()
 
             # Apply 1 or multiple updates, from oldest to newest, if necessary
-            for upd_v in vers_list[curr_idx+1:]:
+            while curr_idx > 0:
+                upd_v = vers_list[curr_idx-1]
 
                 # Make sure we have the update in the dictionary
                 upd_name = (curr_key_version, upd_v, ns)
@@ -432,6 +434,7 @@ class LazyUpdateRedis(StrictRedis):
                     mod = self.update(name, val, upd_funcs_combined, module)
                     if mod:
                         mod[0] = upd_v + "|" + mod[0]
+                        ret = mod[1]
                         pipe.execute_command('SET', *mod)
                         pipe.execute_command('DEL', curr_key_version+ "|" + name)
                         curr_key_version = new_ver
@@ -443,13 +446,16 @@ class LazyUpdateRedis(StrictRedis):
                     logging.debug("\tNo functions matched.  Updating version str only")
                     logging.debug("orig_name "+orig_name + " -> new_name " +new_name)
                     pipe.rename(orig_name, new_name)
-            # now get and return the updated value
-            pipe.execute_command('GET', new_name)
-            rets = pipe.execute()
+                curr_idx=curr_idx-1
+            # execute everything in the pipe (will abort with WatchError if issues)
+            pipe.execute()
             pipe.reset()
-            if rets:
-                return rets[-1]
-            return None
+            if ret is not None:
+               return ret
+            else: 
+               # We didn't update the key (the else clause of line 445), we just
+               # called pipe.rename(), so we don't have the value
+               return self.execute_command('GET', new_name) 
         except WatchError:
             logging.warning("WATCH ERROR, Value not set")
             return False #TODO what to return here?!?!
@@ -471,7 +477,7 @@ class LazyUpdateRedis(StrictRedis):
         """
         ns = self.namespace(name)
         vers_list = self.global_versions(ns)
-        curr_ver = vers_list[-1]
+        curr_ver = vers_list[0]
 
         new_name = curr_ver + "|" + name
         return self.execute_command('INCRBY', new_name, amount)
@@ -499,7 +505,7 @@ class LazyUpdateRedis(StrictRedis):
         """
         ns = self.namespace(name)
         vers_list = self.global_versions(ns)
-        curr_ver = vers_list[-1]
+        curr_ver = vers_list[0]
 
         new_name = curr_ver + "|" + name
         pieces = [new_name, value]
@@ -531,7 +537,7 @@ class LazyUpdateRedis(StrictRedis):
             pipe = self.pipeline()
             pipe.watch(new_name)
             pipe.multi()
-            for v in reversed(vers_list[:-1]):
+            for v in vers_list[1:]:
                 oldname = v + "|" + name
                 old = pipe.execute_command('GET', oldname)
                 if old is not None:
