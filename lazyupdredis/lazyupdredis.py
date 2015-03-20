@@ -357,7 +357,7 @@ class LazyUpdateRedis(StrictRedis):
         # Try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
         curr_key_version = None
         vers_list = self.global_versions(ns) #local call, indexes array only
-        for v in vers_list: # this will test the most current first
+        for v in vers_list[1:]: # this will test the least uncurrent version first
             orig_name = v + "|" + name
             val = self.execute_command('GET', orig_name)
             # Found a key!  Figure out which version and see if it needs updating
