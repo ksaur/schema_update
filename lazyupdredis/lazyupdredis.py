@@ -343,8 +343,7 @@ class LazyUpdateRedis(StrictRedis):
         """
 
         ns = self.namespace(name)
-        vers_list = self.global_versions(ns)
-        curr_ver = vers_list[0]
+        curr_ver = self.ns_versions_dict[ns][0]
         
         # Check to see if the requested key is already current
         orig_name = curr_ver + "|" + name
@@ -357,6 +356,7 @@ class LazyUpdateRedis(StrictRedis):
         # No key found at the current version.
         # Try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
         curr_key_version = None
+        vers_list = self.global_versions(ns) #local call, indexes array only
         for v in vers_list: # this will test the most current first
             orig_name = v + "|" + name
             val = self.execute_command('GET', orig_name)
@@ -500,11 +500,13 @@ class LazyUpdateRedis(StrictRedis):
             already exists.
         """
         ns = self.namespace(name)
-        vers_list = self.global_versions(ns)
-        curr_ver = vers_list[0]
+        # this call just locally indexes an array; need list to check if we need to del old ln 533
+        vers_list = self.global_versions(ns) 
 
-        new_name = curr_ver + "|" + name
+        new_name = vers_list[0] + "|" + name
         pieces = [new_name, value]
+
+        # This block not-modified from pyredis originalcode
         if ex:
             pieces.append('EX')
             if isinstance(ex, datetime.timedelta):
@@ -521,14 +523,19 @@ class LazyUpdateRedis(StrictRedis):
             pieces.append('NX')
         if xx:
             pieces.append('XX')
+        # end not-modified block
 
         # if there is only one version, don't bother with a pipeline
+        # TODO: There needs to be a better way to check if we don't need
+        #       to delete old keys than if there is more than 1 version...
+        #       Maybe a background thread for deletes or some additional 
+        #       bookkeeping would be faster...TBD empirically
         if (len(vers_list) == 1):
             return self.execute_command('SET', *pieces) 
 
         # Even though we're not doing the update on the value (since the client 
         # was asserted to be at the correct verson), we still need to update the
-        # version string.
+        # version string, and delete the old value.
         try:
             pipe = self.pipeline()
             pipe.watch(new_name)
