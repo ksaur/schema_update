@@ -54,10 +54,10 @@ def test1(actualredis):
     print "Performing update for " + tname
     r.do_upd("data/example_json/lazy_1_init")
 
-    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==["v0", "v1"] )
+    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==["v1", "v0"] )
     # adding new entries is done on demand, so should have new values 
     assert(r.global_curr_version("edgeattr") == "v1")
-    assert(r.global_versions("edgeattr") == ["v0", "v1"]) 
+    assert(r.global_versions("edgeattr") == ["v1", "v0"]) 
 
     # make sure the other updates also got loaded
     assert(r.global_curr_version("key") == "ver1")
@@ -70,7 +70,7 @@ def test1(actualredis):
 
     # make sure that the new module loads on a new connection
     r2 = lazyupdredis.connect([("key", "ver1"), ("edgeattr", "v1")])
-    assert(r2.global_versions("edgeattr") == ["v0", "v1"]) 
+    assert(r2.global_versions("edgeattr") == ["v1", "v0"]) 
     assert(r2.global_curr_version("edgeattr") == "v1") 
 
     # test that the expected keys are added
@@ -199,6 +199,7 @@ def test3(actualredis):
     assert(jsone["inport"] == None )
     # Now grab the key to trigger both updates
     e = r.get("edgeattr:n2@n3")
+    print e
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone["outport"] == 555 )
     assert(jsone["inport"] == 333 )
@@ -265,7 +266,7 @@ def test3b(actualredis):
     try:
         r.do_upd("data/example_json/lazy_3b_init")
         assert False, "Should have thrown an exception on previous line"
-    except KeyError as e:
+    except DeprecationWarning as e:
         print "\t" + str(e)
 
 
@@ -429,11 +430,67 @@ def test7(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# test mulit-updates more thoroughly
+def test8(actualredis):
+    tname = "test8_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+    # connect to Redis
+    json_val = json.dumps({"outport": None, "inport": None})
+
+    r = lazyupdredis.connect([("edgeattr", "v0")])
+
+    r.set("edgeattr:n1@n2", json_val)
+    r.set("edgeattr:n2@n1", json_val)
+    r.set("edgeattr:n1@n1", json_val)
+    r.set("edgeattr:n9@n9", json_val)
+
+    # load the update file v0->v1
+    r.do_upd("data/example_json/lazy_8_upd1")
+    # load the update file v1->v2
+    r.do_upd("data/example_json/lazy_8_upd2")
+
+    # Test update v0->v1->v2 where only the first update applies to the particular key
+    val = r.get("edgeattr:n1@n2")
+    jsone = json.loads(val,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+    assert(jsone["inport"] == None )
+    assert(actualredis.get("v0|edgeattr:n1@n2") is None)
+    assert(actualredis.get("v1|edgeattr:n1@n2") is None)
+
+    # Test update v0->v1->v2 where only the second update applies to the particular key
+    val = r.get("edgeattr:n2@n1")
+    jsone = json.loads(val,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == None )
+    assert(jsone["inport"] == 999 )
+    assert(actualredis.get("v0|edgeattr:n2@n1") is None)
+    assert(actualredis.get("v1|edgeattr:n2@n1") is None)
+
+    # Test update v0->v1->v2 where both of the updates applies to the particular key
+    val = r.get("edgeattr:n1@n1")
+    jsone = json.loads(val,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+    assert(jsone["inport"] == 999 )
+    assert(actualredis.get("v0|edgeattr:n1@n1") is None)
+    assert(actualredis.get("v1|edgeattr:n1@n1") is None)
+
+    # Test update v0->v1->v2 where neither of the updates applies to the particular key
+    val = r.get("edgeattr:n9@n9")
+    jsone = json.loads(val,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == None )
+    assert(jsone["inport"] == None )
+    assert(actualredis.get("v0|edgeattr:n9@n9") is None)
+    assert(actualredis.get("v9|edgeattr:n9@n9") is None)
+
+
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
 
 def main():
 
-    ##logging.basicConfig(level=logging.DEBUG)
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
+    ##logging.basicConfig(level=logging.INFO)
 
     # Remove the previous run's generated files, for sanity's sake.
     os.system("rm /tmp/gen*")
@@ -457,6 +514,8 @@ def main():
     test6(actualredis)
     # Test that user provides the correct name for updating
     test7(actualredis)
+    # Test multiple updates a bit more
+    test8(actualredis)
 
     actualredis.execute_command('QUIT')
 
