@@ -525,38 +525,21 @@ class LazyUpdateRedis(StrictRedis):
             pieces.append('XX')
         # end not-modified block
 
-        # if there is only one version, don't bother with a pipeline
+        # if there is only one version, don't bother deleting
+        #
         # TODO: There needs to be a better way to check if we don't need
         #       to delete old keys than if there is more than 1 version...
         #       Maybe a background thread for deletes or some additional 
         #       bookkeeping would be faster...TBD empirically
+        ret =  self.execute_command('SET', *pieces) 
         if (len(vers_list) == 1):
-            return self.execute_command('SET', *pieces) 
+            return ret
 
-        # Even though we're not doing the update on the value (since the client 
-        # was asserted to be at the correct verson), we still need to update the
-        # version string, and delete the old value.
-        try:
-            pipe = self.pipeline()
-            pipe.watch(new_name)
-            pipe.multi()
-            for v in vers_list[1:]:
-                oldname = v + "|" + name
-                old = pipe.execute_command('GET', oldname)
-                if old is not None:
-                    pipe.execute_command('DEL', oldname)
-                else:
-                    break
+        keys_to_del = map(lambda x: x + "|" + name, vers_list[1:])
+        self.execute_command('DEL', *keys_to_del)
 
-            pipe.execute_command('SET', *pieces)
-            rets = pipe.execute()
-            pipe.reset()
-            if rets:
-                return rets[-1]
-            return False
-        except WatchError:
-            logging.warning("WATCH ERROR, Value not set")
-            return False
+        return ret
+
         
     def do_upd_all_now(self, dsl_file):
         """
