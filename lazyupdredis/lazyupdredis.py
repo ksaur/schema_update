@@ -373,7 +373,6 @@ class LazyUpdateRedis(StrictRedis):
         ######### LAZY UPDATES HERE!!!! :)  ########
 
         # Version isn't current.  Now check for updates
-        ret = None
         curr_idx = vers_list.index(curr_key_version)
         new_name = vers_list[0] + "|" + name
         logging.info("\tCurrent key is at position " + str(curr_idx) +\
@@ -395,7 +394,7 @@ class LazyUpdateRedis(StrictRedis):
                 # Make sure we have the update in the dictionary
                 upd_name = (curr_key_version, upd_v, ns)
                 if upd_name not in self.upd_dict:
-                    err= "Could not update key:" + name + ".  Could not find " +\
+                    err= "Could not update key \'" + name + "\'.  Could not find " +\
                         "update \'" + str(upd_name) +"\' in update dictionary."
                     pipe.reset()
                     raise KeyError(err)
@@ -434,10 +433,8 @@ class LazyUpdateRedis(StrictRedis):
                     mod = self.update(name, val, upd_funcs_combined, module)
                     if mod:
                         mod[0] = upd_v + "|" + mod[0]
-                        ret = mod[1]
-                        pipe.execute_command('SET', *mod)
-                        pipe.execute_command('DEL', curr_key_version+ "|" + name)
-                        curr_key_version = new_ver
+                        # This is the modifiied JSON value:
+                        val = mod[1]
                     else:
                         pipe.reset()
                         raise ValueError( "ERROR!!! Could not update key: " + name )
@@ -445,17 +442,16 @@ class LazyUpdateRedis(StrictRedis):
                 else:
                     logging.debug("\tNo functions matched.  Updating version str only")
                     logging.debug("orig_name "+orig_name + " -> new_name " +new_name)
-                    pipe.rename(orig_name, new_name)
+                curr_key_version = new_ver
                 curr_idx=curr_idx-1
+
+            # All updates done, write the new key and wipe the original
+            pipe.execute_command('SET', new_name, val)
+            pipe.execute_command('DEL', orig_name)
             # execute everything in the pipe (will abort with WatchError if issues)
             pipe.execute()
             pipe.reset()
-            if ret is not None:
-               return ret
-            else: 
-               # We didn't update the key (the else clause of line 445), we just
-               # called pipe.rename(), so we don't have the value
-               return self.execute_command('GET', new_name) 
+            return val
         except WatchError:
             logging.warning("WATCH ERROR, Value not set")
             return False #TODO what to return here?!?!
@@ -614,6 +610,9 @@ class LazyUpdateRedis(StrictRedis):
 
         upd_file_out = "/tmp/gen_" + str(int(round(time.time() * 1000))) + ".py"
         dsl_for_redis = json_patch_creator.parse_dslfile_string_only(dsl_file)
+        if dsl_for_redis is None:
+            logging.error("COULD NOT PARSE DSL")
+            return
 
         # Verify that these updates are sensible with the current database.
         for (old,new,ns) in dsl_for_redis:
