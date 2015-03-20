@@ -1,0 +1,5 @@
+for edgeattr:n1@n* v0->v1 {
+UPD ["outport"] {$out = 777}
+};
+
+

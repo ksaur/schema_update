@@ -1,0 +1,4 @@
+for edgeattr:*@n1 v1->v2 {
+UPD ["inport"] {$out = 999}
+};
+
