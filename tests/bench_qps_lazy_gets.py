@@ -16,7 +16,7 @@ from redis.exceptions import ConnectionError
 def do_get(r, unused, num_gets, key_range, args2):
 
     for i in range(num_gets):
-        rand = str(random.randint(1, key_range))
+        rand = str(random.randint(0, key_range))
         try:
             r.get("node:" + rand)
         except DeprecationWarning as e:
@@ -116,6 +116,7 @@ def main():
     g.write(str( bench("lazy_redis_get_qps", do_get, num_clients,  num_funcalls, num_keys, [("node", "v0")], [("node", "v1")]))+"\t ")
     print str(len(actualredis.keys("v0*"))) + " keys not updated, ",
     print str(len(actualredis.keys("v1*"))) + " keys updated."
+    print actualredis.info()
     stop_redis()
 
 
