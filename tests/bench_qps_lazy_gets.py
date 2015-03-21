@@ -26,14 +26,12 @@ def do_stats():
     actualredis = redis.StrictRedis()
     f = open('stats.txt', 'w')
     i = 0
-    prevq = 0 #total quries, to be subtracted
     while True:
         try:
-            queries = actualredis.info()["total_commands_processed"]
-            f.write(str(i) + "\t" + str(queries-prevq) + "\n")
-            prevq = queries
+            queries = actualredis.info()["instantaneous_ops_per_sec"]
+            f.write(str(i) + "\t" + str(queries) + "\n")
             time.sleep(1)
-            i = i + 1 
+            i = i + 1
         except ConnectionError:
             f.close()
             break
