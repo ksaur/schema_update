@@ -339,53 +339,70 @@ class LazyUpdateRedis(StrictRedis):
         Return the value at key ``name``, updating to most recent version if necessary,
         or return None if the key doesn't exist
   
-        Return False if there was a concurrency error. #TODO what is best here?!?!
+        Auto retry if there was a concurrency error. 
         """
 
         ns = self.namespace(name)
         curr_ver = self.ns_versions_dict[ns][0]
         
-        # Check to see if the requested key is already current
-        orig_name = curr_ver + "|" + name
-        val = self.execute_command('GET', orig_name)
+	# The "express route" where we find a key at the current version and
+	# immediately return.
+        val = self.execute_command('GET', curr_ver + "|" + name)
         # Return immediately if no update is necsesary
         if(val):
-            logging.debug("\tNo update necessary for key: " + name + " (version = " + curr_ver + ")")
             return val
 
-        # No key found at the current version.
-        # Try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
-        curr_key_version = None
-        vers_list = self.global_versions(ns) #local call, indexes array only
-        for v in vers_list[1:]: # this will test the least uncurrent version first
-            orig_name = v + "|" + name
-            val = self.execute_command('GET', orig_name)
-            # Found a key!  Figure out which version and see if it needs updating
-            if val is not None:
-                curr_key_version = v
-                logging.debug("GOT KEY " + name + " at VERSION: " + v)
-                break
-        # no key at 'name' for any eversion.
-        if curr_key_version == None:
-            return None
+        logging.debug("\tNo curr_ver key: " + name + " (version = " + curr_ver + ")")
 
 
         ######### LAZY UPDATES HERE!!!! :)  ########
 
-        # Version isn't current.  Now check for updates
-        curr_idx = vers_list.index(curr_key_version)
-        new_name = vers_list[0] + "|" + name
-        logging.info("\tCurrent key is at position " + str(curr_idx) +\
-            " in the udp list, which means that there is/are " + \
-            str(curr_idx) + " more update(s) to apply")
 
         try:
+            vers_list = self.global_versions(ns) #local call, indexes array only
+
+
+            # Init the pipe.  Must call "watch" on all before calling multi.
             pipe = self.pipeline()
-            pipe.watch(orig_name)
-            # must call "watch" on all before calling multi.
-            for upd_v in vers_list[:(curr_idx+1)]:
-                pipe.watch(upd_v + "|" + name)
+            for upd_v in vers_list:
+                pipe.watch(upd_v + "|" + name) # abort if any version of key 'name' changes.
+            pipe.watch("UPDATE_VERSIONS_" +ns) # abort if any new versions added to this namespace
             pipe.multi()
+
+            # Try to get a matching key. Ex: if key="foo", try "v0|key", "v1|key", etc
+            all_potential_keys = (map(lambda x: x + "|" + name, vers_list))
+            vals = self.mget(all_potential_keys) # get ALL the vals!
+            
+            # "vals" now contains a list of all empty lists if there is no key anywhere
+            # else it contains somethign like [[], {data!!}, []] if there's a key at v1.
+            curr_idx = -1
+            curr_key_version = None
+            for idx, v in enumerate(vals):
+                if v != None:
+                    # Found a key!  Figure out which version and see if it needs updating
+                    val = v # stored for use below
+                    curr_idx = idx
+                    curr_key_version = vers_list[curr_idx]
+                    orig_name = curr_key_version + "|" + name 
+                    logging.debug("GOT KEY " + name + " at VERSION: " + curr_key_version)
+                    break
+            # Check if current key was sucessfully retrived now in concurrent get
+            if curr_idx == 0:
+                pipe.reset() #return pipe to connection pool, unwatch keys.
+                return val
+            # Check if no key at 'name' for any version.
+            if curr_key_version == None:
+                pipe.reset()
+                logging.debug("MISS at key " + name +"\n")
+                return None
+
+            logging.debug("\n>>>>UPDATING " + name)
+
+            # Version isn't current.  Now check for updates
+            new_name = vers_list[0] + "|" + name
+            logging.info("\tCurrent key is at position " + str(curr_idx) +\
+                " in the udp list, which means that there is/are " + \
+                str(curr_idx) + " more update(s) to apply")
 
             # Apply 1 or multiple updates, from oldest to newest, if necessary
             while curr_idx > 0:
@@ -453,9 +470,10 @@ class LazyUpdateRedis(StrictRedis):
             pipe.reset()
             return val
         except WatchError:
-            logging.warning("WATCH ERROR, Value not set")
-            return False #TODO what to return here?!?!
-        
+            pipe.reset()
+            logging.warning("WATCH ERROR on update, retrying get for " + name + "\n")
+            return self.get(name)
+
 
     def keys(self, pattern='*'):
         """
