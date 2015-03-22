@@ -362,7 +362,7 @@ class LazyUpdateRedis(StrictRedis):
         all_potential_keys = (map(lambda x: x + "|" + name, vers_list))
         vals = self.mget(all_potential_keys) # get ALL the vals!
         if len(vals) == vals.count(None):
-            logging.debug("\tNo key at any version: " + name )
+            #logging.debug("\tNo key at any version: " + name )
             return None
 
 
