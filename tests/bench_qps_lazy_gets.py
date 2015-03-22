@@ -14,8 +14,9 @@ from redis.exceptions import ConnectionError
 def do_getset(r, unused, num_gets, key_range, args2, data):
     pass
 
-def do_get(r, unused, num_gets, key_range, args2, unused2):
+def do_get(args, unused, num_gets, key_range, args2, unused2):
 
+    r = lazyupdredis.connect(args)
     for i in range(num_gets):
         rand = str(random.randint(0, key_range-1))
         try:
@@ -23,15 +24,28 @@ def do_get(r, unused, num_gets, key_range, args2, unused2):
         except DeprecationWarning as e:
             r = lazyupdredis.connect(args2)
 
+def do_set(args, unused, num_gets, key_range, args2, data):
+
+    r = lazyupdredis.connect(args)
+    curr_data = data[0]
+    for i in range(num_gets):
+        rand = str(random.randint(0, key_range-1))
+        try:
+            r.set("node:" + rand, curr_data)
+        except DeprecationWarning as e:
+            curr_data = data[1]
+            r = lazyupdredis.connect(args2)
+
 def do_stats():
     actualredis = redis.StrictRedis()
     f = open('stats.txt', 'w')
-    f.write("Time\t#Queries\tKeys Updated\n")
+    f.write("Time\t#Queries\t#V0Keys\t#V1Keys\n")
     i = 0
     while True:
         try:
             queries = actualredis.info()["instantaneous_ops_per_sec"]
             f.write(str(i) + "\t" + str(queries) + "\t")
+            f.write(str(len(actualredis.keys("v0*"))) + "\t")
             f.write(str(len(actualredis.keys("v1*"))) + "\n")
             time.sleep(.25)
             i = i + .25
@@ -53,8 +67,7 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
     start = time.time()
     thread_arr = list()
     for t_num in range(num_clients):
-        r = lazyupdredis.connect(args)
-        thread = (Thread(target = fun_name, args = (r, t_num, num_funcalls, keyrange, args2, data)))
+        thread = (Thread(target = fun_name, args = (args, t_num, num_funcalls, keyrange, args2, data)))
         thread_arr.append(thread)
         thread.start()
 
@@ -94,8 +107,7 @@ def stop_redis():
 
 
 
-
-def lazy_gets(redis_loc):
+def lazy_cmd(redis_loc, cmd):
 
     num_keys = 5000    # the possible range of keys to iterate
     num_funcalls = 10000 # #gets in this case done over random keys (1 - num_keys)
@@ -105,14 +117,20 @@ def lazy_gets(redis_loc):
     # non-hooked redis commands to work as orginally specified
     actualredis = redis.StrictRedis()
 
-    # prepopulate the DB for this "get" test.  Right now, assumimg no misses.
-    json_val = json.dumps({"outport": 777, "inport": 999})
-    r = lazyupdredis.connect([("node", "v0")])
-    for i in range(num_keys):
-        r.set("node:" + str(i), json_val)
-     
     g = open('lazy.txt', 'w')
-    g.write(str( bench("lazy_redis_get_qps", do_get, num_clients,  num_funcalls, num_keys, [("node", "v0")], [("node", "v1")], None))+"\n")
+    if cmd == "get":
+        # prepopulate the DB for this "get" test.  Right now, assumimg no misses.
+        json_val = json.dumps({"outport": 777, "inport": 999})
+        r = lazyupdredis.connect([("node", "v0")])
+        for i in range(num_keys):
+            r.set("node:" + str(i), json_val)
+        g.write(str( bench("lazy_redis_get_qps", do_get, num_clients,  num_funcalls, num_keys, [("node", "v0")], [("node", "v1")], None))+"\n")
+
+    elif cmd == "set":
+        json_val = json.dumps({"outport": 777, "inport": 999})
+        json_val2 = json.dumps({"outport": 777, "inport": 999, "counter": 0})
+        g.write(str( bench("lazy_redis_set_qps", do_set, num_clients,  num_funcalls, num_keys, [("node", "v0")], [("node", "v1")], [json_val, json_val2]))+"\n")
+
     print str(len(actualredis.keys("v0*"))) + " keys not updated, ",
     print str(len(actualredis.keys("v1*"))) + " keys updated."
     print actualredis.info()
@@ -152,9 +170,11 @@ def main():
 
     # test lazy_gets()
     #for i in range(3):  #TODO more trials, then take mean, lalal, etc
-    lazy_gets(redis_loc)
+    #lazy_cmd(redis_loc, "get")
 
-    #lazy_gets(redis_loc)
+    # test lazy_sets()
+    #for i in range(3):  #TODO more trials, then take mean, lalal, etc
+    lazy_cmd(redis_loc, "set")
 
     # test a mix of lazy gets/sets
     #lazy_getssets_nomisses(redis_loc)
