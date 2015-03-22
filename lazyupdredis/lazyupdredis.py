@@ -61,6 +61,7 @@
 
 import redis
 #import logging
+import random
 import json, re, sys, fnmatch, decode, time, os
 import json_patch_creator
 import socket
@@ -530,33 +531,13 @@ class LazyUpdateRedis(StrictRedis):
         new_name = vers_list[0] + "|" + name
         pieces = [new_name, value]
 
-        # This block not-modified from pyredis originalcode
-        if ex:
-            pieces.append('EX')
-            if isinstance(ex, datetime.timedelta):
-                ex = ex.seconds + ex.days * 24 * 3600
-            pieces.append(ex)
-        if px:
-            pieces.append('PX')
-            if isinstance(px, datetime.timedelta):
-                ms = int(px.microseconds / 1000)
-                px = (px.seconds + px.days * 24 * 3600) * 1000 + ms
-            pieces.append(px)
+        if (ex or px or nx or xx):
+            raise NotImplementedError("*X flag options not supported for sets in lazyupdredis")
 
-        if nx:
-            pieces.append('NX')
-        if xx:
-            pieces.append('XX')
-        # end not-modified block
-
-        # if there is only one version, don't bother deleting
-        #
-        # TODO: There needs to be a better way to check if we don't need
-        #       to delete old keys than if there is more than 1 version...
-        #       Maybe a background thread for deletes or some additional 
-        #       bookkeeping would be faster...TBD empirically
         ret =  self.execute_command('SET', *pieces) 
-        if (len(vers_list) == 1):
+        # If there is only one version, don't bother deleting
+        # Also, 10% of the time, do the delete.
+        if (len(vers_list) == 1 or (random.randint(1, 10)<10)):
             return ret
 
         keys_to_del = map(lambda x: x + "|" + name, vers_list[1:])
