@@ -512,17 +512,6 @@ class LazyUpdateRedis(StrictRedis):
 
         Set the value at key ``name`` to ``value``
 
-        Prepends the current version string to key ``name``.
-
-        ``ex`` sets an expire flag on key ``name`` for ``ex`` seconds.
-
-        ``px`` sets an expire flag on key ``name`` for ``px`` milliseconds.
-
-        ``nx`` if set to True, set the value at key ``name`` to ``value`` if it
-            does not already exist.
-
-        ``xx`` if set to True, set the value at key ``name`` to ``value`` if it
-            already exists.
         """
         ns = self.namespace(name)
         # this call just locally indexes an array; need list to check if we need to del old ln 533
@@ -534,16 +523,18 @@ class LazyUpdateRedis(StrictRedis):
         if (ex or px or nx or xx):
             raise NotImplementedError("*X flag options not supported for sets in lazyupdredis")
 
-        ret =  self.execute_command('SET', *pieces) 
-        # If there is only one version, don't bother deleting
-        # Also, 10% of the time, do the delete.
-        if (len(vers_list) == 1 or (random.randint(1, 10)<10)):
+        # 'GETSET' returns None if key does not exist, else returns the key
+        ret = self.execute_command('GETSET', *pieces) 
+        # Key is already at current version.
+        if ret is not None or len(vers_list)==1:
             return ret
 
         keys_to_del = map(lambda x: x + "|" + name, vers_list[1:])
         self.execute_command('DEL', *keys_to_del)
+        # We should return True like a normal 'set', not the value in ret, which is
+        # the value of the get (None in this case).
+        return True
 
-        return ret
 
         
     def do_upd_all_now(self, dsl_file):
