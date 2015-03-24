@@ -4,7 +4,7 @@ Load some test data in the database, update, and test for expected results.
 """
 import json
 import sys, os
-import redis
+import redis, time
 import logging
 from lazyupdredis import *
 
@@ -26,8 +26,9 @@ def test1(actualredis):
 
     # connect to Redis
     r = lazyupdredis.connect([("key", "ver0"), ("edgeattr", "v0")])
-    assert(actualredis.lrange("UPDATE_VERSIONS_key", 0, -1) == ["ver0"])
-    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) == ["v0"])
+    print actualredis.lrange("UPDATE_VERSIONS_key", 0, -1)
+    assert(actualredis.lrange("UPDATE_VERSIONS_key", 0, -1) == ['ver0', 'null'])
+    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) == ['v0', 'null'])
 
     # add an entry
     cat_a = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"A\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [ { \"product\": \"Fortune Cookies\",   \"price\": 19.99 },{ \"product\": \"Edamame\",   \"price\": 29.99 } ] } }"
@@ -54,10 +55,11 @@ def test1(actualredis):
     print "Performing update for " + tname
     r.do_upd("data/example_json/lazy_1_init")
 
-    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==["v1", "v0"] )
+    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==['v1', 'null', 'v0', 'null'] )
     # adding new entries is done on demand, so should have new values 
     assert(r.global_curr_version("edgeattr") == "v1")
-    assert(r.global_versions("edgeattr") == ["v1", "v0"]) 
+    print r.global_versions("edgeattr")
+    assert(r.global_versions("edgeattr") == [("v1", "null"), ("v0", "null")]) 
 
     # make sure the other updates also got loaded
     assert(r.global_curr_version("key") == "ver1")
@@ -70,7 +72,7 @@ def test1(actualredis):
 
     # make sure that the new module loads on a new connection
     r2 = lazyupdredis.connect([("key", "ver1"), ("edgeattr", "v1")])
-    assert(r2.global_versions("edgeattr") == ["v1", "v0"]) 
+    assert(r2.global_versions("edgeattr") == [("v1", "null"), ("v0", "null")]) 
     assert(r2.global_curr_version("edgeattr") == "v1") 
 
     # test that the expected keys are added
@@ -426,7 +428,7 @@ def test7(actualredis):
         assert False, "Should have thrown KeyError on previous line"
     except KeyError as e:
         print e
-    assert(actualredis.lrange("UPDATE_VERSIONS_*", 0 ,-1) == ["nonsense"])
+    assert(actualredis.lrange("UPDATE_VERSIONS_*", 0 ,-1) == ["nonsense", "null"])
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
@@ -486,6 +488,33 @@ def test8(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# Test keyname change
+def test9(actualredis):
+
+    tname = "test9_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+
+    # connect to Redis
+    json_val = json.dumps({"outport": 777, "inport": None})
+    r = lazyupdredis.connect([("edgeattr", "v0")])
+    for (i,j) in [("1","2"), ("2","3")]:
+	r.set("edgeattr:n" + i + "@n" + j, json_val)
+
+    #Expect keyname to change from edgeattr:nx@ny to edgeattr:nx@ny:graph1
+    r.do_upd("data/example_json/upd_keys_init")
+
+    # Key should up updated from v0|edgeattr:n1@n2 to v1|edgeattr:n1@n2:graph1
+    assert(actualredis.get("v0|edgeattr:n1@n2") is not None)
+    e = r.get("edgeattr:graph1:n1@n2")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+
+
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+
 
 def main():
 
@@ -516,9 +545,9 @@ def main():
     test7(actualredis)
     # Test multiple updates a bit more
     test8(actualredis)
-
-    actualredis.execute_command('QUIT')
-
+    # Test keyname change
+#    test9(actualredis)
+    
 
 if __name__ == '__main__':
     main()

@@ -502,6 +502,7 @@ def process_dsl(file1, outfile="dsu.py"):
 
     # create a list to store the parsed dsl output
     kv_update_pairs = list()
+    kv_nschange_pairs = list()
     kv_new_pairs = list()
 
     # Generate the functions based on the DSL file contents
@@ -510,14 +511,16 @@ def process_dsl(file1, outfile="dsu.py"):
     # Tuples are in the format of: (cmd, keyglob, inner, namespace, old_ver, new_ver)
         ###tups.append((cmd, keyglob, inner, oldnamespace, namespace, old_ver, new_ver))
     for idx, curr_tup in enumerate(dsllist):
-        if (curr_tup[0] == "for" or curr_tup[0] == "for namespace"):
-            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_"), curr_tup[3], curr_tup[4], curr_tup[5], curr_tup[6]))
+        if (curr_tup[0] == "for"):
+            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_"), curr_tup[4], curr_tup[5], curr_tup[6]))
+        elif (curr_tup[0] == "for namespace"):
+            kv_nschange_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_nschange_"), curr_tup[3], curr_tup[4], curr_tup[5], curr_tup[6]))
         elif (curr_tup[0] == "add"):
-            print "CURR_TUP IS" +str(curr_tup)
             kv_new_pairs.append((curr_tup[1],  generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_"), curr_tup[4], curr_tup[6]))
 
     # write the name of the key globs and corresponding functions
     outfile.write("\ndef get_update_tuples():\n    return " + str(kv_update_pairs))
+    outfile.write("\ndef get_nschange_tuples():\n    return " + str(kv_nschange_pairs))
     outfile.write("\ndef get_newkey_tuples():\n    return " + str(kv_new_pairs))
 
     # cleanup

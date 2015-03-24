@@ -40,7 +40,9 @@
     Additional bookkeeping for lazy update:
     * A redis list called "UPDATE_VERSIONS_NS", which is a list of version name strings
          for each namespace NS.  (There will be a list of versions for each namespaces)
-         Ex: "UPDATE_VERSIONS_NS" -> ["V1"]
+         There are two entries in each list for each version, a previous namespace in
+         the case of a namespace change, else None
+         Ex: "UPDATE_VERSIONS_NS" -> ["V1", None]
 
     * A redis hash of "UPDATE_DSL_STRINGS", which stores a hash mapping version name strings
          concatinated with namespaces to DSL strings (for generating to modules later by 
@@ -233,7 +235,7 @@ class LazyUpdateRedis(StrictRedis):
         d = self.ns_versions_dict
         ret = ""
         for e in d:
-            ret += e + ":" + d[e][0] + "|"
+            ret += e + ":" + d[e][0][0] + "|"
         return ret[:-1]
 
     def name_to_dict(self, name):
@@ -243,30 +245,33 @@ class LazyUpdateRedis(StrictRedis):
             ret[s[0:nssplit]] = s[nssplit+1:]
         return ret
 
-    def append_new_version(self, v, ns, startup=False):
+    def append_new_version(self, v, ns, startup=False, vold='null'):
         """
         Append the new version (v) to redis for namespace (ns)
+        The default for the old version is redis' version of None 'null'
+        (otherwise we'd have the overhead of casting or dejsoning)
         """
         try:
             pipe = self.pipeline()
             pipe.watch("UPDATE_VERSIONS_"+ns)
             pipe.multi()
-            global_versions = self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
-            if global_versions != []:
-                logging.info("setting curr_ver to: " + str(global_versions[0]))
-                logging.info("global_versions "  + str(global_versions))
-                curr_ver = global_versions[0]
+            global_ver_redis = self.lrange("UPDATE_VERSIONS_"+ns, 0, -1)
+            if global_ver_redis != []:
+                logging.info("setting curr_ver to: " + str(global_ver_redis[0]))
+                logging.info("global_ver_redis "  + str(global_ver_redis))
+                curr_ver = global_ver_redis[0]
             else:
                 curr_ver = None
             self.client_ns_versions[ns] = v
             # Check if we're already at this namespace
             if (v == curr_ver):
                 if startup:
-                    self.ns_versions_dict[ns] = global_versions
+                    it = iter(global_ver_redis)
+                    self.ns_versions_dict[ns] = zip(it,it)
                 pipe.reset()
                 return 0
             # Check to see if this version is old for this namespace
-            elif (startup and (v in global_versions)):
+            elif (startup and (v in global_ver_redis)):
                 pipe.reset()
                 raise ValueError('Fatal - Trying to connect to an old version')
             # Check to see if we're trying to connect to a bogus version
@@ -281,10 +286,13 @@ class LazyUpdateRedis(StrictRedis):
             else:
                 if curr_ver is None:
                     logging.info("Creating new namespace: " + ns)
-                pipe.lpush("UPDATE_VERSIONS_"+ns, v)
+                pipe.lpush("UPDATE_VERSIONS_"+ns, vold, v)
             logging.debug("Prepending new version: " + v)
-            global_versions.insert(0, v) 
-            self.ns_versions_dict[ns] = global_versions
+            global_ver_redis.insert(0, v)
+            global_ver_redis.insert(1, vold)
+            it = iter(global_ver_redis)
+            tups =  (zip(it,it)) # every other, make into tuples
+            self.ns_versions_dict[ns] = tups
             rets = pipe.execute()
             pipe.reset()
             if rets:
@@ -304,9 +312,9 @@ class LazyUpdateRedis(StrictRedis):
     def global_curr_version(self, ns):
         """
         Return the most current version from local for namespace ns
-        @param ns: the namespace
+        @param ns: the namespace.  (The first part of the tuple from the first element)
         """
-        return self.ns_versions_dict[ns][0]
+        return self.ns_versions_dict[ns][0][0]
 
     def namespace(self, name):
         return json_patch_creator.parse_namespace(name)
@@ -316,9 +324,9 @@ class LazyUpdateRedis(StrictRedis):
         "Delete one or more keys specified by ``names``"
         # Delete doesn't allow keyglob, must expand all
         newnames = list()
-        for n in names:
+        for n in names:  #TODO FIXME 
             v = self.global_versions(self.namespace(n))
-            newnames.extend(map(lambda x: x + "|" + n, v))
+            newnames.extend(map(lambda (x,y): x + "|" + n, v))
         return self.execute_command('DEL', *newnames)
 
    
@@ -345,7 +353,7 @@ class LazyUpdateRedis(StrictRedis):
         """
 
         ns = self.namespace(name)
-        curr_ver = self.ns_versions_dict[ns][0]
+        curr_ver = self.global_curr_version(ns)
         
 	# The "express route" where we find a key at the current version and
 	# immediately return.
@@ -360,7 +368,7 @@ class LazyUpdateRedis(StrictRedis):
         # (before bothering with the overhead of 'watch' below)
         # Ex: try "v0|key", "v1|key", etc
         vers_list = self.global_versions(ns) #local call, indexes array only
-        all_potential_keys = (map(lambda x: x + "|" + name, vers_list))
+        all_potential_keys = (map(lambda (x,y): x + "|" + name, vers_list))
         vals = self.mget(all_potential_keys) # get ALL the vals!
         if len(vals) == vals.count(None):
             logging.debug("\tNo key at any version: " + name )
@@ -372,7 +380,7 @@ class LazyUpdateRedis(StrictRedis):
 
             # Init the pipe.  Must call "watch" on all before calling multi.
             pipe = self.pipeline()
-            for upd_v in vers_list:
+            for (upd_v, todo) in vers_list:
                 pipe.watch(upd_v + "|" + name) # abort if any version of key 'name' changes.
             pipe.watch("UPDATE_VERSIONS_" +ns) # abort if any new versions added to this namespace
             pipe.multi()
@@ -389,7 +397,7 @@ class LazyUpdateRedis(StrictRedis):
                     # Found a key!  Figure out which version and see if it needs updating
                     val = v # stored for use below
                     curr_idx = idx
-                    curr_key_version = vers_list[curr_idx]
+                    curr_key_version = vers_list[curr_idx][0]
                     orig_name = curr_key_version + "|" + name 
                     logging.debug("GOT KEY " + name + " at VERSION: " + curr_key_version)
                     break
@@ -406,14 +414,14 @@ class LazyUpdateRedis(StrictRedis):
             logging.debug("\n>>>>UPDATING " + name)
 
             # Version isn't current.  Now check for updates
-            new_name = vers_list[0] + "|" + name
+            new_name = vers_list[0][0] + "|" + name
             logging.info("\tCurrent key is at position " + str(curr_idx) +\
                 " in the udp list, which means that there is/are " + \
                 str(curr_idx) + " more update(s) to apply")
 
             # Apply 1 or multiple updates, from oldest to newest, if necessary
             while curr_idx > 0:
-                upd_v = vers_list[curr_idx-1]
+                upd_v = vers_list[curr_idx-1][0]
 
                 # Make sure we have the update in the dictionary
                 upd_name = (curr_key_version, upd_v, ns)
@@ -517,7 +525,7 @@ class LazyUpdateRedis(StrictRedis):
         # this call just locally indexes an array; need list to check if we need to del old ln 533
         vers_list = self.global_versions(ns) 
 
-        new_name = vers_list[0] + "|" + name
+        new_name = vers_list[0][0] + "|" + name
         pieces = [new_name, value]
 
         if (ex or px or nx or xx):
@@ -529,7 +537,7 @@ class LazyUpdateRedis(StrictRedis):
         if ret is not None or len(vers_list)==1:
             return ret
 
-        keys_to_del = map(lambda x: x + "|" + name, vers_list[1:])
+        keys_to_del = map(lambda (x,y): x + "|" + name, vers_list[1:]) #TODO FIXME
         self.execute_command('DEL', *keys_to_del)
         # We should return True like a normal 'set', not the value in ret, which is
         # the value of the get (None in this case).
@@ -637,7 +645,7 @@ class LazyUpdateRedis(StrictRedis):
         tups = get_update_tuples()
 
         updated_ns = set() 
-        for (glob, funcs, old_ns, ns, version_from, version_to) in tups:
+        for (glob, funcs, ns, version_from, version_to) in tups:
             try:
                 updated_ns.add((ns,version_from))
                 pipe = self.pipeline()
@@ -704,10 +712,10 @@ class LazyUpdateRedis(StrictRedis):
             m = __import__ (name) #m stores the module
             get_upd_tuples = getattr(m, "get_update_tuples")
             tups = get_upd_tuples()
-            print tups
-            for (glob, funcs, oldns, ns, version_from, version_to) in tups:
+            for (glob, funcs, ns, version_from, version_to) in tups:
                 func_ptrs = map(lambda x: getattr(m,x), funcs)
                 self.upd_dict.setdefault(vvn_tup, []).append((m, glob, func_ptrs, version_to))
+            
 
 
 # Utility function...may move this later...
