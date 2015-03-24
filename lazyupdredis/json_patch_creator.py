@@ -392,31 +392,47 @@ def parse_dslfile_string_only(dslfile_location):
         line = dslfile.readline()
     dslfile.seek(0)
 
+    patterns =  ['(for namespace)\\s+(\S*)->(\S*)\\s+(\S*)->(\S*)\\s?{',
+                 '(for) \\s?(\S*)\\s+(\S*)->(\S*)\\s?{']
+    def extract_for_keys(estr):
+        for p in patterns:
+            cmd = re.match(p,estr)
+            if cmd is not None:
+                return cmd
+            else:
+                logging.debug("FAIL (for/add)")
+
     for line in dslfile:
 
         # skip blank lines in between "for key *{...};" stanzas
         if line == "\n":
            continue
 
-        p =  '(for) \\s?(\S*)\\s+(\S*)->(\S*)\\s?{'
-        parsed = re.match(p, line)
+        parsed = extract_for_keys(line)
         if parsed is None:
             continue
         l = list() # list of all the readin dsl lines
         l.append(line)
         cmd = parsed.group(1)
-        keyglob = parsed.group(2).strip()
-        namespace = parse_namespace(keyglob)
         curr = next(dslfile, None)
         while curr and "};" not in curr:
             l.append(curr)
             curr = next(dslfile, None)
         l.append(curr)
         l.insert(0,"\n".join(imp))
-        old_ver = parsed.group(3)
-        new_ver = parsed.group(4)
+        if (cmd == "for"):
+            oldns = "null" #redis-ism
+            keyglob = parsed.group(2).strip()
+            namespace = parse_namespace(keyglob)
+            old_ver = parsed.group(3)
+            new_ver = parsed.group(4)
+        else:
+            oldns = parsed.group(2)
+            namespace = parsed.group(3)
+            old_ver = parsed.group(4)
+            new_ver = parsed.group(5)
         # parse the stuff inside the "for" stanza
-        dict_key = (old_ver, new_ver, namespace)
+        dict_key = (old_ver, new_ver, oldns, namespace)
         dsl_dict.setdefault(dict_key, []).extend(l)
     logging.debug(dsl_dict)
     return dsl_dict

@@ -257,11 +257,12 @@ def test3b(actualredis):
 
     # r is now at ("edgeattr", "v1"), r2 is at ("edgeattr", "v2")
     assert(len(r.upd_dict)==1)
-    assert(("v0", "v1", "edgeattr") in r.upd_dict)
+    print r.upd_dict
+    assert(("v0", "v1", "null", "edgeattr") in r.upd_dict)
     assert(len(r2.upd_dict)==2)
-    assert(("v0", "v1", "edgeattr") in r2.upd_dict)
-    assert(("v1", "v2", "edgeattr") in r2.upd_dict)
-    assert((r2.upd_dict[("v1", "v2", "edgeattr")][0][3])=="v2")
+    assert(("v0", "v1", "null", "edgeattr") in r2.upd_dict)
+    assert(("v1", "v2", "null", "edgeattr") in r2.upd_dict)
+    assert((r2.upd_dict[("v1", "v2", "null", "edgeattr")][0][3])=="v2")
 
     # have r try to do the upate the r2 alreayd did
     print ("Expecting an error for re-applying an update:")

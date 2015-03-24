@@ -398,6 +398,7 @@ class LazyUpdateRedis(StrictRedis):
                     val = v # stored for use below
                     curr_idx = idx
                     curr_key_version = vers_list[curr_idx][0]
+                    prev_ns = vers_list[curr_idx][1]
                     orig_name = curr_key_version + "|" + name 
                     logging.debug("GOT KEY " + name + " at VERSION: " + curr_key_version)
                     break
@@ -424,7 +425,7 @@ class LazyUpdateRedis(StrictRedis):
                 upd_v = vers_list[curr_idx-1][0]
 
                 # Make sure we have the update in the dictionary
-                upd_name = (curr_key_version, upd_v, ns)
+                upd_name = (curr_key_version, upd_v, prev_ns, ns)
                 if upd_name not in self.upd_dict:
                     err= "Could not update key \'" + name + "\'.  Could not find " +\
                         "update \'" + str(upd_name) +"\' in update dictionary."
@@ -609,7 +610,7 @@ class LazyUpdateRedis(StrictRedis):
             return
 
         # Verify that these updates are sensible with the current database.
-        for (old,new,ns) in dsl_for_redis:
+        for (old,new,oldns,ns) in dsl_for_redis:
             if (old != self.global_curr_version(ns)):
                 error = "ERROR: Namespace " + str(ns) + " is at \'" +\
                     str(self.global_curr_version(ns)) + "\' but update was for: " + str(old)
@@ -651,7 +652,7 @@ class LazyUpdateRedis(StrictRedis):
                 pipe = self.pipeline()
                 pipe.watch("UPDATE_DSL_STRINGS")
                 pipe.multi()
-                vOldvNewNs = (version_from, version_to, ns)
+                vOldvNewNs = (version_from, version_to, "null", ns)
                 if vOldvNewNs not in dsl_for_redis:
                     pipe.reset()
                     raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))
