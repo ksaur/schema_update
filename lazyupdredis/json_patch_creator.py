@@ -298,7 +298,8 @@ def parse_dslfile(dslfile, outfile):
     
     @return: a list of tuples (key:string (if any), commands:dictionary)
     """
-    patterns =  ['(for) \\s?(\S*)\\s+(.*)->(.*)\\s?{',
+    patterns =  ['(for namespace)\\s+(.*)->(.*)\\s+(.*)->(.*)\\s?{',
+                 '(for) \\s?(\S*)\\s+(.*)->(.*)\\s?{',
                  '(add) \\s?(\S*)\\s+(.*)\\s?{']
 
     def extract_for_keys(estr):
@@ -331,6 +332,7 @@ def parse_dslfile(dslfile, outfile):
         cmd = parsed.group(1)
         keyglob = parsed.group(2).strip()
         namespace = parse_namespace(keyglob)
+        oldnamespace = None
         curr = next(dslfile, None)
         while curr and "};" not in curr:
             l.append(curr)
@@ -341,13 +343,21 @@ def parse_dslfile(dslfile, outfile):
             logging.debug("for INNER = " + str(inner))
             old_ver = parsed.group(3).strip()
             new_ver = parsed.group(4).strip()
+        elif (cmd == "for namespace"):
+            logging.debug("For Namespace match!")
+            inner = parse_dslfile_inner(iter(l))
+            oldnamespace = parsed.group(2)
+            namespace = parsed.group(3)
+            keyglob = namespace+"*"
+            old_ver = parsed.group(4).strip()
+            new_ver = parsed.group(5).strip()
         else: #guaranteed cmd == "add", else would have failed in 'extract'
             if "*" in keyglob or "?" in keyglob:
                 sys.exit("\n\nFatal - Cannot use wildcards in keyglob for adding keys.\n")
             inner =  '|'.join(l)
             old_ver = None
             new_ver = parsed.group(3).strip()
-        tups.append((cmd, keyglob, inner, namespace, old_ver, new_ver))
+        tups.append((cmd, keyglob, inner, oldnamespace, namespace, old_ver, new_ver))
         logging.debug("\n\ncmd: " + cmd)
         logging.debug("\n\nold_ver: " + str(old_ver))
         logging.debug("\n\nnew_ver: " + str(new_ver))
@@ -412,12 +422,10 @@ def parse_dslfile_string_only(dslfile_location):
     return dsl_dict
 
 def parse_namespace(name):
-    spl = name.split(":", 1)
-    if (len(spl) != 2):
+    if (":" not in name):
         logging.warning("WARNING: using default namespace (*) for \'" + name + "\'.")
         return "*"
-    else:
-        return spl[0]
+    return name[0:name.rfind(":")]
 
 def bulkload(f, jsonarr):
     for line in f:
@@ -500,11 +508,13 @@ def process_dsl(file1, outfile="dsu.py"):
     # (Use the index as the namespace, as the keystring has too many special chars) 
     #
     # Tuples are in the format of: (cmd, keyglob, inner, namespace, old_ver, new_ver)
+        ###tups.append((cmd, keyglob, inner, oldnamespace, namespace, old_ver, new_ver))
     for idx, curr_tup in enumerate(dsllist):
-        if (curr_tup[0] == "for"):
-            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_"), curr_tup[3], curr_tup[4], curr_tup[5]))
+        if (curr_tup[0] == "for" or curr_tup[0] == "for namespace"):
+            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_"), curr_tup[3], curr_tup[4], curr_tup[5], curr_tup[6]))
         elif (curr_tup[0] == "add"):
-            kv_new_pairs.append((curr_tup[1],  generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_"), curr_tup[3], curr_tup[5]))
+            print "CURR_TUP IS" +str(curr_tup)
+            kv_new_pairs.append((curr_tup[1],  generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_"), curr_tup[4], curr_tup[6]))
 
     # write the name of the key globs and corresponding functions
     outfile.write("\ndef get_update_tuples():\n    return " + str(kv_update_pairs))

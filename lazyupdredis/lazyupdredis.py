@@ -637,7 +637,7 @@ class LazyUpdateRedis(StrictRedis):
         tups = get_update_tuples()
 
         updated_ns = set() 
-        for (glob, funcs, ns, version_from, version_to) in tups:
+        for (glob, funcs, old_ns, ns, version_from, version_to) in tups:
             try:
                 updated_ns.add((ns,version_from))
                 pipe = self.pipeline()
@@ -704,7 +704,8 @@ class LazyUpdateRedis(StrictRedis):
             m = __import__ (name) #m stores the module
             get_upd_tuples = getattr(m, "get_update_tuples")
             tups = get_upd_tuples()
-            for (glob, funcs, ns, version_from, version_to) in tups:
+            print tups
+            for (glob, funcs, oldns, ns, version_from, version_to) in tups:
                 func_ptrs = map(lambda x: getattr(m,x), funcs)
                 self.upd_dict.setdefault(vvn_tup, []).append((m, glob, func_ptrs, version_to))
 
