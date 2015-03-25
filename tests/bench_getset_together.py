@@ -18,18 +18,6 @@ sys.path.append("data/example_jsonbulk/")
 import sample_generate
 
 
-def do_updnow(r, unused1, unused2, unused3, unused4):
-    upd = r.do_upd_all_now("data/example_jsonbulk/sample_1_sadalage_init")
-    logging.info("updated" + str(upd))
-    return None
-
-def do_lazyupd(r, unused, num_iters, key_range, unused2):
-
-    for i in range(num_iters):
-        rand1 = str(random.randint(1, key_range))
-        r.get("customer:" + rand1)
-
-
 def do_get(r, unused, num_getsets, key_range, unused2):
 
     for i in range(num_getsets):
@@ -100,7 +88,6 @@ def main():
 
 
     # test get-sets
-    #actualredis.flushall()
     num_keys = 5000    # the possible range of keys to iterate
     num_funcalls = 10000 # (x2 hits to redis because it's set/get). done over random keys (1 - num_keys)
     num_clients = 50
@@ -111,61 +98,22 @@ def main():
     f = open('normal.txt', 'w')
     g = open('lazy.txt', 'w')
     for i in range(3):
-    #if True:
-#        #os.system("/fs/macdonald/ksaur/proxy &")
-#        start_redis(redis_loc)
-#        set = bench("normal_redis_set", do_set, num_clients,  num_funcalls, num_keys, None, data)
-#        get = bench("normal_redis_get", do_get, num_clients,  num_funcalls, num_keys, None, None)
-#        f.write(str(set+get)+"\t")
-#        f.flush()
-#        stop_redis()
-#        #os.system("killall proxy")
-        #sleep(1)
+        start_redis(redis_loc)
+        set = bench("normal_redis_set", do_set, num_clients,  num_funcalls, num_keys, None, data)
+        get = bench("normal_redis_get", do_get, num_clients,  num_funcalls, num_keys, None, None)
+        f.write(str(set+get)+"\t")
+        f.flush()
+        stop_redis()
 
-        #os.system("/fs/macdonald/ksaur/proxy &")
         start_redis(redis_loc)
         set =bench("lazy_redis_set", do_set, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], data)
         get =bench("lazy_redis_get", do_get, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], None)
         g.write(str(set+get)+"\t")
         g.flush()
         stop_redis()
-        #os.system("killall proxy")
-        #sleep(1)
     f.close()
     g.close()
 
-#    # test do all now
-#    start_redis(redis_loc)
-#    # non-hooked redis commands to work as orginally specified
-#    actualredis = redis.StrictRedis()
-#    num_keys = 5000    # keys to add
-#    num_funcalls = 1
-#    num_clients = 1
-#    sample_generate.gen_1_sadalage(num_keys)
-#    print bench("RIGHTNOW_redis_sadalage1", do_updnow, num_clients, num_funcalls, num_keys, [("customer", "v0")])
-#    print str(len(actualredis.keys("v0*"))) + " keys not updated, ",
-#    print str(len(actualredis.keys("v1*"))) + " keys updated."
-#    stop_redis()
-#
-#
-#    # test lazy
-#    start_redis(redis_loc)
-#    # non-hooked redis commands to work as orginally specified
-#    actualredis = redis.StrictRedis()
-#    actualredis.flushall()
-#    r = lazyupdredis.connect([("customer", "v0")])
-#    num_keys = 5000    # the possible range of keys to iterate
-#    num_funcalls = 10000 # done over random keys (1 - num_keys)
-#    num_clients = 5
-#    sample_generate.gen_1_sadalage(num_keys)
-#    r.do_upd("data/example_jsonbulk/sample_1_sadalage_init")
-#    print bench("lazy_redis_sadalage1", do_lazyupd, num_clients, num_funcalls, num_keys, [("customer", "v1")])
-#    print str(len(actualredis.keys("v0*"))) + " keys not yet updated, ",
-#    print str(len(actualredis.keys("v1*"))) + " keys updated."
-#    stop_redis()
-
-
-    # test lazy updates on a large scale
  
 
 if __name__ == '__main__':
