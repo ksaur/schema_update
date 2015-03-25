@@ -203,7 +203,7 @@ class LazyUpdateRedis(StrictRedis):
         for ns in self.client_ns_versions:
             globalv = self.lindex("UPDATE_VERSIONS_"+ns, 0)
             if (globalv != self.client_ns_versions[ns]):
-                 raise DeprecationWarning ("You are at \'" + self.client_ns_versions[ns] + "\' but system is at \'" + globalv + "\' for namespace \'" + ns + "\'")
+                 raise DeprecationWarning ("You are at \'" + str(self.client_ns_versions[ns]) + "\' but system is at \'" + str(globalv) + "\' for namespace \'" + ns + "\'")
 
     def get_connected_client_list_at_ns(self, ns):
         clients = list()
@@ -268,8 +268,10 @@ class LazyUpdateRedis(StrictRedis):
             it = iter(global_ver_redis)
             tups =  (zip(it,it)) # every other, make into tuples
             self.ns_versions_dict[ns] = tups
+            del self.ns_versions_dict[oldns] # TODO, maybe we want to keep this? not sure.
             logging.info("Creating new namespace: " + ns)
             pipe.rpush("UPDATE_VERSIONS_"+ns, *global_ver_redis)
+            pipe.delete("UPDATE_VERSIONS_"+oldns) # TODO, maybe we want to keep this? not sure.
             logging.debug("Prepending new version: " + v)
             rets = pipe.execute()
             pipe.reset()
@@ -575,7 +577,7 @@ class LazyUpdateRedis(StrictRedis):
         # this call just locally indexes an array; need list to check if we need to del old ln 533
         vers_list = self.global_versions(ns) 
 
-        new_name = vers_list[0][0] + "|" + name
+        new_name = self.global_curr_version(ns) + "|" + name
         pieces = [new_name, value]
 
         if (ex or px or nx or xx):
@@ -701,7 +703,7 @@ class LazyUpdateRedis(StrictRedis):
         updated_ns = set() 
         for (glob, funcs, oldns, ns, version_from, version_to) in tups:
             try:
-                updated_ns.add((ns,version_from))
+                updated_ns.add((oldns,version_from))
                 pipe = self.pipeline()
                 pipe.watch("UPDATE_DSL_STRINGS")
                 pipe.multi()

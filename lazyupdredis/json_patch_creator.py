@@ -331,7 +331,6 @@ def parse_dslfile(dslfile, outfile):
             sys.exit("\n\nFatal - Parse error near line containing: " + line)
         cmd = parsed.group(1)
         keyglob = parsed.group(2).strip()
-        namespace = parse_namespace(keyglob)
         curr = next(dslfile, None)
         while curr and "};" not in curr:
             l.append(curr)
@@ -340,6 +339,7 @@ def parse_dslfile(dslfile, outfile):
         if (cmd == "for"):
             inner = parse_dslfile_inner(iter(l))
             logging.debug("for INNER = " + str(inner))
+            namespace = parse_namespace(keyglob)
             oldnamespace = namespace
             old_ver = parsed.group(3).strip()
             new_ver = parsed.group(4).strip()
@@ -355,6 +355,7 @@ def parse_dslfile(dslfile, outfile):
             if "*" in keyglob or "?" in keyglob:
                 sys.exit("\n\nFatal - Cannot use wildcards in keyglob for adding keys.\n")
             inner =  '|'.join(l)
+            namespace = parse_namespace(keyglob)
             oldnamespace = None
             old_ver = None
             new_ver = parsed.group(3).strip()
