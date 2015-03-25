@@ -82,7 +82,7 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
     sleep(10)
 
     updater = lazyupdredis.connect(args)
-    #updater.do_upd("data/example_json/bench_qps_lazy_gets_init")
+    #updater.do_upd("data/example_json/upd_keys_and_json")
     updater.do_upd("data/example_json/upd_keys_init")
     print "UPDATE!!!!!!!"
 
@@ -154,11 +154,11 @@ def main():
 
     # test lazy_gets()
     #for i in range(3):  #TODO more trials, then take mean, lalal, etc
-    #lazy_cmd(redis_loc, "get")
+    lazy_cmd(redis_loc, "get")
 
     # test lazy_sets()
     #for i in range(3):  #TODO more trials, then take mean, lalal, etc
-    lazy_cmd(redis_loc, "set")
+    #lazy_cmd(redis_loc, "set")
 
 
 if __name__ == '__main__':

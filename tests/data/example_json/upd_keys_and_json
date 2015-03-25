@@ -1,0 +1,3 @@
+for namespace edgeattr->edgeattr:graph1 v0->v1 {
+INIT ["counter"] {$out = 0}
+};
