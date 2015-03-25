@@ -642,7 +642,7 @@ class LazyUpdateRedis(StrictRedis):
             arr = self.scan(arr[0])
         return updated
    
-    def do_upd(self, dsl_file):
+    def do_upd(self, dsl_file, upd_file_out=None):
         """
         Switch the version string and load up the update functions for lazy updates.
            
@@ -658,7 +658,11 @@ class LazyUpdateRedis(StrictRedis):
         
         """
 
-        upd_file_out = "/tmp/gen_" + str(int(round(time.time() * 1000))) + ".py"
+        if upd_file_out is None:
+            upd_file_out = "/tmp/gen_" + str(int(round(time.time() * 1000))) + ".py"
+            storefile = False
+        else:
+            storefile = True
         dsl_for_redis = json_patch_creator.parse_dslfile_string_only(dsl_file)
         if dsl_for_redis is None:
             #logging.error("COULD NOT PARSE DSL")
@@ -719,7 +723,10 @@ class LazyUpdateRedis(StrictRedis):
                     pipe.reset()
                     raise ValueError("\n\nERROR!!! Already had an update at version " + str(vOldvNewNs))
                 elif (prev != joined):
-                    pipe.hset("UPDATE_DSL_STRINGS", vOldvNewNs, joined)
+                    if storefile:
+                        pipe.hset("UPDATE_DSL_STRINGS", vOldvNewNs, upd_file_out) 
+                    else:
+                        pipe.hset("UPDATE_DSL_STRINGS", vOldvNewNs, joined)
                 # make sure we can append to the version list without contention
                 if oldns==ns:
                     if(self.append_new_version(version_to, ns) is None):
@@ -758,18 +765,22 @@ class LazyUpdateRedis(StrictRedis):
         for vvn_string in dsl_files:
             # Tuple of will be read in as string "("v0", "v1", "ns")". Convert to tuple ("v0", "v1", "ns")
             vvn_tup = literal_eval(vvn_string) 
-            # Ensure a unique name to checkout the generated code later if necessary
-            name = "/tmp/gen_" + str(int(round(time.time() * 1000))) + "_"+ vvn_tup[2]
-            # Write the contents of redis to a file
-            dsl_file = open(name, "w")
-            dsl_file.write(dsl_files[vvn_string])
-            dsl_file.close()
+            if "for" in (dsl_files[vvn_string]):
+                # Ensure a unique name to checkout the generated code later if necessary
+                name = "/tmp/gen_" + str(int(round(time.time() * 1000))) + "_"+ vvn_tup[2]
+                # Write the contents of redis to a file
+                dsl_file = open(name, "w")
+                dsl_file.write(dsl_files[vvn_string])
+                dsl_file.close()
 
-            # Process the DSL file and generate the python update functions
-            json_patch_creator.process_dsl(name, name+".py")
+                # Process the DSL file and generate the python update functions
+                json_patch_creator.process_dsl(name, name+".py")
 
-            # Now load the generated update functions to be called lazily later
-            name = name.replace("/tmp/", "")
+                # Now load the generated update functions to be called lazily later
+                name = name.replace("/tmp/", "")
+            else:
+                name = dsl_files[vvn_string]
+                name = name.replace(".py", "").replace("/tmp/", "")
             m = __import__ (name) #m stores the module
             get_upd_tuples = getattr(m, "get_update_tuples")
             tups = get_upd_tuples()

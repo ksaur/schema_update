@@ -81,7 +81,7 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
     sleep(10)
 
     updater = lazyupdredis.connect(args)
-    updater.do_upd("data/example_json/bench_qps_lazy_gets_init")
+    updater.do_upd("data/example_json/bench_qps_lazy_gets_init", "/tmp/mymodule.py")
     print "UPDATE!!!!!!!"
 
     for t in thread_arr:
@@ -173,11 +173,11 @@ def main():
 
     # test lazy_gets()
     #for i in range(3):  #TODO more trials, then take mean, lalal, etc
-    lazy_cmd(redis_loc, "get")
+#    lazy_cmd(redis_loc, "get")
 
     # test lazy_sets()
     #for i in range(3):  #TODO more trials, then take mean, lalal, etc
-    #lazy_cmd(redis_loc, "set")
+    lazy_cmd(redis_loc, "set")
 
     # test a mix of lazy gets/sets
     #lazy_getssets_nomisses(redis_loc)

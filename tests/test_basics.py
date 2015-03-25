@@ -517,7 +517,6 @@ def test9(actualredis):
     assert(actualredis.get("v0|edgeattr:n1@n2") is None)
    
     print r.keys("edge*")
-    sys.exit(0)
     # Test sets
     json_val2 = json.dumps({"outport": 111, "inport": 999})
     e = r.set("edgeattr:graph1:n2@n3", json_val2)
