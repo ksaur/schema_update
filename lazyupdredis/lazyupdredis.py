@@ -245,15 +245,46 @@ class LazyUpdateRedis(StrictRedis):
             ret[s[0:nssplit]] = s[nssplit+1:]
         return ret
 
-    def append_new_version(self, v, ns, startup=False, vold=None):
-        """
-        Append the new version (v) to redis for namespace (ns)
-        The default for the old version will be set to 'ns', meaning no namespace change 
-        (otherwise we'd have the overhead of casting or dejsoning)
+    def append_new_version_updated_ns(self, old_v, v, oldns, ns):
+        """ 
+        Version append function for ns version changes.
+        Split out from append_new_version for easier reading.
         """
         try:
-            if vold is None: #use the current namespace as the old if none; easier lambdas.
-               vold = ns
+            if self.exists("UPDATE_VERSIONS_"+ns):
+                raise ValueError('Fatal - Cannot change names to an existing namespace')
+            pipe = self.pipeline()
+            pipe.watch("UPDATE_VERSIONS_"+ns) # will collide if some other client tries same append
+            pipe.watch("UPDATE_VERSIONS_"+oldns)
+            pipe.multi()
+            global_ver_redis_oldns = self.lrange("UPDATE_VERSIONS_"+oldns, 0, -1)
+            if global_ver_redis_oldns == []:
+                raise ValueError('Fatal - \'from\' namespace does not exist.')
+            if old_v not in global_ver_redis_oldns:
+                raise ValueError('Fatal - \'from\' namespace '+oldns+' at '+old_v+' version does not exist.')
+            global_ver_redis = global_ver_redis_oldns
+            global_ver_redis.insert(0, v) #python is really stupid about list copy
+            global_ver_redis.insert(1, ns)
+            it = iter(global_ver_redis)
+            tups =  (zip(it,it)) # every other, make into tuples
+            self.ns_versions_dict[ns] = tups
+            logging.info("Creating new namespace: " + ns)
+            pipe.rpush("UPDATE_VERSIONS_"+ns, *global_ver_redis)
+            logging.debug("Prepending new version: " + v)
+            rets = pipe.execute()
+            pipe.reset()
+            if rets:
+                return rets[-1]
+            return None
+        except WatchError:
+            logging.warning("WATCH ERROR, Value not set for UPDATE_VERSIONS")
+            return None
+
+    def append_new_version(self, v, ns, startup=False):
+        """
+        Append the new version (v) to redis for namespace (ns)
+        """
+        try:
             pipe = self.pipeline()
             pipe.watch("UPDATE_VERSIONS_"+ns)
             pipe.multi()
@@ -288,10 +319,10 @@ class LazyUpdateRedis(StrictRedis):
             else:
                 if curr_ver is None:
                     logging.info("Creating new namespace: " + ns)
-                pipe.lpush("UPDATE_VERSIONS_"+ns, vold, v)
+                pipe.lpush("UPDATE_VERSIONS_"+ns, ns, v)
             logging.debug("Prepending new version: " + v)
             global_ver_redis.insert(0, v)
-            global_ver_redis.insert(1, vold)
+            global_ver_redis.insert(1, ns)
             it = iter(global_ver_redis)
             tups =  (zip(it,it)) # every other, make into tuples
             self.ns_versions_dict[ns] = tups
@@ -321,6 +352,8 @@ class LazyUpdateRedis(StrictRedis):
     def namespace(self, name):
         return json_patch_creator.parse_namespace(name)
 
+    def split_namespace_key(self, name):
+        return json_patch_creator.split_namespace_key(name)
 
     def delete(self, *names):
         "Delete one or more keys specified by ``names``"
@@ -354,7 +387,7 @@ class LazyUpdateRedis(StrictRedis):
         Auto retry if there was a concurrency error. 
         """
 
-        ns = self.namespace(name)
+        (ns, suffix) = self.split_namespace_key(name) 
         curr_ver = self.global_curr_version(ns)
         
 	# The "express route" where we find a key at the current version and
@@ -370,7 +403,10 @@ class LazyUpdateRedis(StrictRedis):
         # (before bothering with the overhead of 'watch' below)
         # Ex: try "v0|key", "v1|key", etc
         vers_list = self.global_versions(ns) #local call, indexes array only
-        all_potential_keys = (map(lambda (x,y): x + "|" + name, vers_list))
+        if ns!= "*":
+            all_potential_keys = (map(lambda (x,y): x + "|" + y + ":" + suffix, vers_list))
+        else:
+            all_potential_keys = (map(lambda (x,y): x + "|" + suffix, vers_list)) #TODO test this
         vals = self.mget(all_potential_keys) # get ALL the vals!
         if len(vals) == vals.count(None):
             logging.debug("\tNo key at any version: " + name )
@@ -613,7 +649,7 @@ class LazyUpdateRedis(StrictRedis):
 
         # Verify that these updates are sensible with the current database.
         for (old,new,oldns,ns) in dsl_for_redis:
-            if (old != self.global_curr_version(ns)):
+            if (old != self.global_curr_version(oldns)):
                 error = "ERROR: Namespace " + str(ns) + " is at \'" +\
                     str(self.global_curr_version(ns)) + "\' but update was for: " + str(old)
                 raise KeyError(error)
@@ -648,13 +684,13 @@ class LazyUpdateRedis(StrictRedis):
         tups = get_update_tuples()
 
         updated_ns = set() 
-        for (glob, funcs, ns, version_from, version_to) in tups:
+        for (glob, funcs, oldns, ns, version_from, version_to) in tups:
             try:
                 updated_ns.add((ns,version_from))
                 pipe = self.pipeline()
                 pipe.watch("UPDATE_DSL_STRINGS")
                 pipe.multi()
-                vOldvNewNs = (version_from, version_to, ns, ns)
+                vOldvNewNs = (version_from, version_to, oldns, ns)
                 if vOldvNewNs not in dsl_for_redis:
                     pipe.reset()
                     raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))
@@ -664,13 +700,18 @@ class LazyUpdateRedis(StrictRedis):
                 joined = '\n'.join(dsl_for_redis[vOldvNewNs])
                 if ((prev is not None) and (prev != joined)):
                     pipe.reset()
-                    raise ValueError("\n\nERROR!!! Already had an update at version " + str(vOldvNewNs) )
+                    raise ValueError("\n\nERROR!!! Already had an update at version " + str(vOldvNewNs))
                 elif (prev != joined):
                     pipe.hset("UPDATE_DSL_STRINGS", vOldvNewNs, joined)
                 # make sure we can append to the version list without contention
-                if(self.append_new_version(version_to, ns) is None):
-                    pipe.reset()
-                    return False  #abort!!
+                if oldns==ns:
+                    if(self.append_new_version(version_to, ns) is None):
+                        pipe.reset()
+                        return False  #abort!!
+                else:
+                    if(self.append_new_version_updated_ns(version_from, version_to, oldns, ns) is None):
+                        pipe.reset()
+                        return False  #abort!!
                 try:
                     func_ptrs = map(lambda x: getattr(m,x), funcs)
                 except AttributeError as e:
@@ -715,7 +756,7 @@ class LazyUpdateRedis(StrictRedis):
             m = __import__ (name) #m stores the module
             get_upd_tuples = getattr(m, "get_update_tuples")
             tups = get_upd_tuples()
-            for (glob, funcs, ns, version_from, version_to) in tups:
+            for (glob, funcs, oldns, ns, version_from, version_to) in tups:
                 func_ptrs = map(lambda x: getattr(m,x), funcs)
                 self.upd_dict.setdefault(vvn_tup, []).append((m, glob, func_ptrs, version_to))
             

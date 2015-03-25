@@ -332,7 +332,6 @@ def parse_dslfile(dslfile, outfile):
         cmd = parsed.group(1)
         keyglob = parsed.group(2).strip()
         namespace = parse_namespace(keyglob)
-        oldnamespace = None
         curr = next(dslfile, None)
         while curr and "};" not in curr:
             l.append(curr)
@@ -341,6 +340,7 @@ def parse_dslfile(dslfile, outfile):
         if (cmd == "for"):
             inner = parse_dslfile_inner(iter(l))
             logging.debug("for INNER = " + str(inner))
+            oldnamespace = namespace
             old_ver = parsed.group(3).strip()
             new_ver = parsed.group(4).strip()
         elif (cmd == "for namespace"):
@@ -355,6 +355,7 @@ def parse_dslfile(dslfile, outfile):
             if "*" in keyglob or "?" in keyglob:
                 sys.exit("\n\nFatal - Cannot use wildcards in keyglob for adding keys.\n")
             inner =  '|'.join(l)
+            oldnamespace = None
             old_ver = None
             new_ver = parsed.group(3).strip()
         tups.append((cmd, keyglob, inner, oldnamespace, namespace, old_ver, new_ver))
@@ -438,10 +439,19 @@ def parse_dslfile_string_only(dslfile_location):
     return dsl_dict
 
 def parse_namespace(name):
+    """ split a key into namespace, return namespace if it exists, else * """
     if (":" not in name):
         logging.warning("WARNING: using default namespace (*) for \'" + name + "\'.")
         return "*"
     return name[0:name.rfind(":")]
+
+def split_namespace_key(name):
+    """ split a key into namespace and name, return as a tuple"""
+    index = name.rfind(":")
+    if index == -1:
+        return ("*", name)
+    return (name[0:index], name[index+1:])
+
 
 def bulkload(f, jsonarr):
     for line in f:
@@ -527,11 +537,9 @@ def process_dsl(file1, outfile="dsu.py"):
     # Tuples are in the format of: (cmd, keyglob, inner, namespace, old_ver, new_ver)
         ###tups.append((cmd, keyglob, inner, oldnamespace, namespace, old_ver, new_ver))
     for idx, curr_tup in enumerate(dsllist):
-        if (curr_tup[0] == "for"):
-            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_"), curr_tup[4], curr_tup[5], curr_tup[6]))
-        elif (curr_tup[0] == "for namespace"):
-            kv_nschange_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_nschange_"), curr_tup[3], curr_tup[4], curr_tup[5], curr_tup[6]))
-        elif (curr_tup[0] == "add"):
+        if (curr_tup[0] == "for") or (curr_tup[0] == "for namespace"):
+            kv_update_pairs.append((curr_tup[1], generate_upd(curr_tup[2], outfile, "group_"+str(idx)+"_update_"), curr_tup[3], curr_tup[4], curr_tup[5], curr_tup[6]))
+        else:
             kv_new_pairs.append((curr_tup[1],  generate_add_key(curr_tup[1], curr_tup[2], outfile, "group_"+str(idx)+"_adder_"), curr_tup[4], curr_tup[6]))
 
     # write the name of the key globs and corresponding functions

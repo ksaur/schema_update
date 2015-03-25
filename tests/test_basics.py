@@ -501,15 +501,16 @@ def test9(actualredis):
     r = lazyupdredis.connect([("edgeattr", "v0")])
     for (i,j) in [("1","2"), ("2","3")]:
 	r.set("edgeattr:n" + i + "@n" + j, json_val)
+    assert(actualredis.get("v0|edgeattr:n1@n2") is not None)
 
     #Expect keyname to change from edgeattr:nx@ny to edgeattr:nx@ny:graph1
     r.do_upd("data/example_json/upd_keys_init")
 
     # Key should up updated from v0|edgeattr:n1@n2 to v1|edgeattr:n1@n2:graph1
-    assert(actualredis.get("v0|edgeattr:n1@n2") is not None)
     e = r.get("edgeattr:graph1:n1@n2")
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone["outport"] == 777 )
+    assert(actualredis.get("v1|edgeattr:graph1:n1@n2") is not None)
 
 
 
@@ -547,7 +548,7 @@ def main():
     # Test multiple updates a bit more
     test8(actualredis)
     # Test keyname change
-#    test9(actualredis)
+    test9(actualredis)
     
 
 if __name__ == '__main__':
