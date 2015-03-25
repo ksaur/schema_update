@@ -499,19 +499,39 @@ def test9(actualredis):
     # connect to Redis
     json_val = json.dumps({"outport": 777, "inport": None})
     r = lazyupdredis.connect([("edgeattr", "v0")])
-    for (i,j) in [("1","2"), ("2","3")]:
+    for (i,j) in [("1","2"), ("2","3"), ("4", "2")]:
 	r.set("edgeattr:n" + i + "@n" + j, json_val)
     assert(actualredis.get("v0|edgeattr:n1@n2") is not None)
+    assert(actualredis.get("v0|edgeattr:n2@n3") is not None)
 
     #Expect keyname to change from edgeattr:nx@ny to edgeattr:nx@ny:graph1
     r.do_upd("data/example_json/upd_keys_init")
 
+    # Test gets
     # Key should up updated from v0|edgeattr:n1@n2 to v1|edgeattr:n1@n2:graph1
     e = r.get("edgeattr:graph1:n1@n2")
     jsone = json.loads(e,object_hook=decode.decode_dict)
     assert(jsone["outport"] == 777 )
     assert(actualredis.get("v1|edgeattr:graph1:n1@n2") is not None)
+    # test that old is deleted
+    assert(actualredis.get("v0|edgeattr:n1@n2") is None)
+   
+    print r.keys("edge*")
+    sys.exit(0)
+    # Test sets
+    json_val2 = json.dumps({"outport": 111, "inport": 999})
+    e = r.set("edgeattr:graph1:n2@n3", json_val2)
+    # test actually set
+    e = actualredis.get("v1|edgeattr:graph1:n2@n3")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 111 )
+    # test that the old key was deleted
+    assert(actualredis.get("v0|edgeattr:n2@n3") is None)
 
+    # Test deletes
+    assert(actualredis.get("v0|edgeattr:n4@n2") is not None)
+    assert(r.delete("edgeattr:graph1:n4@n2")==1)
+    assert(actualredis.get("v0|edgeattr:n4@n2") is None)
 
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"

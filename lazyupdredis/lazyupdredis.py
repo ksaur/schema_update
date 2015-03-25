@@ -359,9 +359,13 @@ class LazyUpdateRedis(StrictRedis):
         "Delete one or more keys specified by ``names``"
         # Delete doesn't allow keyglob, must expand all
         newnames = list()
-        for n in names:  #TODO FIXME 
-            v = self.global_versions(self.namespace(n))
-            newnames.extend(map(lambda (x,y): x + "|" + n, v))
+        for n in names:  
+            (ns, suffix) = self.split_namespace_key(n) 
+            vers_list = self.global_versions(ns)
+            if ns!= "*":
+                newnames.extend(map(lambda (x,y): x + "|" + y + ":" + suffix, vers_list))
+            else:
+                newnames.extend(map(lambda (x,y): x + "|" + suffix, vers_list)) #TODO test this
         return self.execute_command('DEL', *newnames)
 
    
@@ -434,10 +438,11 @@ class LazyUpdateRedis(StrictRedis):
                 if v != None:
                     # Found a key!  Figure out which version and see if it needs updating
                     val = v # stored for use below
+                    orig_val = v
                     curr_idx = idx
                     curr_key_version = vers_list[curr_idx][0]
                     prev_ns = vers_list[curr_idx][1]
-                    orig_name = curr_key_version + "|" + name 
+                    orig_name = all_potential_keys[idx] 
                     logging.debug("GOT KEY " + name + " at VERSION: " + curr_key_version)
                     break
             # Check if current key was sucessfully retrived now in concurrent get
@@ -517,8 +522,11 @@ class LazyUpdateRedis(StrictRedis):
                 curr_idx=curr_idx-1
 
             # All updates done, write the new key and wipe the original
-            pipe.execute_command('SET', new_name, val)
-            pipe.execute_command('DEL', orig_name)
+            if(orig_val != val):
+                pipe.execute_command('SET', new_name, val)
+                pipe.execute_command('DEL', orig_name)
+            else:
+                pipe.execute_command('RENAME', orig_name, new_name)
             # execute everything in the pipe (will abort with WatchError if issues)
             pipe.execute()
             pipe.reset()
@@ -533,6 +541,9 @@ class LazyUpdateRedis(StrictRedis):
         """
         Returns a list of keys matching ``pattern`` (update tracking version
         strings are stripped off before returning
+
+	Warning...this will return mixed versions...this doesn't lazy update,
+           so if there are old keys...they'll be there...
         """
         pattern = "*|" + pattern
         keylist = self.execute_command('KEYS', pattern)
@@ -560,7 +571,7 @@ class LazyUpdateRedis(StrictRedis):
         Set the value at key ``name`` to ``value``
 
         """
-        ns = self.namespace(name)
+        (ns, suffix) = self.split_namespace_key(name) 
         # this call just locally indexes an array; need list to check if we need to del old ln 533
         vers_list = self.global_versions(ns) 
 
@@ -576,7 +587,11 @@ class LazyUpdateRedis(StrictRedis):
         if ret is not None or len(vers_list)==1:
             return ret
 
-        keys_to_del = map(lambda (x,y): x + "|" + name, vers_list[1:]) #TODO FIXME
+        if ns!= "*":
+            keys_to_del = (map(lambda (x,y): x + "|" + y + ":" + suffix, vers_list[1:]))
+        else:
+            keys_to_del = (map(lambda (x,y): x + "|" + suffix, vers_list[1:])) #TODO test this
+
         self.execute_command('DEL', *keys_to_del)
         # We should return True like a normal 'set', not the value in ret, which is
         # the value of the get (None in this case).
