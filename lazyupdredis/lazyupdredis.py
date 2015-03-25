@@ -245,13 +245,15 @@ class LazyUpdateRedis(StrictRedis):
             ret[s[0:nssplit]] = s[nssplit+1:]
         return ret
 
-    def append_new_version(self, v, ns, startup=False, vold='null'):
+    def append_new_version(self, v, ns, startup=False, vold=None):
         """
         Append the new version (v) to redis for namespace (ns)
-        The default for the old version is redis' version of None 'null'
+        The default for the old version will be set to 'ns', meaning no namespace change 
         (otherwise we'd have the overhead of casting or dejsoning)
         """
         try:
+            if vold is None: #use the current namespace as the old if none; easier lambdas.
+               vold = ns
             pipe = self.pipeline()
             pipe.watch("UPDATE_VERSIONS_"+ns)
             pipe.multi()
@@ -652,7 +654,7 @@ class LazyUpdateRedis(StrictRedis):
                 pipe = self.pipeline()
                 pipe.watch("UPDATE_DSL_STRINGS")
                 pipe.multi()
-                vOldvNewNs = (version_from, version_to, "null", ns)
+                vOldvNewNs = (version_from, version_to, ns, ns)
                 if vOldvNewNs not in dsl_for_redis:
                     pipe.reset()
                     raise ValueError("ERROR, dsl string not found: "+ str(vOldvNewNs))

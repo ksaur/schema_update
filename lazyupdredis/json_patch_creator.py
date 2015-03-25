@@ -421,9 +421,9 @@ def parse_dslfile_string_only(dslfile_location):
         l.append(curr)
         l.insert(0,"\n".join(imp))
         if (cmd == "for"):
-            oldns = "null" #redis-ism
             keyglob = parsed.group(2).strip()
             namespace = parse_namespace(keyglob)
+            oldns = namespace
             old_ver = parsed.group(3)
             new_ver = parsed.group(4)
         else:

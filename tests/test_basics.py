@@ -27,8 +27,8 @@ def test1(actualredis):
     # connect to Redis
     r = lazyupdredis.connect([("key", "ver0"), ("edgeattr", "v0")])
     print actualredis.lrange("UPDATE_VERSIONS_key", 0, -1)
-    assert(actualredis.lrange("UPDATE_VERSIONS_key", 0, -1) == ['ver0', 'null'])
-    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) == ['v0', 'null'])
+    assert(actualredis.lrange("UPDATE_VERSIONS_key", 0, -1) == ['ver0', 'key'])
+    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1) == ['v0', 'edgeattr'])
 
     # add an entry
     cat_a = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"name\": \"Foo Sushi Inc\", \"since\": \"12/12/2001\", \"category\": \"A\", \"order\": { \"orderid\": \"UXWE-122012\", \"orderdate\": \"12/12/2001\", \"orderItems\": [ { \"product\": \"Fortune Cookies\",   \"price\": 19.99 },{ \"product\": \"Edamame\",   \"price\": 29.99 } ] } }"
@@ -55,11 +55,11 @@ def test1(actualredis):
     print "Performing update for " + tname
     r.do_upd("data/example_json/lazy_1_init")
 
-    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==['v1', 'null', 'v0', 'null'] )
+    assert(actualredis.lrange("UPDATE_VERSIONS_edgeattr", 0, -1)==['v1', 'edgeattr', 'v0', 'edgeattr'] )
     # adding new entries is done on demand, so should have new values 
     assert(r.global_curr_version("edgeattr") == "v1")
     print r.global_versions("edgeattr")
-    assert(r.global_versions("edgeattr") == [("v1", "null"), ("v0", "null")]) 
+    assert(r.global_versions("edgeattr") == [("v1", "edgeattr"), ("v0", "edgeattr")]) 
 
     # make sure the other updates also got loaded
     assert(r.global_curr_version("key") == "ver1")
@@ -72,7 +72,7 @@ def test1(actualredis):
 
     # make sure that the new module loads on a new connection
     r2 = lazyupdredis.connect([("key", "ver1"), ("edgeattr", "v1")])
-    assert(r2.global_versions("edgeattr") == [("v1", "null"), ("v0", "null")]) 
+    assert(r2.global_versions("edgeattr") == [("v1", "edgeattr"), ("v0", "edgeattr")]) 
     assert(r2.global_curr_version("edgeattr") == "v1") 
 
     # test that the expected keys are added
@@ -258,11 +258,11 @@ def test3b(actualredis):
     # r is now at ("edgeattr", "v1"), r2 is at ("edgeattr", "v2")
     assert(len(r.upd_dict)==1)
     print r.upd_dict
-    assert(("v0", "v1", "null", "edgeattr") in r.upd_dict)
+    assert(("v0", "v1", "edgeattr", "edgeattr") in r.upd_dict)
     assert(len(r2.upd_dict)==2)
-    assert(("v0", "v1", "null", "edgeattr") in r2.upd_dict)
-    assert(("v1", "v2", "null", "edgeattr") in r2.upd_dict)
-    assert((r2.upd_dict[("v1", "v2", "null", "edgeattr")][0][3])=="v2")
+    assert(("v0", "v1", "edgeattr", "edgeattr") in r2.upd_dict)
+    assert(("v1", "v2", "edgeattr", "edgeattr") in r2.upd_dict)
+    assert((r2.upd_dict[("v1", "v2", "edgeattr", "edgeattr")][0][3])=="v2")
 
     # have r try to do the upate the r2 alreayd did
     print ("Expecting an error for re-applying an update:")
@@ -429,7 +429,7 @@ def test7(actualredis):
         assert False, "Should have thrown KeyError on previous line"
     except KeyError as e:
         print e
-    assert(actualredis.lrange("UPDATE_VERSIONS_*", 0 ,-1) == ["nonsense", "null"])
+    assert(actualredis.lrange("UPDATE_VERSIONS_*", 0 ,-1) == ["nonsense", "*"])
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
