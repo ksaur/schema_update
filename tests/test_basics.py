@@ -105,6 +105,101 @@ def test1(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+def test1paper(actualredis):
+
+    tname = "test1_z_paper"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+
+    # connect to Redis
+    r = lazyupdredis.connect([("key", "ver0")])
+
+    cat_a = {
+    "_id": "4BD8AE97C47016442AF4A580",
+    "customerid": 99999,
+    "name": "Foo Sushi Inc",
+    "since": "12/12/2012",
+    "order": {
+        "orderid": "UXWE-122012",
+        "orderdate": "12/12/2001",
+        "orderItems": [
+            {
+                "product": "Fortune Cookies",
+                "price": 19.99
+            }
+        ]
+    }
+    }
+    # add an entry
+    r.set("key:1", json.dumps(cat_a))
+    # make sure data added
+    e = r.get("key:1")
+    assert (e) is not None
+ 
+    # Make sure the versioning works for the udpate 
+    print "Performing update for " + tname
+    r.do_upd("data/example_json/paper_dsl")
+
+    # test that the update worked
+    # make sure that it hasn't happened on-demand by checking in non-hooked redis
+    e = actualredis.get("ver0|key:1") # must include tag in actual redis
+    assert(e is not None)
+    # now, when we grab it in lazy redis, the update should happen on-demand
+    e = r.get("key:1")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(((jsone["order"].get("orderItems"))[0]).get("fullprice") == 19.99)
+    # make sure the old is gone
+    assert(actualredis.get("ver0|key:1") is None)
+    assert(actualredis.get("ver1|key:1") is not None)
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+
+# Test combintations of key existing/update existing
+def test2(actualredis):
+
+    tname = "test2_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+
+    # connect to Redis
+    json_val = json.dumps({"outport": None, "inport": None})
+    r = lazyupdredis.connect([("edgeattr", "v0")])
+    for (i,j) in [("1","2"), ("2","3"), ("4","2"), ("4","6"), ("5","2"), ("9","5")]:
+        r.set("edgeattr:n" + i + "@n" + j, json_val)
+
+    #The globs:
+    #  edgeattr:n*@n5
+    #  edgeattr:n4@n*
+    r.do_upd("data/example_json/lazy_2_init")
+
+    # key exists, update exists
+    assert(actualredis.get("v0|edgeattr:n9@n5") is not None)
+    e = r.get("edgeattr:n9@n5")
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    assert(jsone["outport"] == 777 )
+    assert(actualredis.get("v1|edgeattr:n9@n5") is not None)
+    assert(actualredis.get("v0|edgeattr:n9@n5") is None)
+
+    # key does not exist, update exists
+    assert(r.get("edgeattr:n4@n7") is None)
+
+    ## key exists, update does not exist
+    assert(actualredis.get("v0|edgeattr:n5@n2") is not None)
+    e = r.get("edgeattr:n5@n2")
+    print e
+    jsone = json.loads(e,object_hook=decode.decode_dict)
+    print jsone
+    assert(jsone["outport"] == None )
+    assert(actualredis.get("v1|edgeattr:n5@n2") is not None)
+    assert(actualredis.get("v0|edgeattr:n5@n2") is None)
+
+    ## key does not exist, update does not exist
+    assert(r.get("edgeattr:n1@n9") is None)
+
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
 
 # Test combintations of key existing/update existing
 def test2(actualredis):
@@ -550,6 +645,7 @@ def main():
 
     # test basic lazy updates
     test1(actualredis)
+    test1paper(actualredis)
     # test exists/not exists cominations
     test2(actualredis)
     # test multi update cmds; test multi updates.
