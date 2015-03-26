@@ -545,7 +545,6 @@ def process_dsl(file1, outfile="dsu.py"):
 
     # write the name of the key globs and corresponding functions
     outfile.write("\ndef get_update_tuples():\n    return " + str(kv_update_pairs))
-    outfile.write("\ndef get_nschange_tuples():\n    return " + str(kv_nschange_pairs))
     outfile.write("\ndef get_newkey_tuples():\n    return " + str(kv_new_pairs))
 
     # cleanup
