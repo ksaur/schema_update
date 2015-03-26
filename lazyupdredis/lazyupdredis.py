@@ -551,18 +551,6 @@ class LazyUpdateRedis(StrictRedis):
         keylist = self.execute_command('KEYS', pattern)
         return map(lambda x: x.split("|", 1)[1], keylist)
 
-    def incr(self, name, amount=1):
-        """
-        Increments the value of ``key`` by ``amount``. If no key exists,
-        the value will be initialized as ``amount``
-        """
-        ns = self.namespace(name)
-        vers_list = self.global_versions(ns)
-        curr_ver = vers_list[0]
-
-        new_name = curr_ver + "|" + name
-        return self.execute_command('INCRBY', new_name, amount)
-
 
     def set(self, name, value, ex=None, px=None, nx=False, xx=False):
         """
