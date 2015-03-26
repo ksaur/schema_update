@@ -42,6 +42,6 @@ def group_2_update_outport(rediskey, jsonobj):
     return (rediskey, jsonobj)
 
 def get_update_tuples():
-    return [('key:*', ['group_1_update_category', 'group_1_update__id', 'group_1_update_order'], 'key', 'ver0', 'ver1'), ('edgeattr:n*@n5', ['group_2_update_outport'], 'edgeattr', 'v0', 'v1')]
+    return [('key:*', ['group_1_update_order', 'group_1_update__id', 'group_1_update_category'], 'key', 'key', 'ver0', 'ver1'), ('edgeattr:n*@n5', ['group_2_update_outport'], 'edgeattr', 'edgeattr', 'v0', 'v1')]
 def get_newkey_tuples():
     return [('edgeattr:n[1-2]@n[1-3,5]', ['group_0_adder_edgeattrn12n135'], 'edgeattr', 'v1')]
