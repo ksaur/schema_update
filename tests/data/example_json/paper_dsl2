@@ -1,0 +1,12 @@
+import datetime
+for key:* ver1->ver2 {
+UPD ["_id"] {
+if any(c.isalpha() for c in $in): 
+    $out=int($in, 16)}
+DEL ["since"] {
+print $out
+if datetime.datetime.strptime($out, "%d/%m/%Y") > datetime.datetime.strptime($base["order"]["orderdate"], "%d/%m/%Y"):
+    return True 
+else: 
+    return False}
+};

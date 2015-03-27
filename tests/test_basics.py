@@ -130,8 +130,25 @@ def test1paper(actualredis):
         ]
     }
     }
+    cat_b = {
+    "_id": "4BD8AE97C47016442AF4A580",
+    "customerid": 99999,
+    "name": "Foo Sushi Inc",
+    "since": "12/12/1999",
+    "order": {
+        "orderid": "UXWE-122012",
+        "orderdate": "12/12/2001",
+        "orderItems": [
+            {
+                "product": "Fortune Cookies",
+                "price": 19.99
+            }
+        ]
+    }
+    }
     # add an entry
     r.set("key:1", json.dumps(cat_a))
+    r.set("key:2", json.dumps(cat_b))
     # make sure data added
     e = r.get("key:1")
     assert (e) is not None
@@ -151,6 +168,20 @@ def test1paper(actualredis):
     # make sure the old is gone
     assert(actualredis.get("ver0|key:1") is None)
     assert(actualredis.get("ver1|key:1") is not None)
+
+    # Make sure the versioning works for the udpate 
+    print "Performing update for " + tname
+    r.do_upd("data/example_json/paper_dsl2")
+
+    baddate = r.get("key:1")
+    jsone = json.loads(baddate,object_hook=decode.decode_dict)
+    print jsone
+    assert(jsone["_id"] == 23473328205018852615364322688)
+    assert("since" not in jsone)
+    gooddate = r.get("key:2")
+    jsone = json.loads(gooddate,object_hook=decode.decode_dict)
+    print jsone
+    assert("since" in jsone)
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
