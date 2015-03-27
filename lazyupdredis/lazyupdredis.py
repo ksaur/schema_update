@@ -418,7 +418,6 @@ class LazyUpdateRedis(StrictRedis):
             #logging.debug("\tNo key at any version: " + name )
             return None
 
-
         ######### LAZY UPDATES HERE!!!! :)  ########
         try:
 
@@ -574,7 +573,7 @@ class LazyUpdateRedis(StrictRedis):
         # 'GETSET' returns None if key does not exist, else returns the key
         ret = self.execute_command('GETSET', *pieces) 
         # Key is already at current version.
-        if ret is not None or len(vers_list)==1:
+        if ret is not None:
             return ret
 
         if ns!= "*":
@@ -582,7 +581,8 @@ class LazyUpdateRedis(StrictRedis):
         else:
             keys_to_del = (map(lambda (x,y): x + "|" + suffix, vers_list[1:])) #TODO test this
 
-        self.execute_command('DEL', *keys_to_del)
+        if keys_to_del:
+            self.execute_command('DEL', *keys_to_del)
         # We should return True like a normal 'set', not the value in ret, which is
         # the value of the get (None in this case).
         return True
