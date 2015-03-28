@@ -52,13 +52,13 @@ def do_stats():
             i = i + .25
             #os.system("ps -ly `pidof redis-server` >> rss.txt")
         except ConnectionError:
-            f.write("______________________________________________")
+            f.write("______________________________________________\n")
             f.flush()
             f.close()
             break
         
 
-def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, data):
+def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, data, preload):
     """ 
     @param args: first set of args for lazyredis.
     @type args: list of tuples [("ns", "vers"), ...]
@@ -82,8 +82,12 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
     sleep(10)
 
     updater = lazyupdredis.connect(args)
-    updater.do_upd("data/example_json/paper_dsl", "/tmp/mymodule.py")
-    #updater.do_upd("data/example_json/bench_qps_lazy_gets_init", "/tmp/mymodule.py")
+    # Version with a preload of module
+    if preload:
+        updater.do_upd("data/example_json/paper_dsl", "/tmp/mymodule.py")
+    # Version with no pre-load of module
+    else:
+        updater.do_upd("data/example_json/paper_dsl")
     print "UPDATE!!!!!!!"
 
     for t in thread_arr:
@@ -112,7 +116,12 @@ def stop_redis():
 
 
 
-def lazy_cmd(redis_loc, cmd, g):
+def lazy_cmd(redis_loc, cmd, preload):
+
+    f = open('stats.txt', 'a')
+    f.write(str(cmd) + "\t" + str(preload) + "\n")
+    f.flush()
+    f.close()
 
     num_keys = 20000    # the possible range of keys to iterate
     num_funcalls = 10000 # #gets in this case done over random keys (1 - num_keys)
@@ -153,17 +162,18 @@ def lazy_cmd(redis_loc, cmd, g):
             }
         ]
     }}
+    # prepopulate the DB
+    r = lazyupdredis.connect([("key", "ver0")])
+    json_val = json.dumps(val)
+    for i in range(num_keys):
+        r.set("key:" + str(i), json_val)
+
     if cmd == "get":
-        # prepopulate the DB for this "get" test.  Right now, assumimg no misses.
-        r = lazyupdredis.connect([("key", "ver0")])
-        for i in range(num_keys):
-            r.set("key:" + str(i), json_val)
-        g.write(str( bench("lazy_redis_get_qps", do_get, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], None))+"\n")
+        bench("lazy_redis_get_qps", do_get, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], None, preload)
 
     elif cmd == "set":
-        json_val = json.dumps(val)
         json_val2 = json.dumps(val2)
-        g.write(str( bench("lazy_redis_set_qps", do_set, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], [json_val, json_val2]))+"\n")
+        bench("lazy_redis_set_qps", do_set, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], [json_val, json_val2], preload)
 
     print str(len(actualredis.keys("ver0*"))) + " keys not updated, ",
     print str(len(actualredis.keys("ver1*"))) + " keys updated."
@@ -180,21 +190,15 @@ def main():
     os.system("rm /tmp/gen*")
     redis_loc = "/fs/macdonald/ksaur/redis-2.8.19/src/"
 
-    # test lazy_gets()
-    #for i in range(3):  #TODO more trials, then take mean, lalal, etc
-#    lazy_cmd(redis_loc, "get")
-
-    # test lazy_sets()
-    #for i in range(3):  #TODO more trials, then take mean, lalal, etc
     for i in range(11):
-       fname = str(i)+'_set.txt'
-       g = open(fname, 'a')
-       lazy_cmd(redis_loc, "set", g)
-       g.flush()
-       g.close()
+       lazy_cmd(redis_loc, "get", True)
+    for i in range(11):
+       lazy_cmd(redis_loc, "get", False)
+    for i in range(11):
+       lazy_cmd(redis_loc, "set", True)
+    for i in range(11):
+       lazy_cmd(redis_loc, "set", False)
 
-    # test a mix of lazy gets/sets
-    #lazy_getssets_nomisses(redis_loc)
 
 if __name__ == '__main__':
     main()
