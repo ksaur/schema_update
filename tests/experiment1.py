@@ -116,9 +116,14 @@ def main():
     g.write("num_keys: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     g.write("sets\tgets\t#keys\n")
 
+    normalmisses = open('normal_misses.txt', 'a')
+    normalmisses.write("num_keys: " + str(num_keys*.85) + "\tgetting: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
+    normalmisses.write("gets\t#keys\n")
+
     misses = open('lazy_misses.txt', 'a')
     misses.write("num_keys: " + str(num_keys*.85) + "\tgetting: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     misses.write("gets\t#keys\n")
+
     for i in range(11):
     #if True:
         start_redis(redis_loc)
@@ -142,6 +147,17 @@ def main():
 
         start_redis(redis_loc)
         # only set 85% of the keys, then try to get 100% for a 15% miss rate
+        bench("normal_redis_set_misses", do_set, num_clients,  num_funcalls, (num_keys*.85), None, data)
+        get =bench("normal_redis_get_misses", do_get, num_clients,  num_funcalls, num_keys, None, None)
+        normalmisses.write(str(get) +"\t")
+        actualredis = redis.StrictRedis()
+        print actualredis.info()
+        normalmisses.write(str(len(actualredis.keys("*"))) + "\n")
+        normalmisses.flush()
+        stop_redis()
+
+        start_redis(redis_loc)
+        # only set 85% of the keys, then try to get 100% for a 15% miss rate
         bench("lazy_redis_set_misses", do_set, num_clients,  num_funcalls, (num_keys*.85), [("edgeattr", "v0")], data)
         get =bench("lazy_redis_get_misses", do_get, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], None)
         misses.write(str(get) +"\t")
@@ -155,6 +171,7 @@ def main():
 
     f.close()
     g.close()
+    normalmisses.close()
     misses.close()
 
 #    # test do all now
