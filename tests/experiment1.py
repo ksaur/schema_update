@@ -101,7 +101,7 @@ def main():
 
     # test get-sets
     #actualredis.flushall()
-    num_keys = 10000    # the possible range of keys to iterate
+    num_keys = 20000    # the possible range of keys to iterate
     num_funcalls = 10000 # (x2 hits to redis because it's set/get). done over random keys (1 - num_keys)
     num_clients = 50
     # in the redis bench, the default is a 2 byte buffer full of x's, plus a nullterm. ("xxxxxxxx\n")
