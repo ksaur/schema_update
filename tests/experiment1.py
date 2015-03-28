@@ -101,38 +101,61 @@ def main():
 
     # test get-sets
     #actualredis.flushall()
-    num_keys = 5000    # the possible range of keys to iterate
+    num_keys = 10000    # the possible range of keys to iterate
     num_funcalls = 10000 # (x2 hits to redis because it's set/get). done over random keys (1 - num_keys)
     num_clients = 50
     # in the redis bench, the default is a 2 byte buffer full of x's, plus a nullterm. ("xxxxxxxx\n")
     # in python, one char alone is like...14 bytes.  but...we'll just use the same string.
     data = "xxxxxxxx"
      
-    f = open('normal.txt', 'w')
-    g = open('lazy.txt', 'w')
-    for i in range(3):
-    #if True:
-#        #os.system("/fs/macdonald/ksaur/proxy &")
-#        start_redis(redis_loc)
-#        set = bench("normal_redis_set", do_set, num_clients,  num_funcalls, num_keys, None, data)
-#        get = bench("normal_redis_get", do_get, num_clients,  num_funcalls, num_keys, None, None)
-#        f.write(str(set+get)+"\t")
-#        f.flush()
-#        stop_redis()
-#        #os.system("killall proxy")
-        #sleep(1)
+    f = open('normal.txt', 'a')
+    f.write("num_keys: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
+    f.write("sets\tgets\t#keys\n")
 
-        #os.system("/fs/macdonald/ksaur/proxy &")
+    g = open('lazy_nomisses.txt', 'a')
+    g.write("num_keys: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
+    g.write("sets\tgets\t#keys\n")
+
+    misses = open('lazy_misses.txt', 'a')
+    misses.write("num_keys: " + str(num_keys*.85) + "\tgetting: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
+    misses.write("gets\t#keys\n")
+    for i in range(11):
+    #if True:
         start_redis(redis_loc)
-        set =bench("lazy_redis_set", do_set, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], data)
-        get =bench("lazy_redis_get", do_get, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], None)
-        g.write(str(set+get)+"\t")
+        set = bench("normal_redis_set", do_set, num_clients,  num_funcalls, num_keys, None, data)
+        get = bench("normal_redis_get", do_get, num_clients,  num_funcalls, num_keys, None, None)
+        f.write(str(set) + "\t" + str(get) +"\t")
+        actualredis = redis.StrictRedis()
+        f.write(str(len(actualredis.keys("*"))) + "\n")
+        f.flush()
+        stop_redis()
+
+        start_redis(redis_loc)
+        set =bench("lazy_redis_set_nomiss", do_set, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], data)
+        get =bench("lazy_redis_get_nomiss", do_get, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], None)
+        g.write(str(set) + "\t" + str(get) +"\t")
+        actualredis = redis.StrictRedis()
+        print actualredis.info()
+        g.write(str(len(actualredis.keys("*"))) + "\n")
         g.flush()
         stop_redis()
-        #os.system("killall proxy")
-        #sleep(1)
+
+        start_redis(redis_loc)
+        # only set 85% of the keys, then try to get 100% for a 15% miss rate
+        bench("lazy_redis_set_misses", do_set, num_clients,  num_funcalls, (num_keys*.85), [("edgeattr", "v0")], data)
+        get =bench("lazy_redis_get_misses", do_get, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], None)
+        misses.write(str(get) +"\t")
+        actualredis = redis.StrictRedis()
+        print actualredis.info()
+        misses.write(str(len(actualredis.keys("*"))) + "\n")
+        misses.flush()
+        stop_redis()
+
+
+
     f.close()
     g.close()
+    misses.close()
 
 #    # test do all now
 #    start_redis(redis_loc)
