@@ -192,8 +192,8 @@ def main():
     redis_loc = "/fs/macdonald/ksaur/redis-2.8.19/src/"
 
     #for i in range(2):
-    #lazy_cmd(redis_loc, "get", True)
-    lazy_cmd(redis_loc, "get", False)
+    lazy_cmd(redis_loc, "get", True)
+    #lazy_cmd(redis_loc, "get", False)
     ##for i in range(11):
     #   lazy_cmd(redis_loc, "set", True)
     ##for i in range(11):
