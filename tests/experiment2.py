@@ -68,6 +68,10 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+    # This thread prints the "queries per second"
+    thread = (Thread(target=do_stats))
+    thread.start()
+
     start = time.time()
     thread_arr = list()
     for t_num in range(num_clients):
@@ -75,18 +79,15 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
         thread_arr.append(thread)
         thread.start()
 
-    # This thread prints the "queries per second"
-    thread = (Thread(target=do_stats))
-    thread.start()
 
     sleep(10)
 
     updater = lazyupdredis.connect(args)
     # Version with a preload of module
-    if preload:
+    if preload is True:
         updater.do_upd("data/example_json/paper_dsl", "/tmp/mymodule.py")
     # Version with no pre-load of module
-    else:
+    elif preload is False:
         updater.do_upd("data/example_json/paper_dsl")
     print "UPDATE!!!!!!!"
 
@@ -100,9 +101,9 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
 
 def start_redis(redis_loc):
     # also wipe out state persisted to disk
-    cmd = "rm dump.rdb"
-    os.system(cmd)
-    print "DB wiped from disk"
+    #cmd = "rm dump.rdb"
+    #os.system(cmd)
+    #print "DB wiped from disk"
     logging.info("Starting redis ...\n")
     print (redis_loc +"redis-server " + redis_loc + "redis.conf 2>&1 &")
     os.system(redis_loc +"redis-server " + redis_loc + "redis.conf 2>&1 &")
@@ -165,8 +166,8 @@ def lazy_cmd(redis_loc, cmd, preload):
     # prepopulate the DB
     r = lazyupdredis.connect([("key", "ver0")])
     json_val = json.dumps(val)
-    for i in range(num_keys):
-        r.set("key:" + str(i), json_val)
+    #for i in range(num_keys):
+    #    r.set("key:" + str(i), json_val)
 
     if cmd == "get":
         bench("lazy_redis_get_qps", do_get, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], None, preload)
@@ -190,14 +191,13 @@ def main():
     os.system("rm /tmp/gen*")
     redis_loc = "/fs/macdonald/ksaur/redis-2.8.19/src/"
 
-    for i in range(11):
-       lazy_cmd(redis_loc, "get", True)
-    for i in range(11):
-       lazy_cmd(redis_loc, "get", False)
-    for i in range(11):
-       lazy_cmd(redis_loc, "set", True)
-    for i in range(11):
-       lazy_cmd(redis_loc, "set", False)
+    #for i in range(2):
+    #lazy_cmd(redis_loc, "get", True)
+    lazy_cmd(redis_loc, "get", False)
+    ##for i in range(11):
+    #   lazy_cmd(redis_loc, "set", True)
+    ##for i in range(11):
+    #   lazy_cmd(redis_loc, "set", False)
 
 
 if __name__ == '__main__':
