@@ -33,8 +33,10 @@ def do_set(args, unused, num_gets, key_range, args2, data):
         try:
             r.set("key:" + rand, curr_data)
         except DeprecationWarning as e:
+            print "DISCONNECTED: count: " + str(i) + " thread:" + str(t_num)
             curr_data = data[1]
             r = lazyupdredis.connect(args2)
+            print str(t_num) + " reconnected."
 
 def do_stats():
     actualredis = redis.StrictRedis()
@@ -45,11 +47,11 @@ def do_stats():
     while True:
         try:
             queries = actualredis.info()["instantaneous_ops_per_sec"]
-            f.write(str(i) + "\t" + str(queries) + "\t")
-            f.write(str(len(actualredis.keys("ver0*"))) + "\n")
+            f.write(str(i) + "\t" + str(queries) + "\n")
+            #f.write(str(len(actualredis.keys("ver0*"))) + "\n")
             #f.write(str(len(actualredis.keys("ver1*"))) + "\n")
-            time.sleep(.25)
-            i = i + .25
+            time.sleep(.5)
+            i = i + .5
             #os.system("ps -ly `pidof redis-server` >> rss.txt")
         except ConnectionError:
             f.write("______________________________________________\n")
@@ -80,7 +82,7 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
         thread.start()
 
 
-    sleep(10)
+    sleep(20)
 
     updater = lazyupdredis.connect(args)
     # Version with a preload of module
@@ -107,13 +109,13 @@ def start_redis(redis_loc):
     logging.info("Starting redis ...\n")
     print (redis_loc +"redis-server " + redis_loc + "redis.conf 2>&1 &")
     os.system(redis_loc +"redis-server " + redis_loc + "redis.conf 2>&1 &")
-    sleep(2)
+    sleep(5)
 
 def stop_redis():
     logging.info("Killing redis ...\n")
     cmd = "killall redis-server"
     os.system(cmd)
-    sleep(2)
+    sleep(5)
 
 
 
@@ -124,8 +126,8 @@ def lazy_cmd(redis_loc, cmd, preload):
     f.flush()
     f.close()
 
-    num_keys = 20000    # the possible range of keys to iterate
-    num_funcalls = 10000 # #gets in this case done over random keys (1 - num_keys)
+    num_keys = 200000    # the possible range of keys to iterate
+    num_funcalls = 20000 # #gets in this case done over random keys (1 - num_keys)
     num_clients = 50
 
     start_redis(redis_loc)
@@ -164,8 +166,8 @@ def lazy_cmd(redis_loc, cmd, preload):
         ]
     }}
     # prepopulate the DB
-    r = lazyupdredis.connect([("key", "ver0")])
-    json_val = json.dumps(val)
+    #r = lazyupdredis.connect([("key", "ver0")])
+    #json_val = json.dumps(val)
     #for i in range(num_keys):
     #    r.set("key:" + str(i), json_val)
 

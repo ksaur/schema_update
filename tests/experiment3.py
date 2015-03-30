@@ -35,11 +35,11 @@ def do_stats():
     while True:
         try:
             queries = actualredis.info()["instantaneous_ops_per_sec"]
-            f.write(str(i) + "\t" + str(queries) + "\t")
-            f.write(str(len(actualredis.keys("ver0*"))) + "\n")
+            f.write(str(i) + "\t" + str(queries) + "\n")
+            #f.write(str(len(actualredis.keys("ver0*"))) + "\n")
             #f.write(str(len(actualredis.keys("ver1*"))) + "\n")
-            time.sleep(.25)
-            i = i + .25
+            time.sleep(.5)
+            i = i + .5
             #os.system("ps -ly `pidof redis-server` >> rss.txt")
         except ConnectionError:
             f.write("______________________________________________\n")
@@ -58,23 +58,26 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+
+    client_handles = list()
+    for tnum in range(num_clients): # must do ahead of time to not mess up timer
+        r = redis.StrictRedis(args)
+        client_handles.append(r)
+
     # This thread prints the "queries per second"
     thread = (Thread(target=do_stats))
     thread.start()
 
     start = time.time()
     thread_arr = list()
-    client_handles = list()
     threading_event = threading.Event()
     for t_num in range(num_clients):
-        r = redis.StrictRedis(args)
-        client_handles.append(r)
-        thread = (Thread(target = fun_name, args = (args, t_num, num_funcalls, keyrange, threading_event, r)))
+        thread = (Thread(target = fun_name, args = (args, t_num, num_funcalls, keyrange, threading_event, client_handles[t_num])))
         thread_arr.append(thread)
         thread.start()
 
 
-    sleep(10)
+    sleep(20)
     updater = redis.StrictRedis(args)
     print "UPDATE!!!!!!!"
     [ r.connection_pool.disconnect() for r in client_handles ]
@@ -108,13 +111,13 @@ def start_redis(redis_loc):
     logging.info("Starting redis ...\n")
     print (redis_loc +"redis-server " + redis_loc + "redis.conf 2>&1 &")
     os.system(redis_loc +"redis-server " + redis_loc + "redis.conf 2>&1 &")
-    sleep(2)
+    sleep(5)
 
 def stop_redis():
     logging.info("Killing redis ...\n")
     cmd = "killall redis-server"
     os.system(cmd)
-    sleep(2)
+    sleep(5)
 
 def group_0_update_order(rediskey, jsonobj):
     e = jsonobj.get('order').get('orderItems')
@@ -128,8 +131,8 @@ def group_0_update_order(rediskey, jsonobj):
 
 def lazy_cmd(redis_loc):
 
-    num_keys = 20000    # the possible range of keys to iterate
-    num_funcalls = 10000 # #gets in this case done over random keys (1 - num_keys)
+    num_keys = 200000    # the possible range of keys to iterate
+    num_funcalls = 20000 # #gets in this case done over random keys (1 - num_keys)
     num_clients = 50
 
     start_redis(redis_loc)
