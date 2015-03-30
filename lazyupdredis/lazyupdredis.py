@@ -418,7 +418,7 @@ class LazyUpdateRedis(StrictRedis):
         vals = self.mget(all_potential_keys) # get ALL the vals!
         if len(vals) == vals.count(None):
             #logging.debug("\tNo key at any version: " + name )
-            self.execute_command('SET', all_potential_keys[0], "#### ####")
+            self.execute_command('SETNX', all_potential_keys[0], "#### ####")
             return None
 
         ######### LAZY UPDATES HERE!!!! :)  ########
@@ -575,8 +575,6 @@ class LazyUpdateRedis(StrictRedis):
 
         # 'GETSET' returns None if key does not exist, else returns the key
         ret = self.execute_command('GETSET', *pieces) 
-        if ret == "#### ####":
-            return True # normal sets return True regardless
         # Key is already at current version.
         if ret is not None:
             return True 
@@ -587,7 +585,9 @@ class LazyUpdateRedis(StrictRedis):
             keys_to_del = (map(lambda (x,y): x + "|" + suffix, vers_list[1:])) #TODO test this
 
         #logging.debug("\tNo key at any version: " + name )
-        self.execute_command('SET', new_name, "#### ####")
+        # Using setnx to assure that the key does not exist, in case some other client 
+        # set it since we last checked
+        self.execute_command('SETNX', new_name, "#### ####")
 
         if keys_to_del:
             self.execute_command('DEL', *keys_to_del)
