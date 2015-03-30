@@ -18,45 +18,18 @@ sys.path.append("data/example_jsonbulk/")
 import sample_generate
 
 
-def do_updnow(r, unused1, unused2, unused3, unused4):
-    upd = r.do_upd_all_now("data/example_jsonbulk/sample_1_sadalage_init")
-    logging.info("updated" + str(upd))
-    return None
-
-def do_lazyupd(r, unused, num_iters, key_range, unused2):
-
-    for i in range(num_iters):
-        rand1 = str(random.randint(1, key_range))
-        r.get("customer:" + rand1)
-
 
 def do_get(r, unused, num_getsets, key_range, unused2):
 
     for i in range(num_getsets):
-        rand = str(random.randint(1, key_range))
+        rand = str(random.randint(0, key_range-1))
         r.get("edgeattr:" + rand)
 
 def do_set(r, unused, num_getsets, key_range, data):
 
     for i in range(num_getsets):
-        rand = str(random.randint(1, key_range))
+        rand = str(random.randint(0, key_range-1))
         r.set("edgeattr:" + rand, data)
-
-#def do_set_wmisses(r, unused, num_getsets, key_range, data):
-#
-#    max = sys.maxint
-#    ctr = 0
-#    for i in range(num_getsets):
-#        if ctr > 16: # miss for 17,18,19
-#            rand = str(random.randint(key_range+1,max))
-#        else: # hit for 0-16
-#            rand = str(random.randint(1, key_range))
-#        r.set("edgeattr:" + rand, data)
-#        if ctr == 19:
-#            ctr = 0
-#        else:
-#            ctr = ctr + 1
-    
 
 def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, data):
     """ 
