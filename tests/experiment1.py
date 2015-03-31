@@ -108,7 +108,7 @@ def main(test):
     f = open('gets_normal_nomiss.txt', 'a')
     f.write("num_keys: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     f.write("gets\t#keys\n")
-    for i in range(1):
+    for i in range(11):
         #  NORMAL GETS NO MISS
         start_redis(redis_loc)
         actualredis = redis.StrictRedis()
@@ -126,7 +126,7 @@ def main(test):
     g = open('gets_lazy_nomisses.txt', 'a')
     g.write("num_keys: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     g.write("gets\t#keys\n")
-    for i in range(1):
+    for i in range(11):
         # LAZY GETS NO MISS
         start_redis(redis_loc)
         r = lazyupdredis.connect([("edgeattr","vx")])
@@ -146,7 +146,7 @@ def main(test):
     normalmisses = open('gets_normal_misses.txt', 'a')
     normalmisses.write("num_keys: " + str(num_keys*.85) + "\tgetting: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     normalmisses.write("gets\t#keys\n")
-    for i in range(1):
+    for i in range(11):
         # NORMAL GETS WITH MISSES
         start_redis(redis_loc)
         # only set 85% of the keys, then try to get 100% for a 15% miss rate
@@ -165,7 +165,7 @@ def main(test):
     misses = open('gets_lazy_misses.txt', 'a')
     misses.write("num_keys: " + str(num_keys*.85) + "\tgetting: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     misses.write("gets\t#keys\n")
-    for i in range(1):
+    for i in range(11):
         # LAZY GETS WITH MISSES
         start_redis(redis_loc)
         # only set 85% of the keys, then try to get 100% for a 15% miss rate
@@ -184,7 +184,7 @@ def main(test):
     set_normal_no_misses = open('set_normal_nomisses.txt', 'a')
     set_normal_no_misses.write("num_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     set_normal_no_misses.write("sets\t#keys\n")
-    for i in range(1):
+    for i in range(11):
         # NORMAL SET WITH NO MISSES
         start_redis(redis_loc)
         actualredis = redis.StrictRedis()
@@ -203,7 +203,7 @@ def main(test):
     setnomisses = open('set_lazy_nomisses.txt', 'a')
     setnomisses.write("num_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     setnomisses.write("sets\t#keys\n")
-    for i in range(1):
+    for i in range(11):
         # LAZY SET WITH NO MISSES
         start_redis(redis_loc)
         r = lazyupdredis.connect([("edgeattr","vx")])
@@ -224,7 +224,7 @@ def main(test):
     setnormalmisses = open('set_normal_misses.txt', 'a')
     setnormalmisses.write("num_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     setnormalmisses.write("sets\t#keys\n")
-    for i in range(1):
+    for i in range(11):
         # NORMAL SET WITH MISSES
         start_redis(redis_loc)
         actualredis = redis.StrictRedis()
@@ -243,7 +243,7 @@ def main(test):
     setmisses = open('set_lazy_misses.txt', 'a')
     setmisses.write("num_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     setmisses.write("sets\t#keys\n")
-    for i in range(1):
+    for i in range(11):
         # LAZY SET WITH MISSES
         start_redis(redis_loc)
         r = lazyupdredis.connect([("edgeattr","vx")])
