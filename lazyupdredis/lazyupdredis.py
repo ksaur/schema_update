@@ -584,11 +584,6 @@ class LazyUpdateRedis(StrictRedis):
         else:
             keys_to_del = (map(lambda (x,y): x + "|" + suffix, vers_list[1:])) #TODO test this
 
-        #logging.debug("\tNo key at any version: " + name )
-        # Using setnx to assure that the key does not exist, in case some other client 
-        # set it since we last checked
-        self.execute_command('SETNX', new_name, "#### ####")
-
         if keys_to_del:
             self.execute_command('DEL', *keys_to_del)
         # We should return True like a normal 'set', not the value in ret, which is
