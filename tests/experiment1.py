@@ -95,7 +95,7 @@ def main(test):
   # test get-sets
   #actualredis.flushall()
   num_keys = 20000    # the possible range of keys to iterate
-  num_funcalls = 10000 
+  num_funcalls = 20000 
   num_clients = 50
   num_reduced = int(num_keys*.85)
   # in the redis bench, the default is a 2 byte buffer full of x's, plus a nullterm. ("xxxxxxxx\n")
@@ -108,7 +108,7 @@ def main(test):
     f = open('gets_normal_nomiss.txt', 'a')
     f.write("num_keys: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     f.write("gets\t#keys\n")
-    for i in range(11):
+    for i in range(1):
         #  NORMAL GETS NO MISS
         start_redis(redis_loc)
         actualredis = redis.StrictRedis()
@@ -126,14 +126,14 @@ def main(test):
     g = open('gets_lazy_nomisses.txt', 'a')
     g.write("num_keys: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     g.write("gets\t#keys\n")
-    for i in range(11):
+    for i in range(1):
         # LAZY GETS NO MISS
         start_redis(redis_loc)
         r = lazyupdredis.connect([("edgeattr","vx")])
         r.do_upd("data/example_json/exp1")
-        actualredis = redis.StrictRedis()
+        sleep(1)
         for i in range(num_keys):
-            actualredis.set("v0|edgeattr:" + str(i), data)
+            r.set("edgeattr:" + str(i), data)
         get =bench("lazy_redis_get_nomiss", do_get, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], None)
         g.write(str(get) +"\n")
         #actualredis = redis.StrictRedis()
@@ -146,7 +146,7 @@ def main(test):
     normalmisses = open('gets_normal_misses.txt', 'a')
     normalmisses.write("num_keys: " + str(num_keys*.85) + "\tgetting: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     normalmisses.write("gets\t#keys\n")
-    for i in range(11):
+    for i in range(1):
         # NORMAL GETS WITH MISSES
         start_redis(redis_loc)
         # only set 85% of the keys, then try to get 100% for a 15% miss rate
@@ -165,20 +165,17 @@ def main(test):
     misses = open('gets_lazy_misses.txt', 'a')
     misses.write("num_keys: " + str(num_keys*.85) + "\tgetting: " + str(num_keys) + "\tnum_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     misses.write("gets\t#keys\n")
-    for i in range(11):
+    for i in range(1):
         # LAZY GETS WITH MISSES
         start_redis(redis_loc)
         # only set 85% of the keys, then try to get 100% for a 15% miss rate
         r = lazyupdredis.connect([("edgeattr","vx")])
         r.do_upd("data/example_json/exp1")
-        actualredis = redis.StrictRedis()
+        sleep(1)
         for i in range(num_reduced):
-            actualredis.set("v0|edgeattr:" + str(i), data)
+            r.set("edgeattr:" + str(i), data)
         get =bench("lazy_redis_get_misses", do_get, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], None)
         misses.write(str(get) +"\n")
-        #actualredis = redis.StrictRedis()
-        #print actualredis.info()
-        #misses.write(str(len(actualredis.keys("*"))) + "\n")
         misses.flush()
         stop_redis()
     misses.close()
@@ -187,7 +184,7 @@ def main(test):
     set_normal_no_misses = open('set_normal_nomisses.txt', 'a')
     set_normal_no_misses.write("num_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     set_normal_no_misses.write("sets\t#keys\n")
-    for i in range(11):
+    for i in range(1):
         # NORMAL SET WITH NO MISSES
         start_redis(redis_loc)
         actualredis = redis.StrictRedis()
@@ -206,28 +203,28 @@ def main(test):
     setnomisses = open('set_lazy_nomisses.txt', 'a')
     setnomisses.write("num_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     setnomisses.write("sets\t#keys\n")
-    for i in range(11):
+    for i in range(1):
         # LAZY SET WITH NO MISSES
         start_redis(redis_loc)
         r = lazyupdredis.connect([("edgeattr","vx")])
         r.do_upd("data/example_json/exp1")
-        actualredis = redis.StrictRedis()
+        sleep(1)
         #prepopulate
         for i in range(num_keys):
-            actualredis.set("v0|edgeattr:" + str(i), data)
+            r.set("edgeattr:" + str(i), data)
         set =bench("lazy_redis_set_nomisses", do_set, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], data)
         setnomisses.write(str(set) + "\n")
         #setnomisses.write(str(actualredis.info()))
         #setnomisses.write(str(len(actualredis.keys("*"))) + "\n")
         setnomisses.flush()
         stop_redis()
-    setmisses.close()
+    setnomisses.close()
 
   elif test == 7:
     setnormalmisses = open('set_normal_misses.txt', 'a')
     setnormalmisses.write("num_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     setnormalmisses.write("sets\t#keys\n")
-    for i in range(11):
+    for i in range(1):
         # NORMAL SET WITH MISSES
         start_redis(redis_loc)
         actualredis = redis.StrictRedis()
@@ -246,15 +243,15 @@ def main(test):
     setmisses = open('set_lazy_misses.txt', 'a')
     setmisses.write("num_funcalls: " + str(num_funcalls) + "\tnum_clients: " +str(num_clients) +"\n")
     setmisses.write("sets\t#keys\n")
-    for i in range(11):
+    for i in range(1):
         # LAZY SET WITH MISSES
         start_redis(redis_loc)
         r = lazyupdredis.connect([("edgeattr","vx")])
         r.do_upd("data/example_json/exp1")
-        actualredis = redis.StrictRedis()
+        sleep(1)
         #prepopulate
         for i in range(num_reduced):
-            actualredis.set("v0|edgeattr:" + str(i), data)
+            r.set("edgeattr:" + str(i), data)
         set =bench("lazy_redis_set_misses", do_set, num_clients,  num_funcalls, num_keys, [("edgeattr", "v0")], data)
         setmisses.write(str(set) + "\n")
         #setmisses.write(str(actualredis.info()))
