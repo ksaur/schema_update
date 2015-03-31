@@ -67,6 +67,7 @@ import random
 import json, re, sys, fnmatch, decode, time, os
 import json_patch_creator
 import socket
+import datetime
 from ast import literal_eval
 sys.path.append("/tmp") # for generating update modules from dsl
 
@@ -527,10 +528,14 @@ class LazyUpdateRedis(StrictRedis):
 
             # All updates done, write the new key and wipe the original
             if(orig_val != val):
-                pipe.execute_command('SET', new_name, val)
+                pttl = self.execute_command('PTTL', orig_name) # ttl in ms.  works also for seconds.
+                if pttl < 0:  #negative means no ttl set
+                    pipe.execute_command('SET', new_name, val)
+                else:
+                    pipe.execute_command('PSETEX', new_name, pttl, val)
                 pipe.execute_command('DEL', orig_name)
             else:
-                pipe.execute_command('RENAME', orig_name, new_name)
+                pipe.execute_command('RENAME', orig_name, new_name) # maintains TTL
             # execute everything in the pipe (will abort with WatchError if issues)
             pipe.execute()
             pipe.reset()
@@ -554,6 +559,49 @@ class LazyUpdateRedis(StrictRedis):
         return map(lambda x: x.split("|", 1)[1], keylist)
 
 
+    def setex(self, name, time, value):
+        """
+        Set the value of key ``name`` to ``value`` that expires in ``time``
+        seconds. ``time`` can be represented by an integer or a Python
+        timedelta object.
+        """
+        if isinstance(time, datetime.timedelta):
+            time = time.seconds + time.days * 24 * 3600
+        (ns, suffix) = self.split_namespace_key(name) 
+        new_name = self.global_curr_version(ns) + "|" + name
+        return self.execute_command('SETEX', new_name, time, value)
+
+    def setnx(self, name, value):
+        "Set the value of key ``name`` to ``value`` if key doesn't exist"
+        (ns, suffix) = self.split_namespace_key(name) 
+        new_name = self.global_curr_version(ns) + "|" + name
+        return self.execute_command('SETNX', new_name, value)
+
+    def psetex(self, name, time_ms, value):
+        """
+        Set the value of key ``name`` to ``value`` that expires in ``time_ms``
+        milliseconds. ``time_ms`` can be represented by an integer or a Python
+        timedelta object
+        """
+        if isinstance(time_ms, datetime.timedelta):
+            ms = int(time_ms.microseconds / 1000)
+            time_ms = (time_ms.seconds + time_ms.days * 24 * 3600) * 1000 + ms
+        (ns, suffix) = self.split_namespace_key(name) 
+        new_name = self.global_curr_version(ns) + "|" + name
+        return self.execute_command('PSETEX', new_name, time_ms, value)
+
+    def pttl(self, name):
+        "Returns the number of milliseconds until the key ``name`` will expire"
+        (ns, suffix) = self.split_namespace_key(name) 
+        new_name = self.global_curr_version(ns) + "|" + name
+        return self.execute_command('PTTL', new_name)
+
+    def ttl(self, name):
+        "Returns the number of seconds until the key ``name`` will expire"
+        (ns, suffix) = self.split_namespace_key(name) 
+        new_name = self.global_curr_version(ns) + "|" + name
+        return self.execute_command('TTL', new_name)
+
     def set(self, name, value, ex=None, px=None, nx=False, xx=False):
         """
         If the client is at the correct version, then we don't need to run the
@@ -569,6 +617,22 @@ class LazyUpdateRedis(StrictRedis):
 
         new_name = self.global_curr_version(ns) + "|" + name
         pieces = [new_name, value]
+        if ex:
+            pieces.append('EX')
+            if isinstance(ex, datetime.timedelta):
+                ex = ex.seconds + ex.days * 24 * 3600
+            pieces.append(ex)
+        if px:
+            pieces.append('PX')
+            if isinstance(px, datetime.timedelta):
+                ms = int(px.microseconds / 1000)
+                px = (px.seconds + px.days * 24 * 3600) * 1000 + ms
+            pieces.append(px)
+
+        if nx:
+            pieces.append('NX')
+        if xx:
+            pieces.append('XX')
 
         if (ex or px or nx or xx):
             raise NotImplementedError("*X flag options not supported for sets in lazyupdredis")

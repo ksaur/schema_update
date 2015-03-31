@@ -661,6 +661,35 @@ def test9(actualredis):
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+# Test ttl
+def test10(actualredis):
+
+    tname = "test10_z"
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    reset(actualredis)
+
+    # connect to Redis
+    json_val = json.dumps({"outport": 777, "inport": None})
+    r = lazyupdredis.connect([("edgeattr", "v0")])
+    # test SETEX
+    r.setex("edgeattr:n1@n2", 20, json_val)
+    # test PSETEX
+    r.psetex("edgeattr:n2@n2", 1, json_val)  # this will expire
+    time.sleep(.2)
+    assert(r.exists("edgeattr:n2@n2") == False)
+
+    r.do_upd("data/example_json/lazy_3_init")
+
+    r.get("edgeattr:n1@n2")
+    # test TTL after update
+    assert(r.ttl("edgeattr:n1@n2")>0)
+
+    # test SETNX
+    assert(r.setnx("edgeattr:n1@n2", json_val) == False)
+    assert(r.setnx("edgeattr:n1@n2222", json_val) == True)
+   
+
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 
 def main():
@@ -674,27 +703,29 @@ def main():
     # non-hooked redis commands to work as orginally specified
     actualredis = redis.StrictRedis()
 
-    # test basic lazy updates
-    #test1(actualredis)
-    test1paper(actualredis)
-    # test exists/not exists cominations
-    test2(actualredis)
-    # test multi update cmds; test multi updates.
-    test3(actualredis)
-    # test that updates can be performed by multiple clients.
-    test3b(actualredis)
-    # don't allow connect to previous version
-    test4(actualredis)
-    # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
-    test5(actualredis)
-    # Test default (no) namepsaces for backward compatibility
-    test6(actualredis)
-    # Test that user provides the correct name for updating
-    test7(actualredis)
-    # Test multiple updates a bit more
-    test8(actualredis)
-    # Test keyname change
-    test9(actualredis)
+#    # test basic lazy updates
+#    #test1(actualredis)
+#    test1paper(actualredis)
+#    # test exists/not exists cominations
+#    test2(actualredis)
+#    # test multi update cmds; test multi updates.
+#    test3(actualredis)
+#    # test that updates can be performed by multiple clients.
+#    test3b(actualredis)
+#    # don't allow connect to previous version
+#    test4(actualredis)
+#    # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
+#    test5(actualredis)
+#    # Test default (no) namepsaces for backward compatibility
+#    test6(actualredis)
+#    # Test that user provides the correct name for updating
+#    test7(actualredis)
+#    # Test multiple updates a bit more
+#    test8(actualredis)
+#    # Test keyname change
+#    test9(actualredis)
+    # Test ttl
+    test10(actualredis)
     
 
 if __name__ == '__main__':
