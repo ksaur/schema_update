@@ -675,7 +675,7 @@ def main():
     actualredis = redis.StrictRedis()
 
     # test basic lazy updates
-    test1(actualredis)
+    #test1(actualredis)
     test1paper(actualredis)
     # test exists/not exists cominations
     test2(actualredis)
