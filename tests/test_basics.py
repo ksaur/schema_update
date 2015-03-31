@@ -673,11 +673,22 @@ def test10(actualredis):
     r = lazyupdredis.connect([("edgeattr", "v0")])
     # test SETEX
     r.setex("edgeattr:n1@n2", 20, json_val)
+
+    # test set with flags
+    r.set("edgeattr:n4@n2", json_val, ex=20) # seconds
+    r.set("edgeattr:n5@n2", json_val, px=500000) # millisec
+    r.set("edgeattr:n6@n2", json_val, nx=True) # set if not exist
+    assert(r.get("edgeattr:n6@n2")!=None)
+    r.set("edgeattr:n7@n2", json_val, xx=True) # set only if exist
+    assert(r.get("edgeattr:n7@n2")==None)
+
     # test PSETEX
     r.psetex("edgeattr:n2@n2", 1, json_val)  # this will expire
     time.sleep(.2)
     assert(r.exists("edgeattr:n2@n2") == False)
 
+
+    ######## UPDATE
     r.do_upd("data/example_json/lazy_3_init")
 
     r.get("edgeattr:n1@n2")
@@ -687,6 +698,17 @@ def test10(actualredis):
     # test SETNX
     assert(r.setnx("edgeattr:n1@n2", json_val) == False)
     assert(r.setnx("edgeattr:n1@n2222", json_val) == True)
+   
+    # test ex px flags
+    r.get("edgeattr:n4@n2") # had ex flag seconds
+    r.get("edgeattr:n5@n2") # had px falg millisec
+    assert(r.ttl("edgeattr:n4@n2")>0)
+    assert(r.ttl("edgeattr:n5@n2")>0)
+
+    # assert deletes
+    assert(actualredis.exists("v0|edgeattr:n4@n2") == False)
+    assert(actualredis.exists("v0|edgeattr:n5@n2") == False)
+    assert(actualredis.exists("v0|edgeattr:n1@n2222") == False)
    
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  SUCCESS  ("+tname+")  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"

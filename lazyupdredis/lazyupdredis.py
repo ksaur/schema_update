@@ -567,15 +567,16 @@ class LazyUpdateRedis(StrictRedis):
         """
         if isinstance(time, datetime.timedelta):
             time = time.seconds + time.days * 24 * 3600
-        (ns, suffix) = self.split_namespace_key(name) 
-        new_name = self.global_curr_version(ns) + "|" + name
-        return self.execute_command('SETEX', new_name, time, value)
+        # The setex command is for backward compatability.  The new way is to
+        # set with flags, which performs the same operation.
+        return self.set(name, value, ex=time)
 
     def setnx(self, name, value):
         "Set the value of key ``name`` to ``value`` if key doesn't exist"
-        (ns, suffix) = self.split_namespace_key(name) 
-        new_name = self.global_curr_version(ns) + "|" + name
-        return self.execute_command('SETNX', new_name, value)
+        ret = self.set(name, value, nx=True)
+        if ret is None:
+            return False
+        return True
 
     def psetex(self, name, time_ms, value):
         """
@@ -586,9 +587,7 @@ class LazyUpdateRedis(StrictRedis):
         if isinstance(time_ms, datetime.timedelta):
             ms = int(time_ms.microseconds / 1000)
             time_ms = (time_ms.seconds + time_ms.days * 24 * 3600) * 1000 + ms
-        (ns, suffix) = self.split_namespace_key(name) 
-        new_name = self.global_curr_version(ns) + "|" + name
-        return self.execute_command('PSETEX', new_name, time_ms, value)
+        return self.set(name, value, px=time_ms)
 
     def pttl(self, name):
         "Returns the number of milliseconds until the key ``name`` will expire"
@@ -609,6 +608,16 @@ class LazyUpdateRedis(StrictRedis):
         We only need to update the version string.
 
         Set the value at key ``name`` to ``value``
+
+        ``ex`` sets an expire flag on key ``name`` for ``ex`` seconds.
+
+        ``px`` sets an expire flag on key ``name`` for ``px`` milliseconds.
+
+        ``nx`` if set to True, set the value at key ``name`` to ``value`` if it
+            does not already exist.
+
+        ``xx`` if set to True, set the value at key ``name`` to ``value`` if it
+            already exists.
 
         """
         (ns, suffix) = self.split_namespace_key(name) 
@@ -634,8 +643,28 @@ class LazyUpdateRedis(StrictRedis):
         if xx:
             pieces.append('XX')
 
+        # GETSET does not support flags, so we must take another path
         if (ex or px or nx or xx):
-            raise NotImplementedError("*X flag options not supported for sets in lazyupdredis")
+            # Start a pipeline WITHOUT transacations.  This simply
+            # bunches the two commands in one packet, but does not
+            # have the overhead pipeline (no multi/concurrency). 
+            # The pipeline.execute() with transactions=False just does
+            # connection.pack_commands() to save a round trip call
+            pipe = self.pipeline(transaction=False)
+
+            # call set with the flag pieces
+            pipe.execute_command('SET', *pieces) 
+            # delete regardless, there's no point in checking and then deleting.
+            if ns!= "*":
+                keys_to_del = (map(lambda (x,y): x + "|" + y + ":" + suffix, vers_list[1:]))
+            else:
+                keys_to_del = (map(lambda (x,y): x + "|" + suffix, vers_list[1:])) #TODO test this
+            if keys_to_del:
+                pipe.execute_command('DEL', *keys_to_del)
+            # send the two bunched commands, return the result of the set
+            return pipe.execute()[0]
+ 
+        
 
         # 'GETSET' returns None if key does not exist, else returns the key
         ret = self.execute_command('GETSET', *pieces) 
