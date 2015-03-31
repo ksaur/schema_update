@@ -703,27 +703,27 @@ def main():
     # non-hooked redis commands to work as orginally specified
     actualredis = redis.StrictRedis()
 
-#    # test basic lazy updates
-#    #test1(actualredis)
-#    test1paper(actualredis)
-#    # test exists/not exists cominations
-#    test2(actualredis)
-#    # test multi update cmds; test multi updates.
-#    test3(actualredis)
-#    # test that updates can be performed by multiple clients.
-#    test3b(actualredis)
-#    # don't allow connect to previous version
-#    test4(actualredis)
-#    # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
-#    test5(actualredis)
-#    # Test default (no) namepsaces for backward compatibility
-#    test6(actualredis)
-#    # Test that user provides the correct name for updating
-#    test7(actualredis)
-#    # Test multiple updates a bit more
-#    test8(actualredis)
-#    # Test keyname change
-#    test9(actualredis)
+    # test basic lazy updates
+    #test1(actualredis)
+    test1paper(actualredis)
+    # test exists/not exists cominations
+    test2(actualredis)
+    # test multi update cmds; test multi updates.
+    test3(actualredis)
+    # test that updates can be performed by multiple clients.
+    test3b(actualredis)
+    # don't allow connect to previous version
+    test4(actualredis)
+    # Have two clients (r1 and r2) connected at v0. Have r1 ask for an update to v1. 
+    test5(actualredis)
+    # Test default (no) namepsaces for backward compatibility
+    test6(actualredis)
+    # Test that user provides the correct name for updating
+    test7(actualredis)
+    # Test multiple updates a bit more
+    test8(actualredis)
+    # Test keyname change
+    test9(actualredis)
     # Test ttl
     test10(actualredis)
     
