@@ -11,12 +11,27 @@ import sample_generate
 from redis.exceptions import ConnectionError
 
 
-def do_getset(r, unused, num_gets, key_range, args2, data):
-    pass
+def do_get_or_set(cmds, t_num, num_setgets, key_range, args2, r, data):
 
-def do_get(args, unused, num_gets, key_range, args2, unused2):
+    curr_data = data[0]
+    for i in range(num_setgets):
+        rand = str(random.randint(0, key_range-1))
+        cmd = cmds[i]
+        try:
+            if cmd == 0:
+                #print "GETTTT"
+                r.get("key:" + rand)
+            else:
+                #print "SSSSSETTTT"
+                r.set("key:" + rand, curr_data)
+        except Exception:
+            print "DISCONNECTED: count: " + str(i) + " thread:" + str(t_num)
+            curr_data = data[1]
+            r = lazyupdredis.connect(args2)
+            print str(t_num) + " reconnected."
 
-    r = lazyupdredis.connect(args)
+def do_get(args, unused, num_gets, key_range, args2, r, unused2):
+
     for i in range(num_gets):
         rand = str(random.randint(0, key_range-1))
         try:
@@ -24,11 +39,10 @@ def do_get(args, unused, num_gets, key_range, args2, unused2):
         except DeprecationWarning as e:
             r = lazyupdredis.connect(args2)
 
-def do_set(args, unused, num_gets, key_range, args2, data):
+def do_set(args, unused, num_sets, key_range, args2, r, data):
 
-    r = lazyupdredis.connect(args)
     curr_data = data[0]
-    for i in range(num_gets):
+    for i in range(num_sets):
         rand = str(random.randint(0, key_range-1))
         try:
             r.set("key:" + rand, curr_data)
@@ -70,6 +84,14 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
 
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
+    client_handles = list()
+    for tnum in range(num_clients): # must do ahead of time to not mess up timer
+        r = lazyupdredis.connect(args)
+        client_handles.append(r)
+    cmds = list()
+    for i in range(num_funcalls):
+        cmds.append(random.randint(0, 1))
+
     # This thread prints the "queries per second"
     thread = (Thread(target=do_stats))
     thread.start()
@@ -77,7 +99,7 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
     start = time.time()
     thread_arr = list()
     for t_num in range(num_clients):
-        thread = (Thread(target = fun_name, args = (args, t_num, num_funcalls, keyrange, args2, data)))
+        thread = (Thread(target = fun_name, args = (cmds, t_num, num_funcalls, keyrange, args2, client_handles[t_num], data)))
         thread_arr.append(thread)
         thread.start()
 
@@ -167,10 +189,17 @@ def lazy_cmd(redis_loc, cmd, preload):
     }}
     # prepopulate the DB
     #r = lazyupdredis.connect([("key", "ver0")])
-    #json_val = json.dumps(val)
     #for i in range(num_keys):
     #    r.set("key:" + str(i), json_val)
+    #r = lazyupdredis.connect([("key", "ver0")])  
+    #json_val = json.dumps(val)
+    #num_keys = 20000           
+    #for i in range(num_keys):                    
+    #    r.set("key:" + str(i), json_val)  
+    #r.save()     
+    #sys.exit(0) 
 
+    json_val = json.dumps(val)
     if cmd == "get":
         bench("lazy_redis_get_qps", do_get, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], None, preload)
 
@@ -178,6 +207,9 @@ def lazy_cmd(redis_loc, cmd, preload):
         json_val2 = json.dumps(val2)
         bench("lazy_redis_set_qps", do_set, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], [json_val, json_val2], preload)
 
+    elif cmd == "getset":
+        json_val2 = json.dumps(val2)
+        bench("lazy_redis_getset_qps", do_get_or_set, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], [json_val, json_val2], preload)
     print str(len(actualredis.keys("ver0*"))) + " keys not updated, ",
     print str(len(actualredis.keys("ver1*"))) + " keys updated."
     print actualredis.info()
@@ -194,7 +226,7 @@ def main():
     redis_loc = "/fs/macdonald/ksaur/redis-2.8.19/src/"
 
     #for i in range(2):
-    lazy_cmd(redis_loc, "get", True)
+    lazy_cmd(redis_loc, "getset", True)
     #lazy_cmd(redis_loc, "get", False)
     ##for i in range(11):
     #   lazy_cmd(redis_loc, "set", True)

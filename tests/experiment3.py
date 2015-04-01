@@ -103,7 +103,7 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
         thread.start()
 
 
-    sleep(20)
+    sleep(10)
     updater = redis.StrictRedis(args)
     print "UPDATE!!!!!!!"
     [ r.connection_pool.disconnect() for r in client_handles ]
@@ -167,7 +167,7 @@ def group_0_update_order(rediskey, jsonobj):
 def lazy_cmd(redis_loc, cmd):
 
     num_keys = 200000    # the possible range of keys to iterate
-    num_funcalls = 20000 # #gets in this case done over random keys (1 - num_keys)
+    num_funcalls = 10000 # #gets in this case done over random keys (1 - num_keys)
     num_clients = 50
 
     start_redis(redis_loc)

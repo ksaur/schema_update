@@ -3,8 +3,8 @@ import sys, os
 import redis
 import random, time, logging
 ####from redis import *
+from lazyupdredis import *
 import threading
-import lazyupdredis
 from threading import Thread
 from time import sleep
 from random import randint
@@ -12,9 +12,10 @@ sys.path.append("data/example_jsonbulk/")
 import sample_generate
 from redis.exceptions import ConnectionError
 
-dostats = True
 
-def do_get_or_set(cmds, t_num, num_gets, key_range, e, r, data, args2):
+fname = "foo"
+
+def do_get_or_set(cmds, t_num, num_gets, key_range, unused2, r, data, args2):
 
     curr_data = data[0]
     for i in range(num_gets):
@@ -29,25 +30,19 @@ def do_get_or_set(cmds, t_num, num_gets, key_range, e, r, data, args2):
                 r.set("key:" + rand, curr_data)
         except Exception:
             print "DISCONNECTED: count: " + str(i) + " thread:" + str(t_num)
-            e.wait()
             curr_data = data[1]
             r = lazyupdredis.connect(args2)
             print str(t_num) + " reconnected."
 
-def do_stats(fname):
+def do_stats():
     actualredis = redis.StrictRedis()
-    f = open('lazy_'+fname+'.txt', 'a')
+    f = open(fname+'.txt', 'a')
     #f.write("Time\t#Queries\t#V0Keys\t#V1Keys\n")
     f.write("Time\t#Queries\t#V0Keys\n")
     i = 0
     while True:
         try:
-            if dostats is True:
-                #print "STATSSS"
-                queries = actualredis.info()["instantaneous_ops_per_sec"]
-            else:
-                #print "ZEROOOOO"
-                queries = 0
+            queries = actualredis.info()["instantaneous_ops_per_sec"]
             f.write(str(i) + "\t" + str(queries) + "\n")
             #f.write(str(len(actualredis.keys("ver0*"))) + "\n")
             #f.write(str(len(actualredis.keys("ver1*"))) + "\n")
@@ -72,7 +67,8 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  STARTING  " + tname + "  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 
-    global dostats
+    global fname
+    fname = tname
     client_handles = list()
     for tnum in range(num_clients): # must do ahead of time to not mess up timer
         r = lazyupdredis.connect(args)
@@ -92,7 +88,7 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
             cmds.append(0)
 
     # This thread prints the "queries per second"
-    thread = (Thread(target=do_stats, args = fun_name ))
+    thread = (Thread(target=do_stats))
     thread.start()
 
     start = time.time()
@@ -108,11 +104,7 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
 
     updater = lazyupdredis.connect(args)
     # Version with a preload of module
-    if preload is True:
-        updater.do_upd("data/example_json/paper_dsl", "/tmp/mymodule.py")
-    # Version with no pre-load of module
-    elif preload is False:
-        updater.do_upd("data/example_json/paper_dsl")
+    updater.do_upd("data/example_json/paper_dsl", "/tmp/mymodule.py")
     print "UPDATE!!!!!!!"
 
     for t in thread_arr:
@@ -152,8 +144,8 @@ def group_0_update_order(rediskey, jsonobj):
 
 def lazy_cmd(redis_loc, cmd):
 
-    num_keys = 20000    # the possible range of keys to iterate
-    num_funcalls = 10000 # #gets in this case done over random keys (1 - num_keys)
+    num_keys = 200000    # the possible range of keys to iterate
+    num_funcalls = 15000 # #gets in this case done over random keys (1 - num_keys)
     num_clients = 50
 
     start_redis(redis_loc)
@@ -192,7 +184,9 @@ def lazy_cmd(redis_loc, cmd):
     json_val1 = json.dumps(val1)
     json_val2 = json.dumps(val2)
 
-    bench("eager_redis_"+cmd, cmd, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], [json_val1, json_val2], None)
+    bench("lazy_redis_"+cmd, cmd, num_clients,  num_funcalls, num_keys, [("key", "ver0")], [("key", "ver1")], [json_val1, json_val2], None)
+    actualredis = redis.StrictRedis()
+    print str(len(actualredis.keys("ver0*"))) + " keys not updated, "
 
     stop_redis()
 
