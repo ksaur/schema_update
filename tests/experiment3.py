@@ -12,10 +12,17 @@ import sample_generate
 from redis.exceptions import ConnectionError
 
 dostats = True
+xformed = [0] * 200000
 
 def do_get_or_set(cmds, t_num, num_gets, key_range, e, r, data):
 
     curr_data = data[0]
+    updated = False
+    global xformed
+    times = list()
+    times.append("0")
+    timestmp = time.time()
+    currtotal = 0
     for i in range(num_gets):
         rand = str(random.randint(0, key_range-1))
         cmd = cmds[i]
@@ -26,12 +33,30 @@ def do_get_or_set(cmds, t_num, num_gets, key_range, e, r, data):
             else:
                 #print "SSSSSETTTT"
                 r.set("key:" + rand, curr_data)
-        except Exception:
+            if updated is True:
+                xformed[int(rand)] = 1           
+            if timestmp +.25 < time.time():
+                times.append(str(currtotal))
+                currtotal = 0
+                timestmp = time.time()
+            currtotal = currtotal + 1
+        except Exception: # we may lose up to .25s of data
             print "DISCONNECTED: count: " + str(i) + " thread:" + str(t_num)
+            kill = time.time()
             e.wait()
             curr_data = data[1]
             r = redis.StrictRedis()
             print str(t_num) + " reconnected."
+            timestmp = time.time()
+            pause = timestmp - kill            
+            while pause > 0:
+                times.append("0")
+                pause = pause - .25
+            updated = True
+    f = open('thread'+str(t_num)+'.txt', 'a')
+    f.write("\n".join(times))
+    f.write("\n____________________________\n")
+    f.close()
 
 def do_stats():
     actualredis = redis.StrictRedis()
@@ -47,7 +72,8 @@ def do_stats():
             else:
                 #print "ZEROOOOO"
                 queries = 0
-            f.write(str(i) + "\t" + str(queries) + "\n")
+            f.write(str(i) + "\t" + str(queries) + "\t")
+            f.write(str(xformed.count(1)) + "\n")
             #f.write(str(len(actualredis.keys("ver0*"))) + "\n")
             #f.write(str(len(actualredis.keys("ver1*"))) + "\n")
             time.sleep(.5)
@@ -103,17 +129,19 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
         thread.start()
 
 
-    sleep(10)
+    sleep(20)
     updater = redis.StrictRedis(args)
     print "UPDATE!!!!!!!"
     [ r.connection_pool.disconnect() for r in client_handles ]
 
     dostats = False
+    global xformed
     for i in range(keyrange):
         rediskey = ("key:" + str(i))
         jsonobj = json.loads(updater.get(rediskey))
         group_0_update_order(rediskey, jsonobj)
         updater.set(rediskey, json.dumps(jsonobj))
+        xformed[i] = 1           
     #arr = r.scan(0)
     #while True:
     #    for rediskey in arr[1]:
@@ -167,7 +195,7 @@ def group_0_update_order(rediskey, jsonobj):
 def lazy_cmd(redis_loc, cmd):
 
     num_keys = 200000    # the possible range of keys to iterate
-    num_funcalls = 10000 # #gets in this case done over random keys (1 - num_keys)
+    num_funcalls = 20000 # #gets in this case done over random keys (1 - num_keys)
     num_clients = 50
 
     start_redis(redis_loc)

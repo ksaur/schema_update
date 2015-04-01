@@ -13,11 +13,20 @@ import sample_generate
 from redis.exceptions import ConnectionError
 
 
-fname = "foo"
+fname = "foo" #set later, placeholder.
+xformed = [0] * 200000
+
+
 
 def do_get_or_set(cmds, t_num, num_gets, key_range, unused2, r, data, args2):
 
     curr_data = data[0]
+    updated = False
+    global xformed
+    times = list()
+    times.append("0")
+    timestmp = time.time()
+    currtotal = 0
     for i in range(num_gets):
         rand = str(random.randint(0, key_range-1))
         cmd = cmds[i]
@@ -28,11 +37,29 @@ def do_get_or_set(cmds, t_num, num_gets, key_range, unused2, r, data, args2):
             else:
                 #print "SSSSSETTTT"
                 r.set("key:" + rand, curr_data)
-        except Exception:
+            if updated is True:
+                xformed[int(rand)] = 1           
+            if timestmp +.25 < time.time():
+                times.append(str(currtotal))
+                currtotal = 0
+                timestmp = time.time()
+            currtotal = currtotal + 1
+        except Exception: # we may lose up to .25s of data
             print "DISCONNECTED: count: " + str(i) + " thread:" + str(t_num)
+            kill = time.time()
             curr_data = data[1]
             r = lazyupdredis.connect(args2)
             print str(t_num) + " reconnected."
+            timestmp = time.time()
+            pause = timestmp - kill            
+            while pause > 0:
+                times.append("0")
+                pause = pause - .25
+            updated = True
+    f = open('thread'+str(t_num)+'.txt', 'a')
+    f.write("\n".join(times))
+    f.write("\n____________________________\n")
+    f.close()
 
 def do_stats():
     actualredis = redis.StrictRedis()
@@ -43,7 +70,8 @@ def do_stats():
     while True:
         try:
             queries = actualredis.info()["instantaneous_ops_per_sec"]
-            f.write(str(i) + "\t" + str(queries) + "\n")
+            f.write(str(i) + "\t" + str(queries) + "\t")
+            f.write(str(xformed.count(1)) + "\n")
             #f.write(str(len(actualredis.keys("ver0*"))) + "\n")
             #f.write(str(len(actualredis.keys("ver1*"))) + "\n")
             time.sleep(.5)
@@ -145,7 +173,7 @@ def group_0_update_order(rediskey, jsonobj):
 def lazy_cmd(redis_loc, cmd):
 
     num_keys = 200000    # the possible range of keys to iterate
-    num_funcalls = 15000 # #gets in this case done over random keys (1 - num_keys)
+    num_funcalls = 25000 # #gets in this case done over random keys (1 - num_keys)
     num_clients = 50
 
     start_redis(redis_loc)
