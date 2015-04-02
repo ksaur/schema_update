@@ -58,7 +58,7 @@ def do_get_or_set(cmds, t_num, num_gets, key_range, unused2, r, data, args2, tim
 
 def do_stats():
     actualredis = redis.StrictRedis()
-    f = open(fname+'.txt', 'a')
+    f = open(fname+'stats.txt', 'a')
     #f.write("Time\t#Queries\t#V0Keys\t#V1Keys\n")
     f.write("Time\t#Queries\t#V0Keys\n")
     i = 0
@@ -105,14 +105,14 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
         print "GETS"
         for i in range(num_funcalls):
             cmds.append(1)
+        # This thread prints the "queries per second"
+        thread = (Thread(target=do_stats))
+        thread.start()
     elif fun_name == "do_set":
         print "SETS"
         for i in range(num_funcalls):
             cmds.append(0)
 
-    # This thread prints the "queries per second"
-    thread = (Thread(target=do_stats))
-    thread.start()
 
     start = time.time()
     thread_arr = list()
