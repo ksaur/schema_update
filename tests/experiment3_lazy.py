@@ -18,13 +18,12 @@ xformed = [0] * 200000
 
 
 
-def do_get_or_set(cmds, t_num, num_gets, key_range, unused2, r, data, args2):
+def do_get_or_set(cmds, t_num, num_gets, key_range, unused2, r, data, args2, times):
 
     curr_data = data[0]
     updated = False
     global xformed
-    times = list()
-    times.append("0")
+    times.append(0)
     timestmp = time.time()
     currtotal = 0
     for i in range(num_gets):
@@ -40,7 +39,7 @@ def do_get_or_set(cmds, t_num, num_gets, key_range, unused2, r, data, args2):
             if updated is True:
                 xformed[int(rand)] = 1           
             if timestmp +.25 < time.time():
-                times.append(str(currtotal))
+                times.append(currtotal)
                 currtotal = 0
                 timestmp = time.time()
             currtotal = currtotal + 1
@@ -53,13 +52,9 @@ def do_get_or_set(cmds, t_num, num_gets, key_range, unused2, r, data, args2):
             timestmp = time.time()
             pause = timestmp - kill            
             while pause > 0:
-                times.append("0")
+                times.append(0)
                 pause = pause - .25
             updated = True
-    f = open('thread'+str(t_num)+'.txt', 'a')
-    f.write("\n".join(times))
-    f.write("\n____________________________\n")
-    f.close()
 
 def do_stats():
     actualredis = redis.StrictRedis()
@@ -121,9 +116,12 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
 
     start = time.time()
     thread_arr = list()
+    results = list()
     threading_event = threading.Event()
     for t_num in range(num_clients):
-        thread = (Thread(target = do_get_or_set, args = (cmds, t_num, num_funcalls, keyrange, threading_event, client_handles[t_num], data, args2 )))
+        l = list()
+        results.append(l)
+        thread = (Thread(target = do_get_or_set, args = (cmds, t_num, num_funcalls, keyrange, threading_event, client_handles[t_num], data, args2, results[t_num] )))
         thread_arr.append(thread)
         thread.start()
 
@@ -138,6 +136,15 @@ def bench(tname, fun_name, num_clients, num_funcalls, keyrange, args, args2, dat
     for t in thread_arr:
         print "joining: " + str(t)
         t.join()
+    totals = [0] * 10000
+    for i in range(num_clients):
+        tdata = results[i]
+        for idx, j in enumerate(tdata):
+            totals[idx] = totals[idx] + j
+    f = open(tname+'.txt', 'a')
+    f.write(str(totals))
+    f.write("\n____________________________\n")
+    f.close()
 
     end = time.time()
     print updater.info() 
