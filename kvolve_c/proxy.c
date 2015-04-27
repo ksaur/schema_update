@@ -26,6 +26,7 @@ unsigned int transfer(int from, int to)
     unsigned int disconnected = 0;
     size_t bytes_read, bytes_written;
     bytes_read = read(from, buf, BUF_SIZE);
+    printf("BUFFER BEFORE IS:\'%s\'(%p)\n", buf, buf);
     if (strncasecmp(buf, "SET", 3) == 0) {
         kvolve_set(buf);
         printf("__________________________________SET");
@@ -33,7 +34,7 @@ unsigned int transfer(int from, int to)
         kvolve_get(buf);
     } else
         printf("default:........%s", buf);
-    //printf("BUFFER IS: %s\n", buf);
+    printf("BUFFER AFTER IS:\'%s\'(%p)\n", buf, buf);
 
     if (bytes_read == 0) {
         disconnected = 1;
