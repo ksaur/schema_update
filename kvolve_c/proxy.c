@@ -4,7 +4,7 @@
  */
 
 #include <stdio.h>
-#include <string.h> /* memset() */
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include "kvolve.h"
 
 #define PORT     "6379" /* Port to listen on */
 #define BACKLOG  10      /* Passed to listen() */
@@ -25,12 +26,13 @@ unsigned int transfer(int from, int to)
     unsigned int disconnected = 0;
     size_t bytes_read, bytes_written;
     bytes_read = read(from, buf, BUF_SIZE);
-    if (strncasecmp(buf, "SET", 3) == 0)
+    if (strncasecmp(buf, "SET", 3) == 0) {
+        kvolve_set(buf);
         printf("__________________________________SET");
-    else if (strncasecmp(buf, "GET", 3) == 0)
-        printf("==================================GET");
-    else
-        printf("default:        %s", buf);
+    } else if (strncasecmp(buf, "GET", 3) == 0) {
+        kvolve_get(buf);
+    } else
+        printf("default:........%s", buf);
     //printf("BUFFER IS: %s\n", buf);
 
     if (bytes_read == 0) {

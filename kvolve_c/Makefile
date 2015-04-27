@@ -1,5 +1,5 @@
 all:
-	gcc -g -o proxy  proxy.c -lpthread
+	gcc -g -o proxy  proxy.c kvolve.c -lpthread
 clean:
 	rm proxy 
 
