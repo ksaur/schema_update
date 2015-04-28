@@ -3,25 +3,45 @@
 #include "kvolve.h"
 #include <string.h>
 
+struct ns_keyname{
+  char * ns;
+  char * keyname;
+};
+
+
+void foo(){}
+
+/* Split the original key into (namespace, keyname) */
+struct ns_keyname split_namespace_key(char * orig_key){
+  char * split = strrchr(orig_key, ':');
+  struct ns_keyname ns_k;
+  if (split == NULL){
+    ns_k.ns = "*";
+    ns_k.keyname = orig_key;
+  } else {
+    foo();
+    orig_key[split - orig_key] = '\0'; // clobber the ':'
+    ns_k.ns = orig_key; 
+    ns_k.keyname = split+1;
+  }
+  return ns_k;
+}
+
 void kvolve_set(char * buf){
 
-  printf ("BUF IS \'%s\'", buf);
-  char* carr_ret = strchr(buf, '\r');
-  // only grab the first line, there's garabage at the end
-  //strncpy(((char*)carr_ret-buf), "\0", 1);
+  DEBUG_PRINT(("BUF IS \'%s\'", buf));
+  char * carr_ret = strchr(buf, '\r');
   strncpy(carr_ret, "\0", 1);
 
+  char * saveptr;
+  char * cmd = strtok_r(buf, " ", &saveptr); //GET
+  char * orig_key = strtok_r(NULL, " ", &saveptr); //key
+  char * orig_val = strtok_r(NULL, " ", &saveptr); //value
+  char * flags = strtok_r(NULL, " ", &saveptr); //flags
+  struct ns_keyname ns_k = split_namespace_key(orig_key);
+  char * ns = ns_k.ns;
+  char * suffix = ns_k.keyname;
 
-  char *saveptr;
-  char *cmd = strtok_r(buf, " ", &saveptr); //GET
-  char *orig_key = strtok_r(NULL, " ", &saveptr); //key
-  char *orig_val = strtok_r(NULL, " ", &saveptr); //value
-  char *flags = strtok_r(NULL, " ", &saveptr); //flags
-
-  //printf("cmd = %s\n", cmd);
-  //printf("orig_key = %s\n", orig_key);
-  //printf("orig_val = %s\n", orig_val);
-  //printf("flags = %s\n", flags);
 
 
   // Now reconstruct buffer. 

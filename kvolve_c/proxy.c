@@ -21,20 +21,19 @@
 
 unsigned int transfer(int from, int to)
 {
-    printf("TRANSFER FROM %d to %d\n", from, to);
+    DEBUG_PRINT(("TRANSFER FROM %d to %d\n", from, to));
     char buf[BUF_SIZE];
     unsigned int disconnected = 0;
     size_t bytes_read, bytes_written;
     bytes_read = read(from, buf, BUF_SIZE);
-    printf("BUFFER BEFORE IS:\'%s\'(%p)\n", buf, buf);
+    DEBUG_PRINT(("BUFFER BEFORE IS:\'%s\'(%p)\n", buf, buf));
     if (strncasecmp(buf, "SET", 3) == 0) {
         kvolve_set(buf);
-        printf("__________________________________SET");
     } else if (strncasecmp(buf, "GET", 3) == 0) {
         kvolve_get(buf);
     } else
-        printf("default:........%s", buf);
-    printf("BUFFER AFTER IS:\'%s\'(%p)\n", buf, buf);
+        DEBUG_PRINT(("default:........%s", buf));
+    DEBUG_PRINT(("BUFFER AFTER IS:\'%s\'(%p)\n", buf, buf));
 
     if (bytes_read == 0) {
         disconnected = 1;
