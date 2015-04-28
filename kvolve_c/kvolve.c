@@ -1,25 +1,56 @@
-
-#include <hiredis/hiredis.h>
-#include "kvolve.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include "uthash.h"
+#include "kvolve.h"
 
 struct ns_keyname{
   char * ns;
   char * keyname;
 };
 
+struct version_hash{
+  char * ns; /* key */
+  char ** versions; 
+  int num_versions;
+  UT_hash_handle hh; /* makes this structure hashable */
+};
 
-void foo(){}
+static struct version_hash * vers_list = NULL;
+
+/* return 1 if appended new version.  else return 0 */
+int kvolve_append_version(char * ns_lookup, char *vers){
+  struct version_hash *e = NULL;
+
+  HASH_FIND(hh, vers_list, &ns_lookup, strlen(ns_lookup), e);  /* id already in the hash? */
+  if (e==NULL){
+    e = (struct version_hash*)malloc(sizeof(struct version_hash));
+    strcpy(e->ns, ns_lookup); 
+    e->num_versions = 1;
+    e->versions = malloc(10*sizeof(char*)); /* TODO, dynamically resize array */
+    strcpy(e->versions[0], vers);
+    HASH_ADD_KEYPTR(hh, vers_list, e->ns, strlen(e->ns), e);  /* id: name of key field */
+  } else{
+    /* TODO correct version validation!!!!! */
+    e->num_versions++;
+    if(e->num_versions > 10){
+      /* TODO realloc*/
+      printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED. ");
+      return 0;
+    }
+    strcpy(e->versions[e->num_versions-1], vers);
+  }
+  return 1;
+}
 
 /* Split the original key into (namespace, keyname) */
 struct ns_keyname split_namespace_key(char * orig_key){
   char * split = strrchr(orig_key, ':');
   struct ns_keyname ns_k;
-  if (split == NULL){
+  if (split == NULL){ //TODO testing
     ns_k.ns = "*";
     ns_k.keyname = orig_key;
   } else {
-    foo();
     orig_key[split - orig_key] = '\0'; // clobber the ':'
     ns_k.ns = orig_key; 
     ns_k.keyname = split+1;
@@ -41,7 +72,6 @@ void kvolve_set(char * buf){
   struct ns_keyname ns_k = split_namespace_key(orig_key);
   char * ns = ns_k.ns;
   char * suffix = ns_k.keyname;
-
 
 
   // Now reconstruct buffer. 

@@ -1,6 +1,14 @@
-all:
-	gcc -g -o proxy  proxy.c kvolve.c -lpthread
+
+all: kvolve.a
+	gcc -g -o proxy  proxy.c kvolve.a -lpthread 
+
+kvolve.a: kvolve.o
+	ar rcs kvolve.a kvolve.o
+
+kvolve.o: 
+	gcc -c kvolve.c
+
 clean:
-	rm proxy 
+	rm -f *.o proxy kvolve.a
 
 
