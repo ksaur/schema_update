@@ -21,19 +21,21 @@ static struct version_hash * vers_list = NULL;
 /* return 1 if appended new version.  else return 0 */
 int kvolve_append_version(char * vers_str){
 
-  printf("GOT VERSION STRING OF %s\n", vers_str);
-  return 1;
-  char *ns_lookup = "TODO";
-  char *vers = "TODO";
+ // printf("GOT VERSION STRING OF %s\n", vers_str);
+//  return 1;
+  char *ns_lookup = "order";
+  char *vers = "v0";
 
   struct version_hash *e = NULL;
 
   HASH_FIND(hh, vers_list, &ns_lookup, strlen(ns_lookup), e);  /* id already in the hash? */
   if (e==NULL){
     e = (struct version_hash*)malloc(sizeof(struct version_hash));
+    e->ns = malloc(strlen(ns_lookup)+1);
     strcpy(e->ns, ns_lookup); 
     e->num_versions = 1;
-    e->versions = malloc(10*sizeof(char*)); /* TODO, dynamically resize array */
+    *e->versions = calloc(10,sizeof(char*)); /* TODO, dynamically resize array */
+    e->versions[0] = malloc(strlen(vers)+1);
     strcpy(e->versions[0], vers);
     HASH_ADD_KEYPTR(hh, vers_list, e->ns, strlen(e->ns), e);  /* id: name of key field */
   } else{
@@ -41,7 +43,7 @@ int kvolve_append_version(char * vers_str){
     e->num_versions++;
     if(e->num_versions > 10){
       /* TODO realloc*/
-      printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED. ");
+      printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS. ");
       return 0;
     }
     strcpy(e->versions[e->num_versions-1], vers);
