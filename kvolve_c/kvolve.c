@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <hiredis/hiredis.h>
 #include <stdlib.h>
 #include <string.h>
 #include "uthash.h"
@@ -23,8 +24,10 @@ int kvolve_append_version(char * vers_str){
 
  // printf("GOT VERSION STRING OF %s\n", vers_str);
 //  return 1;
+  //TODO so lazy.
   char *ns_lookup = "order";
   char *vers = "v0";
+  //TODO!  Implmenent parsing...once we're sure that  get/set will actually be faster...
 
   struct version_hash *e = NULL;
 
