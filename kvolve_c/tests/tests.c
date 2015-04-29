@@ -6,12 +6,15 @@
 /* test connection and version establishment */
 int test1(void){
 
-  struct ns_vers_args * single = malloc(sizeof(struct ns_vers_args));
-  single->ns = "order";
-  single->vers = "v0";
-  single->next = NULL;
-  
-  connect("127.0.0.1", 6379, single);
+  kv_connect("127.0.0.1", 6379, "order@v0");
+  //  reply = redisCommand(c,"SET %b %b", "bar", 3, "hello", 5);
+  //  printf("SET (binary API): %s\n", reply->str);
+  //  freeReplyObject(reply);
+
+  //  /* Try a GET and two INCR */
+  //  reply = redisCommand(c,"GET foo");
+  //  printf("GET foo: %s\n", reply->str);
+  //  freeReplyObject(reply);
   return 1;
 }
 

@@ -19,7 +19,13 @@ struct version_hash{
 static struct version_hash * vers_list = NULL;
 
 /* return 1 if appended new version.  else return 0 */
-int kvolve_append_version(char * ns_lookup, char *vers){
+int kvolve_append_version(char * vers_str){
+
+  printf("GOT VERSION STRING OF %s\n", vers_str);
+  return 1;
+  char *ns_lookup = "TODO";
+  char *vers = "TODO";
+
   struct version_hash *e = NULL;
 
   HASH_FIND(hh, vers_list, &ns_lookup, strlen(ns_lookup), e);  /* id already in the hash? */

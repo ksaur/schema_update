@@ -32,6 +32,8 @@ unsigned int transfer(int from, int to)
         kvolve_set(buf);
     } else if (strncasecmp(buf, "GET", 3) == 0) {
         kvolve_get(buf);
+    } else if (strncasecmp(buf, "client setname", 14) == 0) {
+        kvolve_append_version(buf);
     } else
         DEBUG_PRINT(("default:........%s", buf));
     DEBUG_PRINT(("BUFFER AFTER IS:\'%s\'(%p)\n", buf, buf));
@@ -203,7 +205,6 @@ int main(int argc, char **argv)
             a->port = port;
             pthread_create(&threadpool[count], NULL, (void *) &handle, (void*)a);
             count++;
-            //handle(newsock, host, port);
         }
     }
 
