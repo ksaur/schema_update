@@ -42,7 +42,10 @@ int kvolve_append_version(char * vers_str){
     e->versions[0] = malloc(strlen(vers)+1);
     strcpy(e->versions[0], vers);
     HASH_ADD_KEYPTR(hh, vers_list, e->ns, strlen(e->ns), e);  /* id: name of key field */
+  } else if(strcmp(e->versions[e->num_versions-1], vers) == 0){
+    return 0;
   } else{
+    
     /* TODO correct version validation!!!!! */
     e->num_versions++;
     if(e->num_versions > 10){
@@ -125,6 +128,7 @@ int kvolve_set(char * buf, char * outbuf, int from, redisContext * c){
      bytes_written = write(from, "+OK\r\n", 5);
   }
   else{
+     freeReplyObject(reply);
      /* TODO testing */
      bytes_written = write(from, "-ERR\r\n", 6);
   }
@@ -165,15 +169,72 @@ int kvolve_set(char * buf, char * outbuf, int from, redisContext * c){
 
 int kvolve_get(char * buf, char * outbuf, int from, redisContext * c){
 
+  redisReply *reply;
+  DEBUG_PRINT(("BUF IS \'%s\'", buf));
+  char * carr_ret = strchr(buf, '\r');
+  strncpy(carr_ret, "\0", 1);
+
+  size_t bytes_written, bytes_towrite;
   char *saveptr;
   char *cmd = strtok_r(buf, " ", &saveptr); //GET
   char *orig_key = strtok_r(NULL, " ", &saveptr); //key
+  struct ns_keyname ns_k = split_namespace_key(orig_key);
+  char * ns = ns_k.ns;
+  char * suffix = ns_k.keyname;
+  struct version_hash *v = NULL;
+  int i, pos=0;
 
-  //printf("cmd = %s\n", cmd);
-  //printf("orig_key = %s\n", orig_key);
+  /* get the current version for the namespace */
+  HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
+  /* TODO something better than assert fail.
+   * Also, should we support 'default namespace' automatically? */
+  assert(v != NULL);
+
+  /* The "express route" where we find a key at the current version and
+   * immediately return. */
+  sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
+  reply = redisCommand(c,"GET %s", outbuf);
+
+  /* TODO implement ### delimiter */
+  if(reply->type == REDIS_REPLY_STRING){
+    /* Key is already at current version. */
+    bytes_towrite = sprintf(outbuf, "$%d\r\n%s\r\n", reply->len, reply->str);
+    bytes_written = write(from, outbuf, bytes_towrite);
+    freeReplyObject(reply);
+    if (bytes_written == -1) 
+        return 1;
+    return 0;
+  }
+  freeReplyObject(reply);
+
+  /* Check for key at _any_ version. */
+  /* TODO, "*" namespace */
+  for(i=0; i<v->num_versions; i++){
+    pos+=sprintf(outbuf+pos, "%s|%s:%s ", v->versions[i], ns, suffix);
+  }
+  reply = redisCommand(c,"MGET %s", outbuf);
+  for(i=0; i<v->num_versions; i++){
+    if(reply->element[i]->type != REDIS_REPLY_NIL)
+       break;
+  }
+  freeReplyObject(reply);
+  if(i == v->num_versions){
+    /* TODO mark #####*/
+    //reply = redisCommand(c,"SETNX %s", TODO); 
+    //freeReplyObject(reply);
+    bytes_written = write(from, "$-1\r\n", 5);
+    if (bytes_written == -1) 
+        return 1;
+    return 0;
+    
+  }
+  
+  /* TODO: ('SETNX', all_potential_keys[0], "#### ####") */
+  bytes_written = write(from, "+OK\r\n", 5);
+
 
   // Now reconstruct buffer. 
-  int pos = 0;
+  pos = 0;
   // perform checks in case garbage input
   if(cmd && orig_key){
     pos = strlen(cmd); // advance past cmd
