@@ -14,9 +14,11 @@
 #include <signal.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <hiredis/hiredis.h>
 #include "kvolve.h"
 
 #define PORT     "6379" /* Port to listen on */
+#define ACTUAL_PORT     "16379" /* Port to listen on */
 #define BACKLOG  10      /* Passed to listen() */
 #define BUF_SIZE 4096    /* Buffer for  transfers */
 
@@ -66,48 +68,43 @@ void redis_string(char * str, char * buffer){
   }
 }
 
-unsigned int transfer(int from, int to)
+unsigned int transfer(int from, int to, redisContext * c)
 {
     DEBUG_PRINT(("TRANSFER FROM %d to %d\n", from, to));
     char buf[BUF_SIZE];
     char tmpbuf[BUF_SIZE];
     char * bufptr = buf;
     char * tmpptr = tmpbuf;
-    size_t bytes_read, bytes_written, bytes_towrite;
+    size_t bytes_read, bytes_written;
     bytes_read = read(from, buf, BUF_SIZE);
 
     if (bytes_read == 0) 
         return 1;
-    bytes_towrite = bytes_read;
+
     DEBUG_PRINT(("BUFFER BEFORE IS:\'%s\'(%p)\n", buf, buf));
 
     /* check for splitup string from hiredis client */
     if(buf[0] =='*'){
        // have to modify the src buffer before we can process it normally
+       /* TODO delete ptrs?? */
        redis_string(bufptr, tmpptr);
        strcpy(bufptr, tmpptr);
-       bytes_towrite = strlen(bufptr);
+       bytes_read = strlen(bufptr); //reset this
     }
 
     if (strncasecmp(buf, "SET", 3) == 0) {
-        kvolve_set(buf, tmpbuf);
-        bytes_towrite = strlen(tmpbuf);
+        return kvolve_set(buf, tmpbuf, from, c);
     } else if (strncasecmp(buf, "GET", 3) == 0) {
-        kvolve_get(buf, tmpbuf);
-        bytes_towrite = strlen(tmpbuf);
+        return kvolve_get(buf, tmpbuf, from, c);
     } else if (strncasecmp(buf, "client setname", 14) == 0) {
         kvolve_append_version(buf);
-        tmpptr = buf;
     } else{
         DEBUG_PRINT(("default:........%s", buf));
-        tmpptr = buf;
     }
-    DEBUG_PRINT(("BUFFER AFTER IS:\'%s\'(%p)\n", tmpbuf, tmpbuf));
 
-    bytes_written = write(to, tmpptr, bytes_towrite);
-    if (bytes_written == -1) {
+    bytes_written = write(to, buf, bytes_read);
+    if (bytes_written == -1) 
         return 1;
-    }
     return 0;
 }
 
@@ -128,6 +125,7 @@ void handle(struct args *args)
     unsigned int disconnected = 0;
     fd_set set;
     unsigned int max_sock;
+    redisContext * c = NULL;
 
     /* Get the address info */
     memset(&hints, 0, sizeof hints);
@@ -162,6 +160,8 @@ void handle(struct args *args)
         max_sock = server;
     }
 
+    c = redisConnect("127.0.0.1", atoi(ACTUAL_PORT));
+
     /* Main transfer loop */
     while (!disconnected) {
         printf("Inside transfer loop (%d, %d)!!\n",args->client, server);
@@ -175,16 +175,17 @@ void handle(struct args *args)
         printf("SELECTED!!\n");
         if (FD_ISSET(args->client, &set)) {
             printf("transfering from client %d  to server %d\n", args->client, server);
-            disconnected = transfer(args->client, server);
+            disconnected = transfer(args->client, server, c);
             printf("transfer complete from client %d  to server %d\n", args->client, server);
         }
         if (FD_ISSET(server, &set)) {
             printf("transfering from server %d to client %d\n", server, args->client);
-            disconnected = transfer(server, args->client);
+            disconnected = transfer(server, args->client, c);
             printf("transfer complete from server %d to client %d\n", server, args->client);
         }
     }
     printf("CLOSED!\n");
+    redisFree(c);
     close(server);
     close(args->client);
 }
@@ -202,7 +203,7 @@ int main(int argc, char **argv)
    //     return 1;
    // }
     host = "localhost";//argv[1];
-    port = "16379";//argv[2];
+    port = ACTUAL_PORT;//argv[2];
 
     /* Get the address info */
     memset(&hints, 0, sizeof hints);

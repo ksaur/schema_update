@@ -71,11 +71,14 @@ struct ns_keyname split_namespace_key(char * orig_key){
   return ns_k;
 }
 
-void kvolve_set(char * buf, char * outbuf){
+int kvolve_set(char * buf, char * outbuf, int from, redisContext * c){
+
+  redisReply *reply;
 
   DEBUG_PRINT(("BUF IS \'%s\'", buf));
   char * carr_ret = strchr(buf, '\r');
   strncpy(carr_ret, "\0", 1);
+  size_t bytes_written;
 
   char * saveptr;
   char * cmd = strtok_r(buf, " ", &saveptr); //GET
@@ -89,39 +92,78 @@ void kvolve_set(char * buf, char * outbuf){
 
   /* get the current version for the namespace */
   HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
-  /* TODO something better than this.  Also, should we support 'default namespace' automatically? */
+  /* TODO something better than assert fail.
+   * Also, should we support 'default namespace' automatically? */
   assert(v != NULL);
-  
-  
 
-  // Now reconstruct buffer. 
-  int pos = 0;
-  // perform checks in case garbage input
-  if(cmd && orig_key && orig_val){
-    strcpy(outbuf+pos, cmd); // add a space 
-    pos = strlen(cmd); // advance past cmd
-    strncpy(outbuf+pos, " ", 1); // add a space 
-    pos++;
-    sprintf(outbuf+pos, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
-    pos += strlen(outbuf+pos);
-    strncpy(outbuf+pos, " ", 1);
-    pos++;
-    strcpy(outbuf+pos, orig_val);
-    pos+= strlen(orig_val);
-    // optional
-    if(flags){
-      strncpy(outbuf+pos, " ", 1);
-      pos++;
-      strcpy(outbuf+pos, flags);
-      pos+= strlen(flags);
-    }
-    strncpy(outbuf+pos, "\r\n\0", 3);
+  
+  sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
+  /* TODO  if flags (ex or px or nx or xx): */
+  
+  
+  /* 'GETSET' returns None if key does not exist, else returns the old key*/
+  reply = redisCommand(c,"GETSET %s %s", outbuf, orig_val);
+  if(reply->type == REDIS_REPLY_STRING){
+     freeReplyObject(reply);
+     /* Key is already at current version. */
+     bytes_written = write(from, "+OK\r\n", 5);
   }
+  else if(reply->type == REDIS_REPLY_NIL){
+
+     freeReplyObject(reply);
+     /* try to delete old keys. */
+     /* TODO: "*" namespace. */
+     if(v->num_versions>1){
+        int i, pos=0;
+        for(i=0; i<v->num_versions; i++){
+          pos+=sprintf(outbuf+pos, "%s|%s:%s ", v->versions[i], ns, suffix);
+        }
+        reply = redisCommand(c,"DEL %s", outbuf);
+        
+        freeReplyObject(reply);
+     }
+     bytes_written = write(from, "+OK\r\n", 5);
+  }
+  else{
+     /* TODO testing */
+     bytes_written = write(from, "-ERR\r\n", 6);
+  }
+
+////  /*  Now reconstruct buffer.  */
+////  int pos = 0;
+////  /* perform checks in case garbage input */
+////  if(cmd && orig_key && orig_val){
+////    strcpy(outbuf+pos, cmd); // add a space 
+////    pos = strlen(cmd); // advance past cmd
+////    strncpy(outbuf+pos, " ", 1); // add a space 
+////    pos++;
+////    sprintf(outbuf+pos, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
+////    pos += strlen(outbuf+pos);
+////    strncpy(outbuf+pos, " ", 1);
+////    pos++;
+////    strcpy(outbuf+pos, orig_val);
+////    pos+= strlen(orig_val);
+/*TODO use these above!!!*/
+////    /* optional flags */
+////    if(flags){
+////      strncpy(outbuf+pos, " ", 1);
+////      pos++;
+////      strcpy(outbuf+pos, flags);
+////      pos+= strlen(flags);
+////    }
+////    strncpy(outbuf+pos, "\r\n\0", 3);
+////  }
+
+ //TODO write the response here!
+ // bytes_written = write(to, outbuf, strlen(outbuf));
+  if (bytes_written == -1) 
+      return 1;
+  return 0;
+
 }
 
 
-void kvolve_get(char * buf, char * outbuf){
-
+int kvolve_get(char * buf, char * outbuf, int from, redisContext * c){
 
   char *saveptr;
   char *cmd = strtok_r(buf, " ", &saveptr); //GET
@@ -142,5 +184,6 @@ void kvolve_get(char * buf, char * outbuf){
     strncpy(buf+pos, "\r\n", 2);
   }
 
+  return 0;
 }
 
