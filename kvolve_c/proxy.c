@@ -20,29 +20,93 @@
 #define BACKLOG  10      /* Passed to listen() */
 #define BUF_SIZE 4096    /* Buffer for  transfers */
 
+/* hiredis insists on using weird redis syntax to send strings......*/
+void redis_string(char * str, char * buffer){
+
+  int pos = 1;
+  int bufpos = 0;
+  char tmp[4];
+  while (str[pos] != '\r'){
+     tmp[pos-1] = str[pos];
+     pos++;
+  }
+  tmp[pos] = '\0';
+  int pieces = atoi(tmp);
+  printf("Going to process %d\n", pieces);
+  printf("currently at position %d\n", pos);
+  pos++; //Skip $
+  while (pieces > 0){
+
+     int numberget = 0;
+     int currstrlen = 0;
+     pos+=2;
+     while (str[pos] != '\r'){
+        tmp[numberget] = str[pos];
+        pos++;
+        numberget++;
+     }
+     tmp[numberget] = '\0';
+     currstrlen = atoi(tmp);
+     printf("currstrlen %d\n", currstrlen);
+     pos+=2;
+     strncpy(buffer+bufpos, str+pos, currstrlen);
+     pos+=currstrlen;
+     bufpos+=currstrlen;
+     pos++;
+     pieces--;
+     if(pieces>0){
+       strncpy(buffer+bufpos, " ", 1);
+       bufpos+=1;
+     }
+     else
+       strcpy(buffer+bufpos, "\r\n");
+
+     printf("%s", buffer);
+
+  }
+}
+
 unsigned int transfer(int from, int to)
 {
     DEBUG_PRINT(("TRANSFER FROM %d to %d\n", from, to));
     char buf[BUF_SIZE];
+    char tmpbuf[BUF_SIZE];
+    char * bufptr = buf;
+    char * tmpptr = tmpbuf;
     unsigned int disconnected = 0;
-    size_t bytes_read, bytes_written;
+    size_t bytes_read, bytes_written, bytes_towrite;
     bytes_read = read(from, buf, BUF_SIZE);
+    bytes_towrite = bytes_read;
     DEBUG_PRINT(("BUFFER BEFORE IS:\'%s\'(%p)\n", buf, buf));
+
+    /* check for splitup string from hiredis client */
+    if(buf[0] =='*'){
+       // have to modify the src buffer before we can process it normally
+       redis_string(bufptr, tmpptr);
+       strcpy(bufptr, tmpptr);
+       bytes_towrite = strlen(bufptr);
+    }
+
     if (strncasecmp(buf, "SET", 3) == 0) {
-        kvolve_set(buf);
+        kvolve_set(buf, tmpbuf);
+        bytes_towrite = strlen(tmpbuf);
     } else if (strncasecmp(buf, "GET", 3) == 0) {
-        kvolve_get(buf);
+        kvolve_get(buf, tmpbuf);
+        bytes_towrite = strlen(tmpbuf);
     } else if (strncasecmp(buf, "client setname", 14) == 0) {
         kvolve_append_version(buf);
-    } else
+        tmpptr = buf;
+    } else{
         DEBUG_PRINT(("default:........%s", buf));
-    DEBUG_PRINT(("BUFFER AFTER IS:\'%s\'(%p)\n", buf, buf));
+        tmpptr = buf;
+    }
+    DEBUG_PRINT(("BUFFER AFTER IS:\'%s\'(%p)\n", tmpbuf, tmpbuf));
 
     if (bytes_read == 0) {
         disconnected = 1;
     }
     else {
-        bytes_written = write(to, buf, bytes_read);
+        bytes_written = write(to, tmpptr, bytes_towrite);
         if (bytes_written == -1) {
             disconnected = 1;
         }

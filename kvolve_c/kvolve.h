@@ -9,7 +9,7 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 
-void kvolve_set(char * buf);
-void kvolve_get(char * buf);
+void kvolve_set(char * buf, char * outbuf);
+void kvolve_get(char * buf, char * outbuf);
 
 #endif

@@ -10,7 +10,7 @@ int test1(void){
   redisReply *reply;
 
   redisContext * c = kv_connect("127.0.0.1", 6379, "order@v0");
-  reply = redisCommand(c,"SET %s %s", "foo", "ffff");
+  reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
   freeReplyObject(reply);
 
   //  /* Try a GET and two INCR */

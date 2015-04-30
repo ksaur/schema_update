@@ -2,6 +2,7 @@
 #include <hiredis/hiredis.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "uthash.h"
 #include "kvolve.h"
 
@@ -31,13 +32,13 @@ int kvolve_append_version(char * vers_str){
 
   struct version_hash *e = NULL;
 
-  HASH_FIND(hh, vers_list, &ns_lookup, strlen(ns_lookup), e);  /* id already in the hash? */
+  HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), e);  /* id already in the hash? */
   if (e==NULL){
     e = (struct version_hash*)malloc(sizeof(struct version_hash));
     e->ns = malloc(strlen(ns_lookup)+1);
     strcpy(e->ns, ns_lookup); 
     e->num_versions = 1;
-    *e->versions = calloc(10,sizeof(char*)); /* TODO, dynamically resize array */
+    e->versions = calloc(10,sizeof(char*)); /* TODO, dynamically resize array */
     e->versions[0] = malloc(strlen(vers)+1);
     strcpy(e->versions[0], vers);
     HASH_ADD_KEYPTR(hh, vers_list, e->ns, strlen(e->ns), e);  /* id: name of key field */
@@ -49,6 +50,7 @@ int kvolve_append_version(char * vers_str){
       printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS. ");
       return 0;
     }
+    /* TODO validation!!!!!!!! */
     strcpy(e->versions[e->num_versions-1], vers);
   }
   return 1;
@@ -69,7 +71,7 @@ struct ns_keyname split_namespace_key(char * orig_key){
   return ns_k;
 }
 
-void kvolve_set(char * buf){
+void kvolve_set(char * buf, char * outbuf){
 
   DEBUG_PRINT(("BUF IS \'%s\'", buf));
   char * carr_ret = strchr(buf, '\r');
@@ -83,34 +85,42 @@ void kvolve_set(char * buf){
   struct ns_keyname ns_k = split_namespace_key(orig_key);
   char * ns = ns_k.ns;
   char * suffix = ns_k.keyname;
+  struct version_hash *v = NULL;
 
+  /* get the current version for the namespace */
+  HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
+  /* TODO something better than this.  Also, should we support 'default namespace' automatically? */
+  assert(v != NULL);
+  
+  
 
   // Now reconstruct buffer. 
   int pos = 0;
   // perform checks in case garbage input
   if(cmd && orig_key && orig_val){
+    strcpy(outbuf+pos, cmd); // add a space 
     pos = strlen(cmd); // advance past cmd
-    strncpy(buf+pos, " ", 1); // add a space 
+    strncpy(outbuf+pos, " ", 1); // add a space 
     pos++;
-    strcpy(buf+pos, orig_key);
-    pos += strlen(orig_key);
-    strncpy(buf+pos, " ", 1);
+    sprintf(outbuf+pos, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
+    pos += strlen(outbuf+pos);
+    strncpy(outbuf+pos, " ", 1);
     pos++;
-    strcpy(buf+pos, orig_val);
+    strcpy(outbuf+pos, orig_val);
     pos+= strlen(orig_val);
     // optional
     if(flags){
-      strncpy(buf+pos, " ", 1);
+      strncpy(outbuf+pos, " ", 1);
       pos++;
-      strcpy(buf+pos, flags);
+      strcpy(outbuf+pos, flags);
       pos+= strlen(flags);
     }
-    strncpy(buf+pos, "\r\n", 2);
+    strncpy(outbuf+pos, "\r\n\0", 3);
   }
 }
 
 
-void kvolve_get(char * buf){
+void kvolve_get(char * buf, char * outbuf){
 
 
   char *saveptr;
