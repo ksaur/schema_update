@@ -73,9 +73,11 @@ unsigned int transfer(int from, int to)
     char tmpbuf[BUF_SIZE];
     char * bufptr = buf;
     char * tmpptr = tmpbuf;
-    unsigned int disconnected = 0;
     size_t bytes_read, bytes_written, bytes_towrite;
     bytes_read = read(from, buf, BUF_SIZE);
+
+    if (bytes_read == 0) 
+        return 1;
     bytes_towrite = bytes_read;
     DEBUG_PRINT(("BUFFER BEFORE IS:\'%s\'(%p)\n", buf, buf));
 
@@ -102,16 +104,11 @@ unsigned int transfer(int from, int to)
     }
     DEBUG_PRINT(("BUFFER AFTER IS:\'%s\'(%p)\n", tmpbuf, tmpbuf));
 
-    if (bytes_read == 0) {
-        disconnected = 1;
+    bytes_written = write(to, tmpptr, bytes_towrite);
+    if (bytes_written == -1) {
+        return 1;
     }
-    else {
-        bytes_written = write(to, tmpptr, bytes_towrite);
-        if (bytes_written == -1) {
-            disconnected = 1;
-        }
-    }
-    return disconnected;
+    return 0;
 }
 
 struct args{
