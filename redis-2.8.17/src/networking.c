@@ -28,6 +28,7 @@
  */
 
 #include "redis.h"
+#include "kvolve.h"
 #include <sys/uio.h>
 #include <math.h>
 
@@ -1105,6 +1106,12 @@ void processInputBuffer(redisClient *c) {
         if (c->argc == 0) {
             resetClient(c);
         } else {
+
+            /****** KVolve edit ******/
+            if (kvolve_process_command(c))
+                return;
+            /****** End KVolve edit ******/
+
             /* Only reset the client when the command was executed. */
             if (processCommand(c) == REDIS_OK)
                 resetClient(c);
