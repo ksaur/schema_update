@@ -11,8 +11,15 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 
+struct ns_keyname{
+    char * ns;
+    char * keyname;
+};
+
+struct ns_keyname split_namespace_key(char * orig_key);
 int kvolve_process_command(redisClient *c);
 int kvolve_append_version(char * vers_str);
+void kvolve_set(redisClient * c);
 //int kvolve_set(char * buf, char * outbuf, int from, redisContext * c);
 //int kvolve_get(char * buf, char * outbuf, int from, redisContext * c);
 
