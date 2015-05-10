@@ -1,12 +1,9 @@
-#include <signal.h> // For redis.h 'siginfo_t'
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#undef __GNUC__  // allow malloc (needed for uthash)  (see redis.h ln 1403)
 #include "uthash.h"
 #include "kvolve.h"
-#include "redis.h"
 
 
 struct version_hash{
@@ -17,18 +14,18 @@ struct version_hash{
 };
 
 static struct version_hash * vers_list = NULL;
-char outbuf[REDIS_INLINE_MAX_SIZE]; //TODO what is the best value for this?  The best way to do this??
+//char outbuf[REDIS_INLINE_MAX_SIZE]; //TODO what is the best value for this?  The best way to do this??
 
 /* return 1 to halt normal execution flow. return 0 to continue as normal */
-int kvolve_process_command(redisClient *c){
+int kvolve_process_command(int argc, char ** argv){
   
-    if (c->argc > 2 && strcmp((char*)c->argv[0]->ptr, "client") == 0 && 
-                 strcmp((char*)c->argv[1]->ptr, "setname") == 0) {
-        kvolve_append_version((char*)c->argv[2]->ptr);
+    if (argc > 2 && strcmp(argv[0], "client") == 0 && 
+                 strcmp(argv[1], "setname") == 0) {
+        kvolve_append_version(argv[2]);
         return 0;
-    } else if (c->argc > 2 && strcmp((char*)c->argv[0]->ptr, "set") == 0){
-        kvolve_set(c);
-        return 1;
+    } else if (argc > 2 && strcmp(argv[0], "set") == 0){
+        //kvolve_set(c);
+        //return 1;
     }
  
     return 0;
@@ -101,56 +98,56 @@ struct ns_keyname split_namespace_key(char * orig_key){
 }
 
 
-void foo(){}
-
-void kvolve_set(redisClient * c){
-    struct version_hash *v = NULL;
-    size_t initlen;
-    int ret, num_vers;
-    sds new_keyname_sds;
-    struct ns_keyname ns_k = split_namespace_key((char*)c->argv[1]->ptr);
-    char * ns = ns_k.ns;
-    char * suffix = ns_k.keyname;
-    /* get the current version for the namespace */
-    HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
-    /* TODO something better than assert fail.
-     * Also, should we support 'default namespace' automatically? */
-    assert(v != NULL);
-    
-    // TODO what to do about the outbuf? stack? or what is fastest?
-    initlen = sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
-    new_keyname_sds = sdsnewlen(outbuf, initlen);
-    ////* copy the new string into the persistent buffer, but deal with sds... */
-    ////memcpy(outbuf, new_keyname_sds-sizeof(struct sdshdr), sizeof(struct sdshdr)+initlen);
-    c->argv[1]->ptr = new_keyname_sds; //outbuf+sizeof(struct sdshdr);
-
-    /* Do the actual set */
-    ret = processCommand(c);
-
-    /* TODO: examine flags.... */
-
-    /* Now check to see if deletions are necessary */
-    num_vers = v->num_versions;
-    while(num_vers > 1){
-        sprintf(outbuf, "%s|%s:%s", v->versions[num_vers-2], ns, suffix);
-        robj * todel = createObject(REDIS_STRING, outbuf);
-        dbDelete(c->db, todel);
-        zfree(todel);
-        num_vers--;
-    }
-
-
-    if(ret == REDIS_OK) 
-        resetClient(c);
-
-    //TODO how to free new_keyname_sds without segfaulting...?
- 
-
-    /* check for old and delete if necessary */
-//lookupKey
-//dbDelete(c->db,c->argv[j])
-
-}
+//void foo(){}
+//
+//void kvolve_set(redisClient * c){
+//    struct version_hash *v = NULL;
+//    size_t initlen;
+//    int ret, num_vers;
+//    sds new_keyname_sds;
+//    struct ns_keyname ns_k = split_namespace_key((char*)c->argv[1]->ptr);
+//    char * ns = ns_k.ns;
+//    char * suffix = ns_k.keyname;
+//    /* get the current version for the namespace */
+//    HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
+//    /* TODO something better than assert fail.
+//     * Also, should we support 'default namespace' automatically? */
+//    assert(v != NULL);
+//    
+//    // TODO what to do about the outbuf? stack? or what is fastest?
+//    initlen = sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
+//    new_keyname_sds = sdsnewlen(outbuf, initlen);
+//    ////* copy the new string into the persistent buffer, but deal with sds... */
+//    ////memcpy(outbuf, new_keyname_sds-sizeof(struct sdshdr), sizeof(struct sdshdr)+initlen);
+//    c->argv[1]->ptr = new_keyname_sds; //outbuf+sizeof(struct sdshdr);
+//
+//    /* Do the actual set */
+//    ret = processCommand(c);
+//
+//    /* TODO: examine flags.... */
+//
+//    /* Now check to see if deletions are necessary */
+//    num_vers = v->num_versions;
+//    while(num_vers > 1){
+//        sprintf(outbuf, "%s|%s:%s", v->versions[num_vers-2], ns, suffix);
+//        robj * todel = createObject(REDIS_STRING, outbuf);
+//        dbDelete(c->db, todel);
+//        zfree(todel);
+//        num_vers--;
+//    }
+//
+//
+//    if(ret == REDIS_OK) 
+//        resetClient(c);
+//
+//    //TODO how to free new_keyname_sds without segfaulting...?
+// 
+//
+//    /* check for old and delete if necessary */
+////lookupKey
+////dbDelete(c->db,c->argv[j])
+//
+//}
 //
 //  redisReply *reply;
 //
@@ -324,4 +321,3 @@ void kvolve_set(redisClient * c){
 //  return 0;
 //}
 
-#define __GNUC__  // "re-unallow" malloc
