@@ -1108,20 +1108,8 @@ void processInputBuffer(redisClient *c) {
         } else {
 
             /****** KVolve edit ******/
-            /* The input buffer is parsed into redis object right after it's
-             * read from the socket.  Using the user-input post-processing 
-             * ensures that all possible user inputs are parsed correctly.
-             * However, we convert to an array of char* to pass to KVolve */
-            int i;
-            char ** argv = zmalloc(sizeof(char*) * c->argc);
-            for(i=0; i < c->argc; i++)
-                argv[i] = (char*)c->argv[i]->ptr;
-                
-            if (kvolve_process_command(c->argc, argv)){
-                zfree(argv);
+            if (kvolve_process_command(c))
                 return;
-            }
-            zfree(argv);
             /****** End KVolve edit ******/
 
             /* Only reset the client when the command was executed. */
