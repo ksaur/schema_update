@@ -1119,6 +1119,7 @@ void processInputBuffer(redisClient *c) {
                 
             if (kvolve_process_command(c->argc, argv)){
                 zfree(argv);
+                resetClient(c);
                 return;
             }
             zfree(argv);

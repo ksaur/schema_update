@@ -1,7 +1,5 @@
 #ifndef _KVOLVE_H
 #define _KVOLVE_H
-//#include <bits/siginfo.h> // For redis.h 'siginfo_t' TODO why will this not work with signal.h??
-//#include "redis.h"
 
 
 #define DEBUG
@@ -20,8 +18,7 @@ struct ns_keyname{
 struct ns_keyname split_namespace_key(char * orig_key);
 int kvolve_process_command(int argc, char ** argv);
 int kvolve_append_version(char * vers_str);
-//void kvolve_set(redisClient * c);
-//int kvolve_set(char * buf, char * outbuf, int from, redisContext * c);
+void kvolve_set(int argc, char ** argv);
 //int kvolve_get(char * buf, char * outbuf, int from, redisContext * c);
 
 #endif
