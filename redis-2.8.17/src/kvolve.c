@@ -17,19 +17,21 @@ struct version_hash{
 };
 
 static struct version_hash * vers_list = NULL;
-char outbuf[REDIS_INLINE_MAX_SIZE]; //TODO what is the best value for this?  The best way to do this??
 
 /* return 1 to halt normal execution flow. return 0 to continue as normal */
 int kvolve_process_command(redisClient *c){
   
-    if (c->argc > 2 && strcmp((char*)c->argv[0]->ptr, "client") == 0 && 
-                 strcmp((char*)c->argv[1]->ptr, "setname") == 0) {
+    if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "client") == 0 && 
+                 strcasecmp((char*)c->argv[1]->ptr, "setname") == 0) {
         kvolve_append_version((char*)c->argv[2]->ptr);
         return 0;
-    } else if (c->argc > 2 && strcmp((char*)c->argv[0]->ptr, "set") == 0){
+    } else if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
         kvolve_set(c);
         return 1;
-    }
+    } /*else if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
+        kvolve_set(c);
+        return 1;
+    } */
  
     return 0;
 }
@@ -100,27 +102,28 @@ struct ns_keyname split_namespace_key(char * orig_key){
     return ns_k;
 }
 
-
-void foo(){}
-
 void kvolve_set(redisClient * c){
     struct version_hash *v = NULL;
     size_t initlen;
     int ret, num_vers;
     sds new_keyname_sds;
+    char * outbuf;
+
     struct ns_keyname ns_k = split_namespace_key((char*)c->argv[1]->ptr);
     char * ns = ns_k.ns;
     char * suffix = ns_k.keyname;
+
     /* get the current version for the namespace */
     HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
     /* TODO something better than assert fail.
      * Also, should we support 'default namespace' automatically? */
     assert(v != NULL);
     
-    // TODO what to do about the outbuf? stack? or what is fastest?
+    /* allocate outbuf +3 (|, :, \n) */
+    outbuf = malloc(strlen(v->versions[v->num_versions-1])+strlen(ns)+strlen(suffix)+3);
     initlen = sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
     new_keyname_sds = sdsnewlen(outbuf, initlen); // don't free this. added to db
-    printf("\nallocated new_keyanme_sds at %p......................\n", new_keyname_sds);
+    free(outbuf);
     c->argv[1]->ptr = new_keyname_sds; // ->ptr will be freed in teardown w others
 
     /* Do the actual set */
@@ -131,8 +134,10 @@ void kvolve_set(redisClient * c){
     /* Now check to see if deletions are necessary */
     num_vers = v->num_versions;
     while(num_vers > 1){
+        outbuf = malloc(strlen(v->versions[num_vers-2])+strlen(ns)+strlen(suffix)+3);
         initlen = sprintf(outbuf, "%s|%s:%s", v->versions[num_vers-2], ns, suffix);
         sds tmp = sdsnewlen(outbuf, initlen);
+        free(outbuf);
         robj * todel = createObject(REDIS_STRING, tmp);
         dbDelete(c->db, todel);
         zfree(todel);
@@ -140,109 +145,11 @@ void kvolve_set(redisClient * c){
         num_vers--;
     }
 
-
     if(ret == REDIS_OK) 
         resetClient(c);
 
- 
-
-    /* check for old and delete if necessary */
-//lookupKey
-//dbDelete(c->db,c->argv[j])
-
 }
-//
-//  redisReply *reply;
-//
-//  DEBUG_PRINT(("BUF IS \'%s\'", buf));
-//  char * carr_ret = strchr(buf, '\r');
-//  strncpy(carr_ret, "\0", 1);
-//  size_t bytes_written;
-//
-//  char * saveptr;
-//  char * cmd = strtok_r(buf, " ", &saveptr); //GET
-//  char * orig_key = strtok_r(NULL, " ", &saveptr); //key
-//  char * orig_val = strtok_r(NULL, " ", &saveptr); //value
-//  char * flags = strtok_r(NULL, " ", &saveptr); //flags
-//  struct ns_keyname ns_k = split_namespace_key(orig_key);
-//  char * ns = ns_k.ns;
-//  char * suffix = ns_k.keyname;
-//  struct version_hash *v = NULL;
-//
-//  /* get the current version for the namespace */
-//  HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
-//  /* TODO something better than assert fail.
-//   * Also, should we support 'default namespace' automatically? */
-//  assert(v != NULL);
-//
-//  
-//  sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
-//  /* TODO  if flags (ex or px or nx or xx): */
-//  
-//  
-//  /* 'GETSET' returns None if key does not exist, else returns the old key*/
-//  reply = redisCommand(c,"GETSET %s %s", outbuf, orig_val);
-//  if(reply->type == REDIS_REPLY_STRING){
-//     freeReplyObject(reply);
-//     /* Key is already at current version. */
-//     bytes_written = write(from, "+OK\r\n", 5);
-//  }
-//  else if(reply->type == REDIS_REPLY_NIL){
-//
-//     freeReplyObject(reply);
-//     /* try to delete old keys. */
-//     /* TODO: "*" namespace. */
-//     if(v->num_versions>1){
-//        int i, pos=0;
-//        for(i=0; i<v->num_versions; i++){
-//          pos+=sprintf(outbuf+pos, "%s|%s:%s ", v->versions[i], ns, suffix);
-//        }
-//        reply = redisCommand(c,"DEL %s", outbuf);
-//        
-//        freeReplyObject(reply);
-//     }
-//     bytes_written = write(from, "+OK\r\n", 5);
-//  }
-//  else{
-//     freeReplyObject(reply);
-//     /* TODO testing */
-//     bytes_written = write(from, "-ERR\r\n", 6);
-//  }
-//
-//////  /*  Now reconstruct buffer.  */
-//////  int pos = 0;
-//////  /* perform checks in case garbage input */
-//////  if(cmd && orig_key && orig_val){
-//////    strcpy(outbuf+pos, cmd); // add a space 
-//////    pos = strlen(cmd); // advance past cmd
-//////    strncpy(outbuf+pos, " ", 1); // add a space 
-//////    pos++;
-//////    sprintf(outbuf+pos, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
-//////    pos += strlen(outbuf+pos);
-//////    strncpy(outbuf+pos, " ", 1);
-//////    pos++;
-//////    strcpy(outbuf+pos, orig_val);
-//////    pos+= strlen(orig_val);
-///*TODO use these above!!!*/
-//////    /* optional flags */
-//////    if(flags){
-//////      strncpy(outbuf+pos, " ", 1);
-//////      pos++;
-//////      strcpy(outbuf+pos, flags);
-//////      pos+= strlen(flags);
-//////    }
-//////    strncpy(outbuf+pos, "\r\n\0", 3);
-//////  }
-//
-// //TODO write the response here!
-// // bytes_written = write(to, outbuf, strlen(outbuf));
-//  if (bytes_written == -1) 
-//      return 1;
-//  return 0;
-//
-//}
-//
-//
+
 //int kvolve_get(char * buf, char * outbuf, int from, redisContext * c){
 //
 //  redisReply *reply;
