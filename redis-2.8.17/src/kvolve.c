@@ -120,8 +120,7 @@ void kvolve_set(redisClient * c){
     // TODO what to do about the outbuf? stack? or what is fastest?
     initlen = sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
     new_keyname_sds = sdsnewlen(outbuf, initlen);
-    ////* copy the new string into the persistent buffer, but deal with sds... */
-    ////memcpy(outbuf, new_keyname_sds-sizeof(struct sdshdr), sizeof(struct sdshdr)+initlen);
+    printf("\nallocated new_keyanme_sds at %p......................\n", new_keyname_sds);
     c->argv[1]->ptr = new_keyname_sds; //outbuf+sizeof(struct sdshdr);
 
     /* Do the actual set */
@@ -132,10 +131,12 @@ void kvolve_set(redisClient * c){
     /* Now check to see if deletions are necessary */
     num_vers = v->num_versions;
     while(num_vers > 1){
-        sprintf(outbuf, "%s|%s:%s", v->versions[num_vers-2], ns, suffix);
-        robj * todel = createObject(REDIS_STRING, outbuf);
+        initlen = sprintf(outbuf, "%s|%s:%s", v->versions[num_vers-2], ns, suffix);
+        sds tmp = sdsnewlen(outbuf, initlen);
+        robj * todel = createObject(REDIS_STRING, tmp);
         dbDelete(c->db, todel);
         zfree(todel);
+        sdsfree(tmp);
         num_vers--;
     }
 
