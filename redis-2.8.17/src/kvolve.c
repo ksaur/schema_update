@@ -119,9 +119,9 @@ void kvolve_set(redisClient * c){
     
     // TODO what to do about the outbuf? stack? or what is fastest?
     initlen = sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
-    new_keyname_sds = sdsnewlen(outbuf, initlen);
+    new_keyname_sds = sdsnewlen(outbuf, initlen); // don't free this. added to db
     printf("\nallocated new_keyanme_sds at %p......................\n", new_keyname_sds);
-    c->argv[1]->ptr = new_keyname_sds; //outbuf+sizeof(struct sdshdr);
+    c->argv[1]->ptr = new_keyname_sds; // ->ptr will be freed in teardown w others
 
     /* Do the actual set */
     ret = processCommand(c);
@@ -144,7 +144,6 @@ void kvolve_set(redisClient * c){
     if(ret == REDIS_OK) 
         resetClient(c);
 
-    //TODO how to free new_keyname_sds without segfaulting...?
  
 
     /* check for old and delete if necessary */
