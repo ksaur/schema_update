@@ -1,6 +1,7 @@
 #ifndef _KVOLVE_H
 #define _KVOLVE_H
 #include <bits/siginfo.h> // For redis.h 'siginfo_t' TODO why will this not work with signal.h??
+#include "uthash.h"
 #include "redis.h"
 
 

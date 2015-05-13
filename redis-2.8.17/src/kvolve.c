@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <assert.h>
 #undef __GNUC__  // allow malloc (needed for uthash)  (see redis.h ln 1403)
 #include "uthash.h"
