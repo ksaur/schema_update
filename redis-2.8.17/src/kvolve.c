@@ -11,16 +11,19 @@
 
 
 static struct version_hash * vers_list = NULL;
+#define KV_INIT_SZ 10
 
 /* return 1 to halt normal execution flow. return 0 to continue as normal */
 int kvolve_process_command(redisClient *c){
   
-    if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "client") == 0 && 
+    if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "client") == 0 && 
                  strcasecmp((char*)c->argv[1]->ptr, "setname") == 0) {
-        kvolve_append_version((char*)c->argv[2]->ptr);
-    } else if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
+        kvolve_append_version((char*)c->argv[2]->ptr, NULL, 0);
+    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "update") == 0){
+        kvolve_append_version((char*)c->argv[1]->ptr, (char*)c->argv[2]->ptr, 1);
+    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
         kvolve_set(c);
-    } else if (c->argc > 1 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
+    } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
         kvolve_get(c);
     }
  
@@ -28,9 +31,9 @@ int kvolve_process_command(redisClient *c){
     return 0;
 }
 /* return 1 if appended new version.  else return 0 */
-int kvolve_append_version(char * vers_str){
+int kvolve_append_version(char * vers_str, void * upd_code, int is_update){
   
-    int toprocess =  strlen(vers_str);
+    int i, toprocess =  strlen(vers_str);
     char * cpy = malloc(strlen(vers_str)+1);
     strcpy(cpy, vers_str);
 
@@ -44,7 +47,6 @@ int kvolve_append_version(char * vers_str){
             ns_lookup = strtok(NULL, "@"); /* We've already started processing */
         vers = strtok(NULL, ",");
         int pos = strlen(vers);
-        printf("%s %s %s %d %d", ns_lookup, vers, vers_str, toprocess, pos);
   
         struct version_hash *e = NULL;
   
@@ -54,18 +56,37 @@ int kvolve_append_version(char * vers_str){
             e->ns = malloc(strlen(ns_lookup)+1);
             strcpy(e->ns, ns_lookup); 
             e->num_versions = 1;
-            e->versions = calloc(10,sizeof(char*)); /* TODO, dynamically resize array */
+            e->versions = calloc(KV_INIT_SZ,sizeof(char*));
             e->versions[0] = malloc(strlen(vers)+1);
+            e->funs = calloc(KV_INIT_SZ,sizeof(kvolve_update_kv));
             strcpy(e->versions[0], vers);
             HASH_ADD_KEYPTR(hh, vers_list, e->ns, strlen(e->ns), e);  /* id: name of key field */
-        } else if(strcmp(e->versions[e->num_versions-1], vers) == 0){
-            // TODO do we need to do something here?
-        } else{
-            
-            /* TODO correct version validation!!!!! */
+        } else if (strcmp(e->versions[e->num_versions-1], vers) == 0){
+            /* If they try to load code twice, error if it's not the same code */
+            // if (is_update && upd_code)
+            //TODO finish implementing... memcmp??
+            //    printf("WARNING, different code already loaded....\n");
+        } else if (!is_update){
+            printf("ERROR, INVALID VERSION (%s). System is at \'%s\' for ns \'%s\'\n", 
+                   vers, e->versions[e->num_versions-1], e->ns);
+            //TODO don't let it connect.
+            return 0;
+        } else {
+            // TODO better error handling...
+            if (!upd_code){
+                printf("ERROR, no update code to be loaded...\n");
+                return 0;
+            } 
+            for (i = 0; i < e->num_versions; i++){
+                if (strcmp(e->versions[i], vers) == 0){
+                    printf("ERROR, previous version %s already loaded...\n", vers);
+                    return 0;
+                }
+            }
+            printf("TODO: LOAD FUNCTION!...\n");
             e->num_versions++;
-            if(e->num_versions > 10){
-                /* TODO realloc*/
+            if (e->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
+                /* TODO realloc*/ /* TODO, dynamically resize array */
                 printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS. ");
                 return 0;
             }
@@ -73,7 +94,7 @@ int kvolve_append_version(char * vers_str){
             e->versions[e->num_versions-1] = malloc(strlen(vers)+1);
             strcpy(e->versions[e->num_versions-1], vers);
         }
-        if(&vers[pos] == &cpy[toprocess])
+        if (&vers[pos] == &cpy[toprocess])
             return 1;
     }
     return 1;
@@ -90,10 +111,10 @@ struct version_hash * version_hash_lookup(char * lookup){
     /* Split out the namespace from the key, if a namespace exists. */
     char * split = strrchr(lookup, ':');
     if (split != NULL){
-        len = split - lookup;
-        ns = malloc(len+1);
+        len = split - lookup + 1;
+        ns = malloc(len);
         tofree = 1;
-        snprintf(ns, len+1, "%s", lookup);
+        snprintf(ns, len, "%s", lookup);
     }
     else
         ns = "*"; 
@@ -129,8 +150,11 @@ void kvolve_get(redisClient * c){
     assert(v != NULL);
 
     /* Lookup the key in the database to get the current version */
+	/* ...alternatively we could return this here, but that messes up the
+     * stats, key expiration, etc...so we'd have to do all that, and mess 
+     * with the return packet as well.*/
     robj *o = lookupKeyRead(c->db, c->argv[1]);
-    if(!o)
+    if (!o)
         return;
 
     /* Check to see if the version is current */
