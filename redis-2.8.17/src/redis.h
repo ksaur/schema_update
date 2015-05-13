@@ -396,6 +396,7 @@ typedef struct redisObject {
     unsigned encoding:4;
     unsigned lru:REDIS_LRU_BITS; /* lru time (relative to server.lruclock) */
     int refcount;
+    char *vers;
     void *ptr;
 } robj;
 

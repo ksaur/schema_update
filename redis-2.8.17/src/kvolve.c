@@ -9,13 +9,6 @@
 #include "redis.h"
 
 
-struct version_hash{
-    char * ns; /* key */
-    char ** versions; 
-    int num_versions;
-    UT_hash_handle hh; /* makes this structure hashable */
-};
-
 static struct version_hash * vers_list = NULL;
 
 /* return 1 to halt normal execution flow. return 0 to continue as normal */
@@ -24,12 +17,10 @@ int kvolve_process_command(redisClient *c){
     if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "client") == 0 && 
                  strcasecmp((char*)c->argv[1]->ptr, "setname") == 0) {
         kvolve_append_version((char*)c->argv[2]->ptr);
-        return 0;
     } else if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
         kvolve_set(c);
-        return 1;
-    } /*else if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
-        kvolve_set(c);
+    } /* else if (c->argc > 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
+        kvolve_get(c);
         return 1;
     } */
  
@@ -87,70 +78,50 @@ int kvolve_append_version(char * vers_str){
     return 1;
 }
 
-/* Split the original key into (namespace, keyname) */
-struct ns_keyname split_namespace_key(char * orig_key){
-    char * split = strrchr(orig_key, ':');
-    struct ns_keyname ns_k;
-    if (split == NULL){ //TODO testing
-        ns_k.ns = "*";
-        ns_k.keyname = orig_key;
-    } else {
-        orig_key[split - orig_key] = '\0'; // clobber the ':'
-        ns_k.ns = orig_key; 
-        ns_k.keyname = split+1;
+/* Looks for a prepended namespace in @lookup, and then lookups and returns the
+ * version information in the hashtable if it exists, else returns null.  */
+struct version_hash * version_hash_lookup(char * lookup){
+    struct version_hash *v = NULL;
+    char * ns;
+    size_t len;
+    int tofree = 0;
+
+    /* Split out the namespace from the key, if a namespace exists. */
+    char * split = strrchr(lookup, ':');
+    if (split != NULL){
+        len = split - lookup;
+        ns = malloc(len+1);
+        tofree = 1;
+        snprintf(ns, len+1, "%s", lookup);
     }
-    return ns_k;
+    else
+        ns = "*"; 
+
+    /* Get the current version for the namespace, if it exists */
+    HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
+    if (tofree)
+        free(ns);
+    return v;
 }
 
+
 void kvolve_set(redisClient * c){
-    struct version_hash *v = NULL;
-    size_t initlen;
-    int ret, num_vers;
-    sds new_keyname_sds;
-    char * outbuf;
 
-    struct ns_keyname ns_k = split_namespace_key((char*)c->argv[1]->ptr);
-    char * ns = ns_k.ns;
-    char * suffix = ns_k.keyname;
+    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
 
-    /* get the current version for the namespace */
-    HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
     /* TODO something better than assert fail.
      * Also, should we support 'default namespace' automatically? */
     assert(v != NULL);
     
-    /* allocate outbuf +3 (|, :, \n) */
-    outbuf = malloc(strlen(v->versions[v->num_versions-1])+strlen(ns)+strlen(suffix)+3);
-    initlen = sprintf(outbuf, "%s|%s:%s", v->versions[v->num_versions-1], ns, suffix);
-    new_keyname_sds = sdsnewlen(outbuf, initlen); // don't free this. added to db
-    free(outbuf);
-    c->argv[1]->ptr = new_keyname_sds; // ->ptr will be freed in teardown w others
-
-    /* Do the actual set */
-    ret = processCommand(c);
-
-    /* TODO: examine flags.... */
-
-    /* Now check to see if deletions are necessary */
-    num_vers = v->num_versions;
-    while(num_vers > 1){
-        outbuf = malloc(strlen(v->versions[num_vers-2])+strlen(ns)+strlen(suffix)+3);
-        initlen = sprintf(outbuf, "%s|%s:%s", v->versions[num_vers-2], ns, suffix);
-        sds tmp = sdsnewlen(outbuf, initlen);
-        free(outbuf);
-        robj * todel = createObject(REDIS_STRING, tmp);
-        dbDelete(c->db, todel);
-        zfree(todel);
-        sdsfree(tmp);
-        num_vers--;
-    }
-
-    if(ret == REDIS_OK) 
-        resetClient(c);
+	/* set the version field in the value (only the string is stored for the
+     * key).  Note that this will automatically blow away any old version. */
+    c->argv[2]->vers = v->versions[v->num_versions-1];
 
 }
 
-//int kvolve_get(char * buf, char * outbuf, int from, redisContext * c){
+void kvolve_get(redisClient * c){
+
+}
 //
 //  redisReply *reply;
 //  DEBUG_PRINT(("BUF IS \'%s\'", buf));

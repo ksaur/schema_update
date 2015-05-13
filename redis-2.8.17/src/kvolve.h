@@ -11,16 +11,17 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 
-struct ns_keyname{
-    char * ns;
-    char * keyname;
+struct version_hash{
+    char * ns; /* key */
+    char ** versions; 
+    int num_versions;
+    UT_hash_handle hh; /* makes this structure hashable */
 };
 
-struct ns_keyname split_namespace_key(char * orig_key);
+struct version_hash * version_hash_lookup(char * lookup);
 int kvolve_process_command(redisClient *c);
 int kvolve_append_version(char * vers_str);
 void kvolve_set(redisClient * c);
-//int kvolve_set(char * buf, char * outbuf, int from, redisContext * c);
-//int kvolve_get(char * buf, char * outbuf, int from, redisContext * c);
+void kvolve_get(redisClient * c);
 
 #endif
