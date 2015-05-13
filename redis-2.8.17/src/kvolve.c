@@ -4,10 +4,14 @@
 #include <string.h>
 #include <strings.h>
 #include <assert.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #undef __GNUC__  // allow malloc (needed for uthash)  (see redis.h ln 1403)
 #include "uthash.h"
 #include "kvolve.h"
 #include "redis.h"
+#include "kvolve_upd.h"
 
 
 static struct version_hash * vers_list = NULL;
@@ -16,11 +20,13 @@ static struct version_hash * vers_list = NULL;
 /* return 1 to halt normal execution flow. return 0 to continue as normal */
 int kvolve_process_command(redisClient *c){
   
-    if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "client") == 0 && 
-                 strcasecmp((char*)c->argv[1]->ptr, "setname") == 0) {
-        kvolve_append_version((char*)c->argv[2]->ptr, NULL, 0);
-    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "update") == 0){
-        kvolve_append_version((char*)c->argv[1]->ptr, (char*)c->argv[2]->ptr, 1);
+    if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
+            && (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)
+            && (strncasecmp((char*)c->argv[2]->ptr, "update", 6) == 0)){
+        kvolve_update_version((char*)(c->argv[2]->ptr)+6);
+    } else if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0) && 
+            (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)){
+        kvolve_check_version((char*)c->argv[2]->ptr);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
         kvolve_set(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
@@ -30,14 +36,14 @@ int kvolve_process_command(redisClient *c){
     // TODO, do we ever need to halt normal execution flow?
     return 0;
 }
-/* return 1 if appended new version.  else return 0 */
-int kvolve_append_version(char * vers_str, void * upd_code, int is_update){
+
+/* return 1 if OK.  else return 0. TODO don't allow connect if err */
+int kvolve_check_version(char * vers_str){
   
-    int i, toprocess =  strlen(vers_str);
+    int toprocess =  strlen(vers_str);
     char * cpy = malloc(strlen(vers_str)+1);
     strcpy(cpy, vers_str);
 
-    /* TODO verification/validation.....*/
     while(1) {
         char * ns_lookup; 
         char * vers;
@@ -58,45 +64,82 @@ int kvolve_append_version(char * vers_str, void * upd_code, int is_update){
             e->num_versions = 1;
             e->versions = calloc(KV_INIT_SZ,sizeof(char*));
             e->versions[0] = malloc(strlen(vers)+1);
-            e->funs = calloc(KV_INIT_SZ,sizeof(kvolve_update_kv));
+            e->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info));
             strcpy(e->versions[0], vers);
             HASH_ADD_KEYPTR(hh, vers_list, e->ns, strlen(e->ns), e);  /* id: name of key field */
-        } else if (strcmp(e->versions[e->num_versions-1], vers) == 0){
-            /* If they try to load code twice, error if it's not the same code */
-            // if (is_update && upd_code)
-            //TODO finish implementing... memcmp??
-            //    printf("WARNING, different code already loaded....\n");
-        } else if (!is_update){
+        } else if (strcmp(e->versions[e->num_versions-1], vers) != 0){
             printf("ERROR, INVALID VERSION (%s). System is at \'%s\' for ns \'%s\'\n", 
                    vers, e->versions[e->num_versions-1], e->ns);
             //TODO don't let it connect.
             return 0;
-        } else {
-            // TODO better error handling...
-            if (!upd_code){
-                printf("ERROR, no update code to be loaded...\n");
-                return 0;
-            } 
-            for (i = 0; i < e->num_versions; i++){
-                if (strcmp(e->versions[i], vers) == 0){
-                    printf("ERROR, previous version %s already loaded...\n", vers);
-                    return 0;
-                }
-            }
-            printf("TODO: LOAD FUNCTION!...\n");
-            e->num_versions++;
-            if (e->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
-                /* TODO realloc*/ /* TODO, dynamically resize array */
-                printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS. ");
-                return 0;
-            }
-            /* TODO validation!!!!!!!! */
-            e->versions[e->num_versions-1] = malloc(strlen(vers)+1);
-            strcpy(e->versions[e->num_versions-1], vers);
-        }
+        } 
         if (&vers[pos] == &cpy[toprocess])
             return 1;
     }
+}
+
+/* return 1 if update loaded.  else return 0. */
+int kvolve_update_version(void * upd_code){
+  
+    DEBUG_PRINT(("Updating with %s\n", (char*)upd_code));
+    struct stat s;
+    int err = stat(upd_code, &s);
+    if(-1 == err) {
+        printf("ERROR, update file %s does not exist.\n", (char*)upd_code);
+        return 0;
+    }
+    //int i, toprocess =  strlen(vers_str);
+    //char * cpy = malloc(strlen(vers_str)+1);
+    //strcpy(cpy, vers_str);
+
+    ///* TODO verification/validation.....*/
+    //while(1) {
+    //    char * ns_lookup; 
+    //    char * vers;
+    //    if (strcmp(cpy, vers_str) == 0)
+    //        ns_lookup = strtok(cpy, "@");
+    //    else
+    //        ns_lookup = strtok(NULL, "@"); /* We've already started processing */
+    //    vers = strtok(NULL, ",");
+    //    int pos = strlen(vers);
+  
+    //    struct version_hash *e = NULL;
+  
+    //    HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), e);  /* id already in the hash? */
+    //    if (e==NULL){
+    //        printf("ERROR, no such version (%s) for \'%s\'...\n", vers, ns_lookup);
+    //    } else if (strcmp(e->versions[e->num_versions-1], vers) == 0){
+    //        /* If they try to load code twice, error if it's not the same code */
+    //        //TODO finish implementing... memcmp??
+    //        //    printf("WARNING, different code already loaded....\n");
+    //    } else {
+    //        /* Load the update */
+
+    //        // TODO better error handling...
+    //        if (!upd_code){
+    //            printf("ERROR, no update code to be loaded...\n");
+    //            return 0;
+    //        } 
+    //        for (i = 0; i < e->num_versions; i++){
+    //            if (strcmp(e->versions[i], vers) == 0){
+    //                printf("ERROR, previous version %s already loaded...\n", vers);
+    //                return 0;
+    //            }
+    //        }
+    //        printf("TODO: LOAD FUNCTION!...\n");
+    //        e->num_versions++;
+    //        if (e->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
+    //            /* TODO realloc*/ /* TODO, dynamically resize array */
+    //            printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS. ");
+    //            return 0;
+    //        }
+    //        /* TODO validation!!!!!!!! */
+    //        e->versions[e->num_versions-1] = malloc(strlen(vers)+1);
+    //        strcpy(e->versions[e->num_versions-1], vers);
+    //    }
+    //    if (&vers[pos] == &cpy[toprocess])
+    //        return 1;
+    //}
     return 1;
 }
 
