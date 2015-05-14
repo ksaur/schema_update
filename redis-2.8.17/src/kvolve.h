@@ -16,7 +16,7 @@
 struct version_hash{
     char * ns; /* key */
     char ** versions; 
-    struct kvolve_upd_info * info; 
+    struct kvolve_upd_info ** info; 
     int num_versions;
     UT_hash_handle hh; /* makes this structure hashable */
 };

@@ -45,7 +45,8 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char * v0){
     v->num_versions = 1;
     v->versions = calloc(KV_INIT_SZ,sizeof(char*));
     v->versions[0] = malloc(strlen(v0)+1);
-    v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info));
+    v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info*));
+    v->info[0] = NULL;
     strcpy(v->versions[0], v0);
     HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);  /* id: name of key field */
     return v;
@@ -147,7 +148,7 @@ int kvolve_update_version(char * upd_code){
             }
             else{
                 v = kvolve_create_ns(list->to_ns, list->to_vers);
-                v->info = list;
+                v->info[0] = list;
                 item_used = 1;
                 succ_loaded++;
             }
@@ -166,7 +167,7 @@ int kvolve_update_version(char * upd_code){
             v->versions[v->num_versions-1] = malloc(strlen(list->to_vers)+1);
             strcpy(v->versions[v->num_versions-1], list->to_vers);
 
-            v->info = list;
+            v->info[v->num_versions-1] = list;
             item_used = 1;
             succ_loaded++;
         }
@@ -182,10 +183,6 @@ int kvolve_update_version(char * upd_code){
 
     }
     return succ_loaded;
-
-    /////////////////////// THIS IS HOW TO CALL!
-    //list->funs[0]("foo", "bar");
-
 }
 
 /* Looks for a prepended namespace in @lookup, and then lookups and returns the
@@ -231,6 +228,7 @@ void kvolve_set(redisClient * c){
 
 void kvolve_get(redisClient * c){
 
+    int i, key_vers = -1, fun;
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* TODO something better than assert fail.
@@ -246,12 +244,51 @@ void kvolve_get(redisClient * c){
         return;
 
     /* Check to see if the version is current */
-    if (strcmp(o->vers, v->versions[v->num_versions-1]))
+    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
 
     /* Key is present at an older version. Time to update, if available. */
-    // TODO implement
+    for (i = 0; i < v->num_versions; i++){
+        if (strcmp(v->versions[i], o->vers) == 0){
+            key_vers = i;
+            break;
+        }
+    }
+    if (key_vers == -1){
+        printf("ERROR, version (%s) update not found!\n", o->vers);
+        return;
+    }
 
+    /* call all update functions */
+    for ( ; key_vers < v->num_versions-1; key_vers++){
+        /* in some cases, there may be multiple updates */
+        if (!v->info[key_vers+1]){
+            printf("Warning: no update functions for %s:%s\n", 
+                   v->ns, v->versions[key_vers+1]); 
+            o->vers = v->versions[key_vers+1];
+            continue;
+        }
+        for (fun=0; fun < v->info[key_vers+1]->num_funs; fun++){
+            char * key = (char*)c->argv[1]->ptr;
+            char * val = (char*)o->ptr;
+            v->info[key_vers+1]->funs[fun](&key, (void*)&val);
+            if (key != (char*)c->argv[1]->ptr){
+                  //TODO IMPLEMENT....need to do something to DB.
+//                DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
+//                sdsfree(c->argv[1]->ptr); // free old memory
+//                //TODO are keys sds???  or just a char *???
+//                c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)
+//                free(key); // free user-update-allocated memory
+            }
+            if (val != (char*)o->ptr){
+                DEBUG_PRINT(("Updated value from %s to %s\n", (char*)o->ptr, val));
+                sdsfree(o->ptr);
+                o->ptr = sdsnew(val);
+                free(val);
+            }
+        }
+        o->vers = v->versions[key_vers+1];
+    }
 }
 
 #define __GNUC__  // "re-unallow" malloc
