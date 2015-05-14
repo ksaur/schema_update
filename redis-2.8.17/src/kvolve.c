@@ -273,22 +273,51 @@ void kvolve_get(redisClient * c){
             char * val = (char*)o->ptr;
             v->info[key_vers+1]->funs[fun](&key, (void*)&val);
             if (key != (char*)c->argv[1]->ptr){
-                  //TODO IMPLEMENT....need to do something to DB.
-//                DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
-//                sdsfree(c->argv[1]->ptr); // free old memory
-//                //TODO are keys sds???  or just a char *???
-//                c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)
-//                free(key); // free user-update-allocated memory
+                DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
+                robj * n = createStringObject(key,strlen(key));
+                kvolve_rename(c, c->argv[1], o, n);
+                free(n);
+                sdsfree(c->argv[1]->ptr); // free old memory
+                //TODO are keys sds???  or just a char *???
+                c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)
+                free(key); // free user-update-allocated memory
             }
             if (val != (char*)o->ptr){
                 DEBUG_PRINT(("Updated value from %s to %s\n", (char*)o->ptr, val));
                 sdsfree(o->ptr);
                 o->ptr = sdsnew(val);
                 free(val);
+                /* This will notify any client watching key (normally called 
+                 * automatically, but we bypassed by changing val directly */
+                signalModifiedKey(c->db,c->argv[1]);
             }
         }
         o->vers = v->versions[key_vers+1];
     }
+    server.dirty++;
+}
+
+void kvolve_rename(redisClient * c, robj *old, robj * val, robj * new) {
+
+    long long expire;
+
+    incrRefCount(val);
+    expire = getExpire(c->db,old);
+    if (lookupKeyWrite(c->db,new) != NULL) {
+        /* Overwrite: delete the old key before creating the new one
+         * with the same name. */
+        dbDelete(c->db,new);
+    }
+    dbAdd(c->db,new,val);
+    if (expire != -1) setExpire(c->db,new,expire);
+    dbDelete(c->db,old);
+    signalModifiedKey(c->db,old);
+    signalModifiedKey(c->db,new);
+    notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,"rename_from",
+        old,c->db->id);
+    notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,"rename_to",
+        new,c->db->id);
+    server.dirty++;
 }
 
 #define __GNUC__  // "re-unallow" malloc

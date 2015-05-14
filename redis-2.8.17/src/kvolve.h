@@ -28,5 +28,6 @@ int kvolve_check_version(char * vers_str);
 int kvolve_update_version(char * upd_code);
 void kvolve_set(redisClient * c);
 void kvolve_get(redisClient * c);
+void kvolve_rename(redisClient * c, robj *old, robj * val, robj * new);
 
 #endif
