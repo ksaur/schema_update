@@ -2,6 +2,7 @@
 #define _KVOLVE_UPD_H
 
 typedef void (*kvolve_update_kv_fun)(char * key, void * value);
+typedef struct kvolve_upd_info * (*kvolve_upd_info_getter)(void);
 
 struct kvolve_upd_info{
   char * from_ns;
@@ -10,6 +11,7 @@ struct kvolve_upd_info{
   char * to_vers;
   kvolve_update_kv_fun * funs;
   int num_funs;
+  struct kvolve_upd_info * next;
 };
 
 #endif

@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dlfcn.h>
 #undef __GNUC__  // allow malloc (needed for uthash)  (see redis.h ln 1403)
 #include "uthash.h"
 #include "kvolve.h"
@@ -37,6 +38,18 @@ int kvolve_process_command(redisClient *c){
     return 0;
 }
 
+struct version_hash * kvolve_create_ns(char *ns_lookup, char * v0){
+    struct version_hash * v = (struct version_hash*)malloc(sizeof(struct version_hash));
+    v->ns = malloc(strlen(ns_lookup)+1);
+    strcpy(v->ns, ns_lookup); 
+    v->num_versions = 1;
+    v->versions = calloc(KV_INIT_SZ,sizeof(char*));
+    v->versions[0] = malloc(strlen(v0)+1);
+    v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info));
+    strcpy(v->versions[0], v0);
+    HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);  /* id: name of key field */
+    return v;
+}
 /* return 1 if OK.  else return 0. TODO don't allow connect if err */
 int kvolve_check_version(char * vers_str){
   
@@ -54,22 +67,14 @@ int kvolve_check_version(char * vers_str){
         vers = strtok(NULL, ",");
         int pos = strlen(vers);
   
-        struct version_hash *e = NULL;
+        struct version_hash *v = NULL;
   
-        HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), e);  /* id already in the hash? */
-        if (e==NULL){
-            e = (struct version_hash*)malloc(sizeof(struct version_hash));
-            e->ns = malloc(strlen(ns_lookup)+1);
-            strcpy(e->ns, ns_lookup); 
-            e->num_versions = 1;
-            e->versions = calloc(KV_INIT_SZ,sizeof(char*));
-            e->versions[0] = malloc(strlen(vers)+1);
-            e->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info));
-            strcpy(e->versions[0], vers);
-            HASH_ADD_KEYPTR(hh, vers_list, e->ns, strlen(e->ns), e);  /* id: name of key field */
-        } else if (strcmp(e->versions[e->num_versions-1], vers) != 0){
+        HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), v);  /* id already in the hash? */
+        if (v==NULL){
+            kvolve_create_ns(ns_lookup, vers);
+        } else if (strcmp(v->versions[v->num_versions-1], vers) != 0){
             printf("ERROR, INVALID VERSION (%s). System is at \'%s\' for ns \'%s\'\n", 
-                   vers, e->versions[e->num_versions-1], e->ns);
+                   vers, v->versions[v->num_versions-1], v->ns);
             //TODO don't let it connect.
             return 0;
         } 
@@ -78,69 +83,109 @@ int kvolve_check_version(char * vers_str){
     }
 }
 
-/* return 1 if update loaded.  else return 0. */
-int kvolve_update_version(void * upd_code){
-  
-    DEBUG_PRINT(("Updating with %s\n", (char*)upd_code));
+/* return number of "struct kvolve_upd_info"'s loaded. */
+int kvolve_update_version(char * upd_code){
+
+    void *handle;
+    char *errstr;
+    kvolve_upd_info_getter fun;
+    struct kvolve_upd_info * list, * tmp;
+    struct version_hash * v;
+    int ok_to_load, succ_loaded = 0, item_used, err, i;
     struct stat s;
-    int err = stat(upd_code, &s);
+  
+    DEBUG_PRINT(("Updating with %s\n", upd_code));
+    err = stat(upd_code, &s);
     if(-1 == err) {
-        printf("ERROR, update file %s does not exist.\n", (char*)upd_code);
+        printf("ERROR, update file %s does not exist.\n", upd_code);
         return 0;
     }
-    //int i, toprocess =  strlen(vers_str);
-    //char * cpy = malloc(strlen(vers_str)+1);
-    //strcpy(cpy, vers_str);
 
-    ///* TODO verification/validation.....*/
-    //while(1) {
-    //    char * ns_lookup; 
-    //    char * vers;
-    //    if (strcmp(cpy, vers_str) == 0)
-    //        ns_lookup = strtok(cpy, "@");
-    //    else
-    //        ns_lookup = strtok(NULL, "@"); /* We've already started processing */
-    //    vers = strtok(NULL, ",");
-    //    int pos = strlen(vers);
-  
-    //    struct version_hash *e = NULL;
-  
-    //    HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), e);  /* id already in the hash? */
-    //    if (e==NULL){
-    //        printf("ERROR, no such version (%s) for \'%s\'...\n", vers, ns_lookup);
-    //    } else if (strcmp(e->versions[e->num_versions-1], vers) == 0){
-    //        /* If they try to load code twice, error if it's not the same code */
-    //        //TODO finish implementing... memcmp??
-    //        //    printf("WARNING, different code already loaded....\n");
-    //    } else {
-    //        /* Load the update */
+    handle = dlopen(upd_code, RTLD_LAZY);
+    if (handle == NULL){
+        errstr = dlerror();
+        printf ("A dynamic linking error occurred: (%s)\n", errstr);
+        return 0;
+    }
+    /* apparently there is no way to suppress -pedantic with -02 for dlsym on fptr?*/
+    fun = (kvolve_upd_info_getter)dlsym(handle, "get_update_func_list");
+    list = fun();
+    
+    while(list != NULL){
+        ok_to_load = 1; 
+        item_used = 0;
 
-    //        // TODO better error handling...
-    //        if (!upd_code){
-    //            printf("ERROR, no update code to be loaded...\n");
-    //            return 0;
-    //        } 
-    //        for (i = 0; i < e->num_versions; i++){
-    //            if (strcmp(e->versions[i], vers) == 0){
-    //                printf("ERROR, previous version %s already loaded...\n", vers);
-    //                return 0;
-    //            }
-    //        }
-    //        printf("TODO: LOAD FUNCTION!...\n");
-    //        e->num_versions++;
-    //        if (e->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
-    //            /* TODO realloc*/ /* TODO, dynamically resize array */
-    //            printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS. ");
-    //            return 0;
-    //        }
-    //        /* TODO validation!!!!!!!! */
-    //        e->versions[e->num_versions-1] = malloc(strlen(vers)+1);
-    //        strcpy(e->versions[e->num_versions-1], vers);
-    //    }
-    //    if (&vers[pos] == &cpy[toprocess])
-    //        return 1;
-    //}
-    return 1;
+        HASH_FIND(hh, vers_list, list->from_ns, strlen(list->from_ns), v);
+        /* make sure namespace exists */
+        if (v == NULL){
+            printf("No such namespace (%s) to upgrade.\n", list->from_ns);
+            ok_to_load = 0;
+        } 
+        else {
+            /* make sure update was not already loaded */
+            for (i = 0; i < v->num_versions; i++){
+                if (strcmp(v->versions[i], list->to_ns) == 0){
+                    printf("ERROR, previous version %s already loaded...\n", list->to_ns);
+                    ok_to_load = 0;
+                    break;
+                }
+            }
+        }
+        /* make sure the previous version exists */
+        if (strcmp(v->versions[v->num_versions-1], list->from_vers) != 0){
+            printf("No such version (%s) to upgrade for ns (%s).\n", 
+                   list->from_vers, list->from_ns);
+            ok_to_load = 0;
+        }
+
+        /* check to see if we need a new namespace */
+        if (strcmp(list->from_ns, list->to_ns) != 0){
+            HASH_FIND(hh, vers_list, list->to_ns, strlen(list->to_ns), v);
+            if (v != NULL){
+                printf("Cannot merge into existing ns (%s) from ns (%s).\n", 
+                       list->to_ns, list->from_ns);
+            }
+            else{
+                v = kvolve_create_ns(list->to_ns, list->to_vers);
+                v->info = list;
+                item_used = 1;
+                succ_loaded++;
+            }
+            ok_to_load = 0;
+        }
+
+        /* if none of the prior checks fired, then load */
+        if (ok_to_load){
+            
+            v->num_versions++;
+            if (v->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
+                /* TODO realloc*/ /* TODO, dynamically resize array */
+                printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS.\n");
+                return 0;
+            }
+            v->versions[v->num_versions-1] = malloc(strlen(list->to_vers)+1);
+            strcpy(v->versions[v->num_versions-1], list->to_vers);
+
+            v->info = list;
+            item_used = 1;
+            succ_loaded++;
+        }
+
+        /* if error above, free list and function info. else just advance ptr */
+        tmp = list->next;
+        if (!item_used) {
+            if (list->num_funs)
+                free(list->funs);
+            free(list);
+        }
+        list = tmp;
+
+    }
+    return succ_loaded;
+
+    /////////////////////// THIS IS HOW TO CALL!
+    //list->funs[0]("foo", "bar");
+
 }
 
 /* Looks for a prepended namespace in @lookup, and then lookups and returns the

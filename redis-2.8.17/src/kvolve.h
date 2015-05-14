@@ -22,9 +22,10 @@ struct version_hash{
 };
 
 struct version_hash * version_hash_lookup(char * lookup);
+struct version_hash * kvolve_create_ns(char *ns_lookup, char * v0);
 int kvolve_process_command(redisClient *c);
 int kvolve_check_version(char * vers_str);
-int kvolve_update_version(void * upd_code);
+int kvolve_update_version(char * upd_code);
 void kvolve_set(redisClient * c);
 void kvolve_get(redisClient * c);
 
