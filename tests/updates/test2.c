@@ -21,8 +21,8 @@ struct kvolve_upd_info * get_update_func_list(void){
 
     info->from_ns = "order";
     info->to_ns = "foo:order";
-    info->from_vers = "v0";
-    info->to_vers = "v1";
+    info->from_vers = "v1";
+    info->to_vers = "fv2";
     info->num_funs = 1;
     info->funs = calloc(info->num_funs, sizeof(kvolve_update_kv_fun));
     info->funs[0] = test_fun_ns_change;

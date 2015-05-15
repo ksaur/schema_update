@@ -41,6 +41,7 @@ robj *createObject(int type, void *ptr) {
     o->type = type;
     o->encoding = REDIS_ENCODING_RAW;
     o->ptr = ptr;
+    o->vers = NULL;
     o->refcount = 1;
 
     /* Set the LRU to the current lruclock (minutes resolution). */
@@ -284,7 +285,7 @@ robj *tryObjectEncoding(robj *o) {
     sds s = o->ptr;
     size_t len;
 
-    if (o->encoding != REDIS_ENCODING_RAW)
+    if (o->encoding != REDIS_ENCODING_RAW || o->vers != NULL)
         return o; /* Already encoded */
 
     /* It's not safe to encode shared objects: shared objects can be shared
