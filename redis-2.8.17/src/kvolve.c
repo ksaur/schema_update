@@ -38,10 +38,15 @@ int kvolve_process_command(redisClient *c){
     return 0;
 }
 
-struct version_hash * kvolve_create_ns(char *ns_lookup, char * v0){
+struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0){
     struct version_hash * v = (struct version_hash*)malloc(sizeof(struct version_hash));
     v->ns = malloc(strlen(ns_lookup)+1);
     strcpy(v->ns, ns_lookup); 
+    v->prev_ns = NULL;
+    if (prev_ns){
+        v->prev_ns = malloc(strlen(prev_ns)+1);
+        strcpy(v->prev_ns, prev_ns); 
+    }
     v->num_versions = 1;
     v->versions = calloc(KV_INIT_SZ,sizeof(char*));
     v->versions[0] = malloc(strlen(v0)+1);
@@ -72,7 +77,7 @@ int kvolve_check_version(char * vers_str){
   
         HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), v);  /* id already in the hash? */
         if (v==NULL){
-            kvolve_create_ns(ns_lookup, vers);
+            kvolve_create_ns(ns_lookup, NULL, vers);
         } else if (strcmp(v->versions[v->num_versions-1], vers) != 0){
             printf("ERROR, INVALID VERSION (%s). System is at \'%s\' for ns \'%s\'\n", 
                    vers, v->versions[v->num_versions-1], v->ns);
@@ -121,8 +126,21 @@ int kvolve_update_version(char * upd_code){
         if (v == NULL){
             printf("No such namespace (%s) to upgrade.\n", list->from_ns);
             ok_to_load = 0;
-        } 
-        else {
+        } else if (strcmp(list->from_ns, list->to_ns) != 0){
+            /* check to see if we need a new namespace */
+            HASH_FIND(hh, vers_list, list->to_ns, strlen(list->to_ns), v);
+            if (v != NULL){
+                printf("Cannot merge into existing ns (%s) from ns (%s).\n", 
+                       list->to_ns, list->from_ns);
+            }
+            else{
+                v = kvolve_create_ns(list->to_ns, list->from_ns, list->to_vers);
+                v->info[0] = list;
+                item_used = 1;
+                succ_loaded++;
+            }
+            ok_to_load = 0;
+        } else {
             /* make sure update was not already loaded */
             for (i = 0; i < v->num_versions; i++){
                 if (strcmp(v->versions[i], list->to_ns) == 0){
@@ -132,26 +150,10 @@ int kvolve_update_version(char * upd_code){
                 }
             }
         }
-        /* make sure the previous version exists */
-        if (strcmp(v->versions[v->num_versions-1], list->from_vers) != 0){
+        /* If not a new ns, make sure the previous version exists */
+        if (v->prev_ns == NULL && strcmp(v->versions[v->num_versions-1], list->from_vers) != 0){
             printf("No such version (%s) to upgrade for ns (%s).\n", 
                    list->from_vers, list->from_ns);
-            ok_to_load = 0;
-        }
-
-        /* check to see if we need a new namespace */
-        if (strcmp(list->from_ns, list->to_ns) != 0){
-            HASH_FIND(hh, vers_list, list->to_ns, strlen(list->to_ns), v);
-            if (v != NULL){
-                printf("Cannot merge into existing ns (%s) from ns (%s).\n", 
-                       list->to_ns, list->from_ns);
-            }
-            else{
-                v = kvolve_create_ns(list->to_ns, list->to_vers);
-                v->info[0] = list;
-                item_used = 1;
-                succ_loaded++;
-            }
             ok_to_load = 0;
         }
 
@@ -226,6 +228,17 @@ void kvolve_set(redisClient * c){
 
 }
 
+/* Get the keyname from @orig_key and combine it with @old_ns.  
+ * Allocates memory for the new string and returns it. */
+char * kvolve_prev_name(char * orig_key, char *old_ns){
+    char * name = strrchr(orig_key, ':');
+    char * ret = malloc(strlen(name)+strlen(old_ns) +1);
+    strcpy(ret, old_ns);
+    strcat(ret, name);
+    return ret;
+}
+
+
 void kvolve_get(redisClient * c){
 
     int i, key_vers = -1, fun;
@@ -240,6 +253,14 @@ void kvolve_get(redisClient * c){
      * stats, key expiration, etc...so we'd have to do all that, and mess 
      * with the return packet as well.*/
     robj *o = lookupKeyRead(c->db, c->argv[1]);
+    if (!o && v->prev_ns != NULL){
+        char * old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+        robj * oldobj = createStringObject(old,strlen(old));
+        o = lookupKeyRead(c->db, oldobj);
+        zfree(oldobj);
+        free(old);
+    }
+    /* try again. */
     if (!o)
         return;
 
@@ -276,7 +297,7 @@ void kvolve_get(redisClient * c){
                 DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
                 robj * n = createStringObject(key,strlen(key));
                 kvolve_rename(c, c->argv[1], o, n);
-                free(n);
+                zfree(n);
                 sdsfree(c->argv[1]->ptr); // free old memory
                 //TODO are keys sds???  or just a char *???
                 c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)

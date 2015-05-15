@@ -15,6 +15,7 @@
 
 struct version_hash{
     char * ns; /* key */
+    char * prev_ns; /* key */
     char ** versions; 
     struct kvolve_upd_info ** info; 
     int num_versions;
@@ -22,7 +23,7 @@ struct version_hash{
 };
 
 struct version_hash * version_hash_lookup(char * lookup);
-struct version_hash * kvolve_create_ns(char *ns_lookup, char * v0);
+struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0);
 int kvolve_process_command(redisClient *c);
 int kvolve_check_version(char * vers_str);
 int kvolve_update_version(char * upd_code);
