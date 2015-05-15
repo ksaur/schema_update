@@ -242,7 +242,10 @@ char * kvolve_prev_name(char * orig_key, char *old_ns){
 void kvolve_get(redisClient * c){
 
     int i, key_vers = -1, fun;
+    struct version_hash * v_new = NULL;
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    char * old = NULL; 
+    robj * oldobj = NULL;
 
     /* TODO something better than assert fail.
      * Also, should we support 'default namespace' automatically? */
@@ -254,18 +257,23 @@ void kvolve_get(redisClient * c){
      * with the return packet as well.*/
     robj *o = lookupKeyRead(c->db, c->argv[1]);
     if (!o && v->prev_ns != NULL){
-        char * old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-        robj * oldobj = createStringObject(old,strlen(old));
+        v_new = v;
+        HASH_FIND(hh, vers_list, v_new->prev_ns, strlen(v_new->prev_ns), v);
+        if  (!v) {
+            printf("Could not find previous ns (%s) for curr ns (%s)\n", 
+                 v_new->prev_ns, v_new->ns);
+            return;
+        }
+        old = kvolve_prev_name((char*)c->argv[1]->ptr, v_new->prev_ns);
+        oldobj = createStringObject(old,strlen(old));
         o = lookupKeyRead(c->db, oldobj);
-        zfree(oldobj);
-        free(old);
     }
     /* try again. */
     if (!o)
         return;
 
     /* Check to see if the version is current */
-    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (!v_new && strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
 
     /* Key is present at an older version. Time to update, if available. */
@@ -275,9 +283,14 @@ void kvolve_get(redisClient * c){
             break;
         }
     }
-    if (key_vers == -1){
+    if (!v_new && key_vers == -1){
         printf("ERROR, version (%s) update not found!\n", o->vers);
         return;
+    }
+    /* Check if we're in the current version for the _old_ namespace */
+    if (v_new && (key_vers == (v->num_versions - 1))){
+        v = v_new;
+        key_vers = -1;
     }
 
     /* call all update functions */
@@ -296,12 +309,19 @@ void kvolve_get(redisClient * c){
             if (key != (char*)c->argv[1]->ptr){
                 DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
                 robj * n = createStringObject(key,strlen(key));
-                kvolve_rename(c, c->argv[1], o, n);
+                if (oldobj)
+                    kvolve_rename(c, oldobj, o, n);
+                else
+                    kvolve_rename(c, c->argv[1], o, n);
                 zfree(n);
                 sdsfree(c->argv[1]->ptr); // free old memory
                 //TODO are keys sds???  or just a char *???
                 c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)
                 free(key); // free user-update-allocated memory
+                if(oldobj)
+                    zfree(oldobj);
+                if(old)
+                    free(old);
             }
             if (val != (char*)o->ptr){
                 DEBUG_PRINT(("Updated value from %s to %s\n", (char*)o->ptr, val));
@@ -314,6 +334,10 @@ void kvolve_get(redisClient * c){
             }
         }
         o->vers = v->versions[key_vers+1];
+        if ((v->num_versions-1 == key_vers) && v_new){
+            v = v_new;
+            key_vers = -1;
+        }
     }
     server.dirty++;
 }

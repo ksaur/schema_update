@@ -6,11 +6,13 @@
 /* test with key change */
 
 void test_fun_ns_change(char ** key, void ** value){
-    size_t s = strlen("foo:")+strlen((char*)*value)+1;
-    char * cons = malloc(s);
-    strcat(cons, "foo:");
-    strcat(cons, *value);
-    *value = cons;
+    /* The new-version code will already query with the correct string,
+       if we've reached this part of the update in the new namespace.
+       Just preserve the string and return it */
+    size_t s = strlen((char*)*value)+1;
+    char * save = malloc(s);
+    strcpy(save, *key);
+    *key = save;
 }
 
 struct kvolve_upd_info * get_update_func_list(void){
