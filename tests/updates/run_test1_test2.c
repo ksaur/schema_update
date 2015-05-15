@@ -52,7 +52,8 @@ void test_1_and_2_separate(void){
 }
 
 
-// TODO this test fails.
+/* The same test as before, except test running the updates one after the
+ * other.*/
 void test_1_and_2_together(void){
   redisReply *reply;
 
@@ -78,15 +79,15 @@ void test_1_and_2_together(void){
   freeReplyObject(reply);
 
   reply = redisCommand(c,"keys %s", "*");
-  assert(reply->elements == 2);
+  assert(reply->elements == 1);
   freeReplyObject(reply);
 
 }
 
 int main(void){
 
-  test_1_and_2_separate();
-  //test_1_and_2_together();
+  //test_1_and_2_separate();
+  test_1_and_2_together();
   printf("All pass.\n");
   return 0;
 }

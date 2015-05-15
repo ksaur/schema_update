@@ -291,6 +291,7 @@ void kvolve_get(redisClient * c){
     if (v_new && (key_vers == (v->num_versions - 1))){
         v = v_new;
         key_vers = -1;
+        v_new = NULL; /* no need to update from multipe namespaces */
     }
 
     /* call all update functions */
@@ -330,13 +331,17 @@ void kvolve_get(redisClient * c){
                 free(val);
                 /* This will notify any client watching key (normally called 
                  * automatically, but we bypassed by changing val directly */
-                signalModifiedKey(c->db,c->argv[1]);
+                if (oldobj)
+                    signalModifiedKey(c->db,oldobj);
+                else
+                    signalModifiedKey(c->db,c->argv[1]);
             }
         }
         o->vers = v->versions[key_vers+1];
-        if ((v->num_versions-1 == key_vers) && v_new){
+        if ((v->num_versions-1 == key_vers+1) && v_new){
             v = v_new;
-            key_vers = -1;
+            key_vers = -2; /* This will become -1 after the loop decrement */
+            v_new = NULL;
         }
     }
     server.dirty++;
