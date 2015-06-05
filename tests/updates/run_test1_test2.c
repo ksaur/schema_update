@@ -107,6 +107,8 @@ void test_1_and_2_together(void){
 
 int main(void){
 
+  system("killall redis-server");
+  sleep(2);
   test_1_and_2_separate();
   test_1_and_2_together();
   printf("All pass.\n");

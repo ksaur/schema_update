@@ -13,6 +13,12 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 
+
+/* copied from t_string.c */
+#define REDIS_SET_NO_FLAGS 0
+#define REDIS_SET_NX (1<<0)     /* Set if key not exists. */
+#define REDIS_SET_XX (1<<1)     /* Set if key exists. */
+
 struct version_hash{
     char * ns; /* key */
     char * prev_ns; /* key */
@@ -30,5 +36,7 @@ int kvolve_update_version(char * upd_code);
 void kvolve_set(redisClient * c);
 void kvolve_get(redisClient * c);
 void kvolve_rename(redisClient * c, robj *old, robj * val, robj * new);
+char * kvolve_prev_name(char * orig_key, char *old_ns);
+int kvolve_get_flags(redisClient *c);
 
 #endif

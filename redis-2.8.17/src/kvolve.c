@@ -28,7 +28,7 @@ int kvolve_process_command(redisClient *c){
     } else if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0) && 
             (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)){
         kvolve_check_version((char*)c->argv[2]->ptr);
-    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
+    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
         kvolve_set(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
         kvolve_get(c);
@@ -56,6 +56,7 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
     HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);  /* id: name of key field */
     return v;
 }
+
 /* return 1 if OK.  else return 0. TODO don't allow connect if err */
 int kvolve_check_version(char * vers_str){
   
@@ -87,6 +88,25 @@ int kvolve_check_version(char * vers_str){
         if (&vers[pos] == &cpy[toprocess])
             return 1;
     }
+}
+
+int kvolve_get_flags(redisClient *c){
+    int flags = REDIS_SET_NO_FLAGS;
+    int j;
+
+    for (j = 3; j < c->argc; j++) {
+        char *a = c->argv[j]->ptr;
+
+        if ((a[0] == 'n' || a[0] == 'N') &&
+            (a[1] == 'x' || a[1] == 'X') && a[2] == '\0') {
+            flags |= REDIS_SET_NX;
+        } else if ((a[0] == 'x' || a[0] == 'X') &&
+                   (a[1] == 'x' || a[1] == 'X') && a[2] == '\0') {
+            flags |= REDIS_SET_XX;
+        }
+
+    }
+    return flags;
 }
 
 /* return number of "struct kvolve_upd_info"'s loaded. */
@@ -213,18 +233,56 @@ struct version_hash * version_hash_lookup(char * lookup){
     return v;
 }
 
+/* TODO only set the new version if there are no flags or if the flags and
+ * the absense/presense of the key say that it will really be set. */
+/* NX -- Only set the key if it does not already exist */
+void kvolve_setnx(redisClient * c){
+    printf("Set NX not implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
+    exit(0);
+}
+/* XX -- Only set the key if it already exist. */
+void kvolve_setxx(redisClient * c){
+    printf("Set XX not implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
+    exit(0);
+}
 
 void kvolve_set(redisClient * c){
 
+    int flags;
+    char * old = NULL; 
+    robj * oldobj = NULL;
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* TODO something better than assert fail.
      * Also, should we support 'default namespace' automatically? */
     assert(v != NULL);
+
+    /* check to see if any flags set */
+    flags = kvolve_get_flags(c);
+    if(flags & REDIS_SET_XX){
+        kvolve_setxx(c);
+        return;
+    }
+    if(flags & REDIS_SET_NX){
+        kvolve_setnx(c);
+        return;
+    }
     
-	/* set the version field in the value (only the string is stored for the
+    /* set the version field in the value (only the string is stored for the
      * key).  Note that this will automatically blow away any old version. */
     c->argv[2]->vers = v->versions[v->num_versions-1];
+
+
+    /* Check to see if it's possible that an old version exists 
+     * under another namespace. If that's true, then we need to make sure it
+     * gets deleted if the set occurs, which depends on the flags. 
+     * (If there is no previous namespace, then any SET to the key will blow 
+     * away any old version in the current namespace.) */
+    if(v->prev_ns != NULL){
+        old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+        oldobj = createStringObject(old,strlen(old));
+        free(old);
+    }
 
 }
 
