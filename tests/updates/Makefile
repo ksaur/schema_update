@@ -5,3 +5,4 @@ all:
 	gcc -g run_test1_test2.c -o run_test1_test2 -lhiredis 
 clean:
 	rm *so
+	rm run_test1_test2
