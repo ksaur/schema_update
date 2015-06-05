@@ -281,6 +281,7 @@ void kvolve_set(redisClient * c){
     if(v->prev_ns != NULL){
         old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
         oldobj = createStringObject(old,strlen(old));
+        dbDelete(c->db,oldobj); /* will also free oldobj. */
         free(old);
     }
 

@@ -35,6 +35,8 @@ void test_1_and_2_separate(void){
 
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
   check(2, reply, "OK");
+  reply = redisCommand(c,"SET %s %s", "order:222", "ffff");
+  check(2, reply, "OK");
   reply = redisCommand(c,"SET %s %s", "user:bbbb", "9999");
   check(3, reply, "OK");
 
@@ -59,8 +61,12 @@ void test_1_and_2_separate(void){
   assert(reply->type == REDIS_REPLY_NIL);
   freeReplyObject(reply);
 
+  /* test that old version is clobbered by set in ns change*/
+  reply = redisCommand(c,"SET %s %s", "foo:order:222", "eeee");
+  check(9, reply, "OK");
+
   reply = redisCommand(c,"keys %s", "*");
-  assert(reply->elements == 2);
+  assert(reply->elements == 3);
   freeReplyObject(reply);
    
   system("killall redis-server");
