@@ -233,17 +233,44 @@ struct version_hash * version_hash_lookup(char * lookup){
     return v;
 }
 
+/* returns an array of objects at all possible versions of c->arg[v]@ns v */
+int kvolve_get_all_versions(redisClient * c, struct version_hash * v, robj ** arr){
+
+    int num_vers = 1, curr;
+    struct version_hash * tmp = v;
+    /* Get total number of versions */
+    while(tmp && tmp->prev_ns != NULL){
+        tmp = version_hash_lookup(tmp->prev_ns);
+        num_vers++;
+    }
+    arr = calloc(num_vers, sizeof(robj));
+    arr[0] = createStringObject((char*)c->argv[1]->ptr,strlen((char*)c->argv[1]->ptr));
+
+    for(curr=1; curr<num_vers; curr++){
+        char * old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+        arr[curr] = createStringObject(old,strlen(old));
+        free(old);
+    }
+   return num_vers;
+}
+
 /* TODO only set the new version if there are no flags or if the flags and
  * the absense/presense of the key say that it will really be set. */
+
 /* NX -- Only set the key if it does not already exist */
-void kvolve_setnx(redisClient * c){
-    printf("Set NX not implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
-    exit(0);
+void kvolve_setnx(redisClient * c, struct version_hash * v ){
+    printf("Set NX not fully implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
+    robj * objarr;
+    int numobj = kvolve_get_all_versions(c, v, &objarr);
+    printf ("%d\n", numobj);
 }
+
 /* XX -- Only set the key if it already exist. */
-void kvolve_setxx(redisClient * c){
-    printf("Set XX not implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
-    exit(0);
+void kvolve_setxx(redisClient * c, struct version_hash * v ){
+    printf("Set XX not fully implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
+    robj * objarr;
+    int numobj = kvolve_get_all_versions(c, v, &objarr);
+    printf ("%d\n", numobj);
 }
 
 void kvolve_set(redisClient * c){
@@ -260,11 +287,11 @@ void kvolve_set(redisClient * c){
     /* check to see if any flags set */
     flags = kvolve_get_flags(c);
     if(flags & REDIS_SET_XX){
-        kvolve_setxx(c);
+        kvolve_setxx(c, v);
         return;
     }
     if(flags & REDIS_SET_NX){
-        kvolve_setnx(c);
+        kvolve_setnx(c, v);
         return;
     }
     
@@ -274,8 +301,7 @@ void kvolve_set(redisClient * c){
 
 
     /* Check to see if it's possible that an old version exists 
-     * under another namespace. If that's true, then we need to make sure it
-     * gets deleted if the set occurs, which depends on the flags. 
+     * under another namespace. 
      * (If there is no previous namespace, then any SET to the key will blow 
      * away any old version in the current namespace.) */
     if(v->prev_ns != NULL){
