@@ -35,8 +35,12 @@ int kvolve_check_version(char * vers_str);
 int kvolve_update_version(char * upd_code);
 void kvolve_set(redisClient * c);
 void kvolve_get(redisClient * c);
+void kvolve_setnx(redisClient * c);
+void kvolve_setnx(redisClient * c);
 void kvolve_rename(redisClient * c, robj *old, robj * val, robj * new);
 char * kvolve_prev_name(char * orig_key, char *old_ns);
 int kvolve_get_flags(redisClient *c);
+int kvolve_exists_anywhere(redisClient * c, struct version_hash * v);
+int kvolve_get_all_versions(redisClient * c, struct version_hash * v, robj *** arr);
 
 #endif

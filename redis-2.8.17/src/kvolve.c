@@ -234,43 +234,76 @@ struct version_hash * version_hash_lookup(char * lookup){
 }
 
 /* returns an array of objects at all possible versions of c->arg[v]@ns v */
-int kvolve_get_all_versions(redisClient * c, struct version_hash * v, robj ** arr){
+int kvolve_get_all_versions(redisClient * c, struct version_hash * v, robj *** arr){
 
     int num_vers = 1, curr;
     struct version_hash * tmp = v;
-    /* Get total number of versions */
+    /* Get number of prev namespaces */
     while(tmp && tmp->prev_ns != NULL){
         tmp = version_hash_lookup(tmp->prev_ns);
         num_vers++;
     }
-    arr = calloc(num_vers, sizeof(robj));
-    arr[0] = createStringObject((char*)c->argv[1]->ptr,strlen((char*)c->argv[1]->ptr));
+    *arr = calloc(num_vers, sizeof(robj*));
+    (*arr)[0] = createStringObject((char*)c->argv[1]->ptr,strlen((char*)c->argv[1]->ptr));
+    printf("%p\n", (void*)(*arr)[0]);
 
+    /* curr = 1 because arr[0] already assigned w current vers */
+    tmp = v;
     for(curr=1; curr<num_vers; curr++){
-        char * old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-        arr[curr] = createStringObject(old,strlen(old));
+        char * old = kvolve_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
+        printf("creating with old = %s\n", old);
+        (*arr)[curr] = createStringObject(old,strlen(old));
         free(old);
+        if(tmp->prev_ns)
+            tmp = version_hash_lookup(tmp->prev_ns);
     }
    return num_vers;
+}
+
+/* Return 1 if the key exists at any version; else return 0 */
+int kvolve_exists_anywhere(redisClient * c, struct version_hash * v){
+    robj ** objarr = NULL;
+    int i, ret=0, numobj;
+    /* first, check for the current to see if we can short-cut */
+    if(lookupKeyRead(c->db, c->argv[1]))
+        return 1;
+
+    numobj = kvolve_get_all_versions(c, v, &objarr);
+    printf ("%d lenght.", numobj);
+    printf("%p\n", (void*)objarr[0]);
+    for(i=0; i<numobj; i++){
+        printf("Looking up key at %p\n", (void*)objarr[i]);
+        if(lookupKeyRead(c->db, objarr[i])){
+            ret = 1;
+            break;
+        }
+    }
+    for(i=0; i<numobj; i++){
+       zfree(objarr[i]);
+    }
+    free(objarr);
+    return ret;
 }
 
 /* TODO only set the new version if there are no flags or if the flags and
  * the absense/presense of the key say that it will really be set. */
 
 /* NX -- Only set the key if it does not already exist */
-void kvolve_setnx(redisClient * c, struct version_hash * v ){
+void kvolve_setnx(redisClient * c){
+    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    assert(v != NULL);
     printf("Set NX not fully implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
-    robj * objarr;
-    int numobj = kvolve_get_all_versions(c, v, &objarr);
-    printf ("%d\n", numobj);
+    int exists = kvolve_exists_anywhere(c, v);
+    printf ("Exists anywhere is = %d\n", exists);
 }
 
 /* XX -- Only set the key if it already exist. */
-void kvolve_setxx(redisClient * c, struct version_hash * v ){
+void kvolve_setxx(redisClient * c){
+    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    assert(v != NULL);
     printf("Set XX not fully implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
-    robj * objarr;
-    int numobj = kvolve_get_all_versions(c, v, &objarr);
-    printf ("%d\n", numobj);
+    int exists = kvolve_exists_anywhere(c, v);
+    printf ("Exists anywhere is = %d\n", exists);
 }
 
 void kvolve_set(redisClient * c){
@@ -278,22 +311,24 @@ void kvolve_set(redisClient * c){
     int flags;
     char * old = NULL; 
     robj * oldobj = NULL;
-    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    struct version_hash * v = NULL;
+
+    /* check to see if any flags set */
+    flags = kvolve_get_flags(c);
+    if(flags & REDIS_SET_XX){
+        kvolve_setxx(c);
+        return;
+    }
+    if(flags & REDIS_SET_NX){
+        kvolve_setnx(c);
+        return;
+    }
+    v = version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* TODO something better than assert fail.
      * Also, should we support 'default namespace' automatically? */
     assert(v != NULL);
 
-    /* check to see if any flags set */
-    flags = kvolve_get_flags(c);
-    if(flags & REDIS_SET_XX){
-        kvolve_setxx(c, v);
-        return;
-    }
-    if(flags & REDIS_SET_NX){
-        kvolve_setnx(c, v);
-        return;
-    }
     
     /* set the version field in the value (only the string is stored for the
      * key).  Note that this will automatically blow away any old version. */
