@@ -155,13 +155,58 @@ void test_nx(void){
   sleep(2);
 }
 
+void test_xx(void){
+  redisReply *reply;
+  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v1");
+  check(206, reply, "OK");
+
+  reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
+  check(207, reply, "OK");
+
+  reply = redisCommand(c,"client setname %s", 
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test2.so");
+  check(208, reply, "OK");
+
+  reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "gggg", "xx");
+  check(209, reply, "OK");
+
+  // Make sure that the name got changed
+  reply = redisCommand(c,"GET %s", "order:111");
+  assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
+
+  // Make sure that the value DID get changed 
+  reply = redisCommand(c,"GET %s", "foo:order:111");
+  check(210, reply, "gggg");
+
+  // Make sure it still works without ns change
+  reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "pppp", "xx");
+  check(211, reply, "OK");
+
+  reply = redisCommand(c,"GET %s", "foo:order:111");
+  check(212, reply, "pppp");
+
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 1);
+  freeReplyObject(reply);
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
+
 int main(void){
 
   system("killall redis-server");
   sleep(2);
-  //test_1_and_2_separate();
-  //test_1_and_2_together();
+  test_1_and_2_separate();
+  test_1_and_2_together();
   test_nx();
+  test_xx();
   printf("All pass.\n");
   return 0;
 }

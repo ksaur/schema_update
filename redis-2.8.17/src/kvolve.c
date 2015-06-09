@@ -291,13 +291,11 @@ int kvolve_exists_anywhere(redisClient * c){
 
 /* NX -- Only set the key if it does not already exist 
    Return 0 if set will not occur.  Return 1 if set will occurr. */
-void kvolve_setnx(redisClient * c){
+void kvolve_setnx(redisClient * c, struct version_hash * v){
     int exists = kvolve_exists_anywhere(c);
     printf ("Exists anywhere is = %d\n", exists);
 
-    /* if the key DOES exist at the CURRENT version, or
-     * if the key does NOT exist at ANY version, then 
-     * we can return without modifying anything; it will not be set. */
+    /* Do nothing if already at current namespace, or if doesn't exist at previous ns*/
     if (lookupKeyRead(c->db, c->argv[1]) || exists == 0)
         return;
 
@@ -306,8 +304,6 @@ void kvolve_setnx(redisClient * c){
      * it will appear to be fake-missing because it is under the old name.
      * BTW - This will bump the version to the new namespace version.  This
      * assumes that updates that change the keyname don't also change the val. */
-    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
-    assert(v != NULL);
 
     redisClient * c_fake = createClient(-1);
     c_fake->argc = 3;
@@ -327,16 +323,10 @@ void kvolve_setnx(redisClient * c){
     o->vers = v->versions[v->num_versions-1];
 }
 
-/* XX -- Only set the key if it already exist. */
-void kvolve_setxx(redisClient * c){
-    int exists = kvolve_exists_anywhere(c);
-    printf ("Exists anywhere is = %d\n", exists);
-    /////////// TODO IMPLEMENT ME!!!!!!!!!
-    /* if the key does NOT exist, then it will NOT be set, and we can return 
-       without modifying anything.*/
-    //if(exists == 0)
-    //    return 0;
-    //return 1;
+/* XX -- Only set the key if it already exists. */
+void kvolve_setxx(redisClient * c, struct version_hash * v){
+    kvolve_setnx(c, v);
+    c->argv[2]->vers = v->versions[v->num_versions-1];
 }
 
 void kvolve_set(redisClient * c){
@@ -346,22 +336,21 @@ void kvolve_set(redisClient * c){
     robj * oldobj = NULL;
     struct version_hash * v = NULL;
 
-    /* check to see if any flags set */
-    flags = kvolve_get_flags(c);
-    if(flags & REDIS_SET_XX){
-        kvolve_setxx(c);
-        return;
-    }
-    if(flags & REDIS_SET_NX){
-        kvolve_setnx(c);
-        return;
-    }
-    printf("CONTINUTED.\n");
     v = version_hash_lookup((char*)c->argv[1]->ptr);
-
     /* TODO something better than assert fail.
      * Also, should we support 'default namespace' automatically? */
     assert(v != NULL);
+
+    /* check to see if any flags set */
+    flags = kvolve_get_flags(c);
+    if(flags & REDIS_SET_XX){
+        kvolve_setxx(c, v);
+        return;
+    }
+    if(flags & REDIS_SET_NX){
+        kvolve_setnx(c, v);
+        return;
+    }
 
     
     /* set the version field in the value (only the string is stored for the
