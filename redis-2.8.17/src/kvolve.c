@@ -233,11 +233,16 @@ struct version_hash * version_hash_lookup(char * lookup){
     return v;
 }
 
-/* returns an array of objects at all possible versions of c->arg[v]@ns v */
-int kvolve_get_all_versions(redisClient * c, struct version_hash * v, robj *** arr){
+/* returns an array of objects at all possible versions of c->arg[v]@ns v 
+  
+   Allocates memory.  You must free it yourself.
+*/
+int kvolve_get_all_versions(redisClient * c, robj *** arr){
 
     int num_vers = 1, curr;
+    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
+    assert(v != NULL);
     /* Get number of prev namespaces */
     while(tmp && tmp->prev_ns != NULL){
         tmp = version_hash_lookup(tmp->prev_ns);
@@ -261,16 +266,14 @@ int kvolve_get_all_versions(redisClient * c, struct version_hash * v, robj *** a
 }
 
 /* Return 1 if the key exists at any version; else return 0 */
-int kvolve_exists_anywhere(redisClient * c, struct version_hash * v){
+int kvolve_exists_anywhere(redisClient * c){
     robj ** objarr = NULL;
     int i, ret=0, numobj;
     /* first, check for the current to see if we can short-cut */
     if(lookupKeyRead(c->db, c->argv[1]))
         return 1;
 
-    numobj = kvolve_get_all_versions(c, v, &objarr);
-    printf ("%d lenght.", numobj);
-    printf("%p\n", (void*)objarr[0]);
+    numobj = kvolve_get_all_versions(c, &objarr);
     for(i=0; i<numobj; i++){
         printf("Looking up key at %p\n", (void*)objarr[i]);
         if(lookupKeyRead(c->db, objarr[i])){
@@ -285,25 +288,55 @@ int kvolve_exists_anywhere(redisClient * c, struct version_hash * v){
     return ret;
 }
 
-/* TODO only set the new version if there are no flags or if the flags and
- * the absense/presense of the key say that it will really be set. */
 
-/* NX -- Only set the key if it does not already exist */
+/* NX -- Only set the key if it does not already exist 
+   Return 0 if set will not occur.  Return 1 if set will occurr. */
 void kvolve_setnx(redisClient * c){
+    int exists = kvolve_exists_anywhere(c);
+    printf ("Exists anywhere is = %d\n", exists);
+
+    /* if the key DOES exist at the CURRENT version, or
+     * if the key does NOT exist at ANY version, then 
+     * we can return without modifying anything; it will not be set. */
+    if (lookupKeyRead(c->db, c->argv[1]) || exists == 0)
+        return;
+
+    /* But if the key DOES exist at a PRIOR namespace, then we need to
+     * rename the key, so that the set doesn't erroneously occur (because
+     * it will appear to be fake-missing because it is under the old name.
+     * BTW - This will bump the version to the new namespace version.  This
+     * assumes that updates that change the keyname don't also change the val. */
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
     assert(v != NULL);
-    printf("Set NX not fully implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
-    int exists = kvolve_exists_anywhere(c, v);
-    printf ("Exists anywhere is = %d\n", exists);
+
+    redisClient * c_fake = createClient(-1);
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    char * old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+    c_fake->argv[1] = createStringObject(old,strlen(old));  // do not free. added to db
+    c_fake->argv[2] = c->argv[1]; 
+    sds ren = sdsnew("rename");
+    c_fake->cmd = lookupCommand(ren);
+    c_fake->cmd->proc(c_fake);
+    zfree(c_fake->argv);
+    zfree(c_fake);
+    sdsfree(ren);
+    free(old);
+    /* This assumes that namespace changes do not have value updates as well */
+    robj *o = lookupKeyRead(c->db, c->argv[1]);
+    o->vers = v->versions[v->num_versions-1];
 }
 
 /* XX -- Only set the key if it already exist. */
 void kvolve_setxx(redisClient * c){
-    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
-    assert(v != NULL);
-    printf("Set XX not fully implemented (%s) !!!!!!!!!\n", (char*)c->argv[1]->ptr);
-    int exists = kvolve_exists_anywhere(c, v);
+    int exists = kvolve_exists_anywhere(c);
     printf ("Exists anywhere is = %d\n", exists);
+    /////////// TODO IMPLEMENT ME!!!!!!!!!
+    /* if the key does NOT exist, then it will NOT be set, and we can return 
+       without modifying anything.*/
+    //if(exists == 0)
+    //    return 0;
+    //return 1;
 }
 
 void kvolve_set(redisClient * c){
@@ -323,6 +356,7 @@ void kvolve_set(redisClient * c){
         kvolve_setnx(c);
         return;
     }
+    printf("CONTINUTED.\n");
     v = version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* TODO something better than assert fail.
@@ -336,7 +370,7 @@ void kvolve_set(redisClient * c){
 
 
     /* Check to see if it's possible that an old version exists 
-     * under another namespace. 
+     * under another namespace.  If so, rename it (to make xx/nx flags correct) 
      * (If there is no previous namespace, then any SET to the key will blow 
      * away any old version in the current namespace.) */
     if(v->prev_ns != NULL){
@@ -375,6 +409,8 @@ void kvolve_get(redisClient * c){
 	/* ...alternatively we could return this here, but that messes up the
      * stats, key expiration, etc...so we'd have to do all that, and mess 
      * with the return packet as well.*/
+	//TODO, use "kvolve_get_all_versions" to test for namespaces that are
+	//changed twice...this will only get the immediately previous namespace.
     robj *o = lookupKeyRead(c->db, c->argv[1]);
     if (!o && v->prev_ns != NULL){
         v_new = v;

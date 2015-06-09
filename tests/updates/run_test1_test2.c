@@ -127,9 +127,30 @@ void test_nx(void){
        "update/home/ksaur/AY1415/schema_update/tests/updates/test2.so");
   check(203, reply, "OK");
 
-  reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "ffff", "nx");
-  check(204, reply, "OK");
+  reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "gggg", "nx");
+  assert(reply->type == REDIS_REPLY_NIL);
 
+  // Make sure that the name got changed
+  reply = redisCommand(c,"GET %s", "order:111");
+  assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
+
+  // Make sure that the VALUE did NOT get changed (should be ffff not gggg).
+  reply = redisCommand(c,"GET %s", "foo:order:111");
+  check(204, reply, "ffff");
+
+  // Make sure it still works without ns change
+  reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "pppp", "nx");
+  assert(reply->type == REDIS_REPLY_NIL);
+
+  reply = redisCommand(c,"GET %s", "foo:order:111");
+  check(205, reply, "ffff");
+
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 1);
+  freeReplyObject(reply);
+
+  printf("Redis shutdown:\n");
   system("killall redis-server");
   sleep(2);
 }
