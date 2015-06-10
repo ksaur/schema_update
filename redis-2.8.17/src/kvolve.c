@@ -30,9 +30,9 @@ int kvolve_process_command(redisClient *c){
         kvolve_set(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
         kvolve_get(c);
-    } //else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
-       // kvolve_setnx(c);
-    //}
+    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
+        kvolve_setnx(c, NULL);
+    }
  
     // TODO, do we ever need to halt normal execution flow?
     return 0;

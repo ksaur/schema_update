@@ -154,7 +154,54 @@ void test_nx(void){
   system("killall redis-server");
   sleep(2);
 }
+/* Redis allows "setnx" as an actual (to-be-deprecated) command or "set ... nx" as flags
+   http://redis.io/commands/set
+   http://redis.io/commands/setnx */
+void test_setnx(void){
+  redisReply *reply;
+  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  sleep(2);
 
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v1");
+  check(301, reply, "OK");
+
+  reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
+  check(302, reply, "OK");
+
+  reply = redisCommand(c,"client setname %s", 
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test2.so");
+  check(303, reply, "OK");
+
+  reply = redisCommand(c,"SETNX %s %s", "foo:order:111", "gggg");
+  assert(reply->type == REDIS_REPLY_INTEGER);
+  assert(reply->integer == 0);
+
+  // Make sure that the name got changed
+  reply = redisCommand(c,"GET %s", "order:111");
+  assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
+
+  // Make sure that the VALUE did NOT get changed (should be ffff not gggg).
+  reply = redisCommand(c,"GET %s", "foo:order:111");
+  check(304, reply, "ffff");
+
+  // Make sure it still works without ns change
+  reply = redisCommand(c,"SETNX %s %s", "foo:order:111", "pppp");
+  assert(reply->type == REDIS_REPLY_INTEGER);
+  assert(reply->integer == 0);
+
+  reply = redisCommand(c,"GET %s", "foo:order:111");
+  check(305, reply, "ffff");
+
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 1);
+  freeReplyObject(reply);
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
 void test_xx(void){
   redisReply *reply;
   system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
@@ -203,10 +250,11 @@ int main(void){
 
   system("killall redis-server");
   sleep(2);
-  test_1_and_2_separate();
-  test_1_and_2_together();
-  test_nx();
-  test_xx();
+  //test_1_and_2_separate();
+  //test_1_and_2_together();
+  //test_nx();
+  //test_xx();
+  test_setnx();
   printf("All pass.\n");
   return 0;
 }
