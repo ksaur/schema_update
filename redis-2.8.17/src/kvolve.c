@@ -290,20 +290,54 @@ int kvolve_exists_anywhere(redisClient * c){
     return ret;
 }
 
+/* return the key with the namespace that's currently in the db */
+robj * kvolve_get_curr_ver(redisClient * c){
+
+    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    struct version_hash * tmp = v;
+    robj * lookup = NULL;
+    assert(v != NULL);
+
+    /* first check the obvious (current) */
+    if(lookupKeyRead(c->db, c->argv[1]))
+       return c->argv[1];
+
+    /* Iterate prev namespaces */
+    while(tmp && tmp->prev_ns){
+        printf("tmp is %p\n", (void*)tmp);
+        char * old = kvolve_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
+        DEBUG_PRINT(("creating with old = %s\n", old));
+        lookup = createStringObject(old,strlen(old));
+        free(old);
+        if(lookupKeyRead(c->db, lookup))
+            return lookup;
+        zfree(lookup);
+        if(!tmp->prev_ns)
+            break;
+        tmp = version_hash_lookup(tmp->prev_ns);
+    }
+    return NULL;
+}
+
 
 /* NX -- Only set the key if it does not already exist 
    Return 0 if set will not occur.  Return 1 if set will occurr. */
 /* TODO This assumes that namespace changes do not have value updates as well */
 void kvolve_setnx(redisClient * c, struct version_hash * v){
-    int exists = kvolve_exists_anywhere(c);
-    DEBUG_PRINT(("Exists anywhere is = %d\n", exists));
+    //int exists = kvolve_exists_anywhere(c);
+    robj * present = kvolve_get_curr_ver(c);
+    DEBUG_PRINT(("Present is = %p\n", (void*)present));
+
+    //TODO TODO rewrite this!!!
 
     /* Do nothing if already at current namespace, or if doesn't exist at previous ns*/
-    if (lookupKeyRead(c->db, c->argv[1]) || exists == 0)
+    if (lookupKeyRead(c->db, c->argv[1]) || present == NULL)
         return;
 
     if(!v) /* if the user calls setnx directly instead of using flags w set*/
        v = version_hash_lookup((char*)c->argv[1]->ptr);
+
+    //TODO TODO TODO use and free 'present'
 
     /* But if the key DOES exist at a PRIOR namespace, then we need to
      * rename the key, so that the set doesn't erroneously occur (because
