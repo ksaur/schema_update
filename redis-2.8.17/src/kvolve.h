@@ -37,7 +37,7 @@ void kvolve_set(redisClient * c);
 void kvolve_get(redisClient * c);
 void kvolve_setnx(redisClient * c, struct version_hash * v);
 void kvolve_setxx(redisClient * c, struct version_hash * v);
-void kvolve_rename(redisClient * c, robj *old, robj * val, robj * new);
+void kvolve_rename(redisClient * c, struct version_hash * v);
 char * kvolve_prev_name(char * orig_key, char *old_ns);
 int kvolve_get_flags(redisClient *c);
 int kvolve_exists_anywhere(redisClient * c);

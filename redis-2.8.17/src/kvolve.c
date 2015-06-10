@@ -32,7 +32,9 @@ int kvolve_process_command(redisClient *c){
         kvolve_set(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
         kvolve_get(c);
-    }
+    } //else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
+       // kvolve_setnx(c);
+    //}
  
     // TODO, do we ever need to halt normal execution flow?
     return 0;
@@ -291,36 +293,24 @@ int kvolve_exists_anywhere(redisClient * c){
 
 /* NX -- Only set the key if it does not already exist 
    Return 0 if set will not occur.  Return 1 if set will occurr. */
+/* TODO This assumes that namespace changes do not have value updates as well */
 void kvolve_setnx(redisClient * c, struct version_hash * v){
     int exists = kvolve_exists_anywhere(c);
-    printf ("Exists anywhere is = %d\n", exists);
+    DEBUG_PRINT(("Exists anywhere is = %d\n", exists));
 
     /* Do nothing if already at current namespace, or if doesn't exist at previous ns*/
     if (lookupKeyRead(c->db, c->argv[1]) || exists == 0)
         return;
+
+    if(!v) /* if the user calls setnx directly instead of using flags w set*/
+       v = version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* But if the key DOES exist at a PRIOR namespace, then we need to
      * rename the key, so that the set doesn't erroneously occur (because
      * it will appear to be fake-missing because it is under the old name.
      * BTW - This will bump the version to the new namespace version.  This
      * assumes that updates that change the keyname don't also change the val. */
-
-    redisClient * c_fake = createClient(-1);
-    c_fake->argc = 3;
-    c_fake->argv = zmalloc(sizeof(void*)*3);
-    char * old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-    c_fake->argv[1] = createStringObject(old,strlen(old));  // do not free. added to db
-    c_fake->argv[2] = c->argv[1]; 
-    sds ren = sdsnew("rename");
-    c_fake->cmd = lookupCommand(ren);
-    c_fake->cmd->proc(c_fake);
-    zfree(c_fake->argv);
-    zfree(c_fake);
-    sdsfree(ren);
-    free(old);
-    /* This assumes that namespace changes do not have value updates as well */
-    robj *o = lookupKeyRead(c->db, c->argv[1]);
-    o->vers = v->versions[v->num_versions-1];
+    kvolve_rename(c,v);
 }
 
 /* XX -- Only set the key if it already exists. */
@@ -454,12 +444,7 @@ void kvolve_get(redisClient * c){
             v->info[key_vers+1]->funs[fun](&key, (void*)&val);
             if (key != (char*)c->argv[1]->ptr){
                 DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
-                robj * n = createStringObject(key,strlen(key));
-                if (oldobj)
-                    kvolve_rename(c, oldobj, o, n);
-                else
-                    kvolve_rename(c, c->argv[1], o, n);
-                zfree(n);
+                kvolve_rename(c, v);
                 sdsfree(c->argv[1]->ptr); // free old memory
                 //TODO are keys sds???  or just a char *???
                 c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)
@@ -492,27 +477,23 @@ void kvolve_get(redisClient * c){
     server.dirty++;
 }
 
-void kvolve_rename(redisClient * c, robj *old, robj * val, robj * new) {
+void kvolve_rename(redisClient * c, struct version_hash * v) {
 
-    long long expire;
-
-    incrRefCount(val);
-    expire = getExpire(c->db,old);
-    if (lookupKeyWrite(c->db,new) != NULL) {
-        /* Overwrite: delete the old key before creating the new one
-         * with the same name. */
-        dbDelete(c->db,new);
-    }
-    dbAdd(c->db,new,val);
-    if (expire != -1) setExpire(c->db,new,expire);
-    dbDelete(c->db,old);
-    signalModifiedKey(c->db,old);
-    signalModifiedKey(c->db,new);
-    notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,"rename_from",
-        old,c->db->id);
-    notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,"rename_to",
-        new,c->db->id);
-    server.dirty++;
+    redisClient * c_fake = createClient(-1);
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    char * old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+    c_fake->argv[1] = createStringObject(old,strlen(old));  // do not free. added to db
+    c_fake->argv[2] = c->argv[1]; 
+    sds ren = sdsnew("rename");
+    c_fake->cmd = lookupCommand(ren);
+    c_fake->cmd->proc(c_fake);
+    zfree(c_fake->argv);
+    zfree(c_fake);
+    sdsfree(ren);
+    free(old);
+    robj *o = lookupKeyRead(c->db, c->argv[1]);
+    o->vers = v->versions[v->num_versions-1];
 }
 
 #define __GNUC__  // "re-unallow" malloc
