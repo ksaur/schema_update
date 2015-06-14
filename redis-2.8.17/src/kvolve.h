@@ -10,7 +10,9 @@
 /* gateway function. TODO, change return type to void? */
 int kvolve_process_command(redisClient *c);
 
-/**** Currently supported Redis commands ******/
+/************* Currently supported Redis commands ************/
+
+/******* Strings ********/
 /* supports all flags*/
 void kvolve_set(redisClient * c);
 /* can also be set w flags, redis marked this as to-be-deprecated */

@@ -16,6 +16,9 @@ void check(int test_num, redisReply *reply, char * expected){
 }
 
 
+const char * server_loc = "../../../redis-2.8.17/src/redis-server ../../../redis-2.8.17/redis.conf &";
+const char * no_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/strings/test_upd_no_ns_change.so";
+const char * w_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/strings/test_upd_with_ns_change.so";
 
 
 /* Test updating with two namespaces.  Perform the updates on the two
@@ -25,7 +28,7 @@ void test_update_separate(void){
 
   redisReply *reply;
 
-  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  system(server_loc);
   sleep(2);
   printf("Inside test_update_separate\n");
 
@@ -41,8 +44,7 @@ void test_update_separate(void){
   check(3, reply, "OK");
 
   printf("about to load update\n");
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_no_ns_change.so");
+  reply = redisCommand(c,"client setname %s", no_ns_change); 
   check(4, reply, "OK");
 
   printf("done loading update\n");
@@ -51,8 +53,7 @@ void test_update_separate(void){
   reply = redisCommand(c,"GET %s", "user:bbbb");
   check(6, reply, "9999");
 
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
   check(7, reply, "OK");
   reply = redisCommand(c,"GET %s", "foo:order:111");
   check(8, reply, "ffffUPDATED");
@@ -79,7 +80,7 @@ void test_update_separate(void){
  * other.*/
 void test_update_consecu(void){
   redisReply *reply;
-  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  system(server_loc);
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
@@ -89,11 +90,9 @@ void test_update_consecu(void){
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
   check(102, reply, "OK");
 
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_no_ns_change.so");
+  reply = redisCommand(c,"client setname %s", no_ns_change); 
   check(103, reply, "OK");
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
   check(104, reply, "OK");
 
   reply = redisCommand(c,"GET %s", "foo:order:111");
@@ -113,7 +112,7 @@ void test_update_consecu(void){
 
 void test_nx(void){
   redisReply *reply;
-  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  system(server_loc);
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
@@ -123,8 +122,7 @@ void test_nx(void){
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
   check(202, reply, "OK");
 
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
   check(203, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "gggg", "nx");
@@ -159,7 +157,7 @@ void test_nx(void){
    http://redis.io/commands/setnx */
 void test_setnx(void){
   redisReply *reply;
-  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  system(server_loc);
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
@@ -169,8 +167,7 @@ void test_setnx(void){
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
   check(302, reply, "OK");
 
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
   check(303, reply, "OK");
 
   reply = redisCommand(c,"SETNX %s %s", "foo:order:111", "gggg");
@@ -204,7 +201,7 @@ void test_setnx(void){
 }
 void test_xx(void){
   redisReply *reply;
-  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  system(server_loc);
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
@@ -214,8 +211,7 @@ void test_xx(void){
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
   check(207, reply, "OK");
 
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
   check(208, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "gggg", "xx");
@@ -248,7 +244,7 @@ void test_xx(void){
 
 void test_mset_mget(void){
   redisReply *reply;
-  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  system(server_loc);
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
@@ -261,8 +257,7 @@ void test_mset_mget(void){
   reply = redisCommand(c,"MSET %s %s %s %s", "order:333", "ffff", "order:444", "wwww");
   check(303, reply, "OK");
 
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
   check(304, reply, "OK");
 
   reply = redisCommand(c,"GET %s", "foo:order:111");
@@ -296,11 +291,11 @@ int main(void){
 
   system("killall redis-server");
   sleep(2);
-  //test_update_separate();
-  //test_update_consecu();
-  //test_nx();
-  //test_xx();
-  //test_setnx();
+  test_update_separate();
+  test_update_consecu();
+  test_nx();
+  test_xx();
+  test_setnx();
   test_mset_mget();
   printf("All pass.\n");
   return 0;
