@@ -246,15 +246,53 @@ void test_xx(void){
   sleep(2);
 }
 
+void test_mset(void){
+  redisReply *reply;
+  system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v1");
+  check(301, reply, "OK");
+
+  reply = redisCommand(c,"MSET %s %s %s %s", "order:111", "ffff", "order:222", "wwww");
+  check(302, reply, "OK");
+
+  reply = redisCommand(c,"client setname %s", 
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  check(303, reply, "OK");
+
+  reply = redisCommand(c,"GET %s", "foo:order:111");
+  check(304, reply, "ffff");
+  reply = redisCommand(c,"GET %s", "foo:order:222");
+  check(305, reply, "wwww");
+
+  // Make sure that the old got deleted
+  reply = redisCommand(c,"GET %s", "order:111");
+  assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
+  reply = redisCommand(c,"GET %s", "order:222");
+  assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 2);
+  freeReplyObject(reply);
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
+
 int main(void){
 
   system("killall redis-server");
   sleep(2);
-  test_update_separate();
-  test_update_consecu();
-  test_nx();
-  test_xx();
-  test_setnx();
+  //test_update_separate();
+  //test_update_consecu();
+  //test_nx();
+  //test_xx();
+  //test_setnx();
+  test_mset();
   printf("All pass.\n");
   return 0;
 }

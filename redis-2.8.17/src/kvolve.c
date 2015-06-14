@@ -28,7 +28,11 @@ int kvolve_process_command(redisClient *c){
         kvolve_check_version((char*)c->argv[2]->ptr);
     } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
         kvolve_set(c);
+    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "mset") == 0){
+        kvolve_mset(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
+        kvolve_get(c);
+    } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "mget") == 0){
         kvolve_get(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
         kvolve_setnx(c, NULL);
@@ -77,6 +81,29 @@ void kvolve_setxx(redisClient * c, struct version_hash * v){
 	/* If the set occurs, this will correctly bump the version.  If doesn't
      * occur, this will be ignored.*/
     c->argv[2]->vers = v->versions[v->num_versions-1];
+}
+
+void kvolve_mset(redisClient * c){
+    int i;
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    sds ren = sdsnew("set");
+    c_fake->cmd = lookupCommand(ren);
+
+    assert(c->argc % 2 == 1);
+    for (i=1; i < c->argc; i=i+2){
+        c_fake->argv[1]= c->argv[i];
+        c_fake->argv[2]= c->argv[i+1];
+        kvolve_set(c_fake);
+    }
+    zfree(c_fake->argv);
+    zfree(c_fake);
+    sdsfree(ren);
+}
+void kvolve_mget(redisClient * c){
+
 }
 
 void kvolve_set(redisClient * c){
@@ -185,6 +212,7 @@ void kvolve_get(redisClient * c){
         for (fun=0; fun < v->info[key_vers+1]->num_funs; fun++){
             char * key = (char*)c->argv[1]->ptr;
             char * val = (char*)o->ptr;
+            /* next line calls the update func (mods key/val as specified): */
             v->info[key_vers+1]->funs[fun](&key, (void*)&val);
             if (key != (char*)c->argv[1]->ptr){
                 DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));

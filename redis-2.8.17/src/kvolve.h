@@ -7,10 +7,19 @@
 #include "kvolve_internal.h"
 
 
+/* gateway function. TODO, change return type to void? */
 int kvolve_process_command(redisClient *c);
+
+/**** Currently supported Redis commands ******/
+/* supports all flags*/
 void kvolve_set(redisClient * c);
-void kvolve_get(redisClient * c);
-void kvolve_setnx(redisClient * c, struct version_hash * v);
+/* can also be set w flags, redis marked this as to-be-deprecated */
+void kvolve_setnx(redisClient * c, struct version_hash * v); 
+/* not actually part of the redis API explicitly (usually set w flags) */
 void kvolve_setxx(redisClient * c, struct version_hash * v);
+void kvolve_mset(redisClient * c);
+void kvolve_get(redisClient * c);
+void kvolve_mget(redisClient * c);
+
 
 #endif
