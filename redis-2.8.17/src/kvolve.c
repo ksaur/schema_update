@@ -61,7 +61,6 @@ void kvolve_setnx(redisClient * c, struct version_hash * v){
     /* If doesn't exist anywhere, do nothing */
     if (present == NULL)
         return;
-    zfree(present);
 
     if(!v) /* if the user calls setnx directly instead of using flags w set*/
        v = version_hash_lookup((char*)c->argv[1]->ptr);

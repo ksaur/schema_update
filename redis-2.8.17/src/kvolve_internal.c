@@ -226,6 +226,12 @@ struct version_hash * version_hash_lookup(char * lookup){
         free(ns);
     return v;
 }
+struct version_hash * version_hash_lookup_from_prev(char * lookup){
+    struct version_hash *v = NULL;
+    /* Get the current version for the namespace, if it exists */
+    HASH_FIND(hh, vers_list, lookup, strlen(lookup), v);
+    return v;
+}
 
 ///* returns an array of objects at all possible versions of c->arg[v]@ns v 
 //  
@@ -282,28 +288,28 @@ struct version_hash * version_hash_lookup(char * lookup){
 //    return ret;
 //}
 
-/* return the key with the namespace that's currently in the db */
+/* return the VALUE with the namespace that's currently in the db */
 robj * kvolve_get_curr_ver(redisClient * c){
 
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
-    robj * lookup = NULL;
+    robj * key, * val;
     assert(v != NULL);
 
     /* first check the obvious (current) */
-    if(lookupKeyRead(c->db, c->argv[1]))
-       return c->argv[1];
+    val = lookupKeyRead(c->db, c->argv[1]);
+    if(val) return val;
 
     /* Iterate prev namespaces */
     while(tmp && tmp->prev_ns){
         printf("tmp is %p\n", (void*)tmp);
         char * old = kvolve_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
         DEBUG_PRINT(("creating with old = %s\n", old));
-        lookup = createStringObject(old,strlen(old));
+        key = createStringObject(old,strlen(old));
         free(old);
-        if(lookupKeyRead(c->db, lookup))
-            return lookup;
-        zfree(lookup);
+        val = lookupKeyRead(c->db, key);
+        zfree(key);
+        if (val) return val;
         if(!tmp->prev_ns)
             break;
         tmp = version_hash_lookup(tmp->prev_ns);
@@ -332,37 +338,18 @@ void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
 void kvolve_check_update_kv_pair(redisClient * c){
 
     int i, key_vers = -1, fun;
-    struct version_hash * v_new = NULL;
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
-    char * old = NULL; 
-    robj * oldobj = NULL;
 
     /* TODO something better than assert fail.
      * Also, should we support 'default namespace' automatically? */
     assert(v != NULL);
 
-    /* Lookup the key in the database to get the current version */
-	//TODO, use "kvolve_get_all_versions" to test for namespaces that are
-	//changed twice...this will only get the immediately previous namespace.
-    robj *o = lookupKeyRead(c->db, c->argv[1]);
-    if (!o && v->prev_ns != NULL){
-        v_new = v;
-        HASH_FIND(hh, get_vers_list(), v_new->prev_ns, strlen(v_new->prev_ns), v);
-        if  (!v) {
-            printf("Could not find previous ns (%s) for curr ns (%s)\n", 
-                 v_new->prev_ns, v_new->ns);
-            return;
-        }
-        old = kvolve_prev_name((char*)c->argv[1]->ptr, v_new->prev_ns);
-        oldobj = createStringObject(old,strlen(old));
-        o = lookupKeyRead(c->db, oldobj);
-    }
-    /* try again. */
+    robj * o = kvolve_get_curr_ver(c);
     if (!o)
         return;
 
     /* Check to see if the version is current */
-    if (!v_new && strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (!v->prev_ns && strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
 
     /* Key is present at an older version. Time to update, if available. */
@@ -374,11 +361,10 @@ void kvolve_check_update_kv_pair(redisClient * c){
     }
 
     /* Check if we're in the current version for the _old_ namespace */
-    if (v_new && (key_vers == (v->num_versions - 1))){
+    if (v->prev_ns && (key_vers == (v->num_versions - 1))){
         DEBUG_PRINT(("Updating from old namespace\n"));
-        v = v_new;
+        v = version_hash_lookup_from_prev(v->prev_ns);
         key_vers = -1;
-        v_new = NULL; /* no need to update from multipe namespaces */
     }
 
     /* call all update functions */
@@ -402,10 +388,6 @@ void kvolve_check_update_kv_pair(redisClient * c){
                 //TODO are keys sds???  or just a char *???
                 c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)
                 free(key); // free user-update-allocated memory
-                if(oldobj)
-                    zfree(oldobj);
-                if(old)
-                    free(old);
             }
             if (val != (char*)o->ptr){
                 DEBUG_PRINT(("Updated value from %s to %s\n", (char*)o->ptr, val));
@@ -414,17 +396,13 @@ void kvolve_check_update_kv_pair(redisClient * c){
                 free(val);
                 /* This will notify any client watching key (normally called 
                  * automatically, but we bypassed by changing val directly */
-                if (oldobj)
-                    signalModifiedKey(c->db,oldobj);
-                else
-                    signalModifiedKey(c->db,c->argv[1]);
+                signalModifiedKey(c->db,o);
             }
         }
         o->vers = v->versions[key_vers+1];
-        if ((v->num_versions-1 == key_vers+1) && v_new){
-            v = v_new;
+        if ((v->num_versions-1 == key_vers+1) && v->prev_ns){
+            v = version_hash_lookup_from_prev(v->prev_ns);
             key_vers = -2; /* This will become -1 after the loop decrement */
-            v_new = NULL;
         }
     }
     server.dirty++;

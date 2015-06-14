@@ -30,6 +30,7 @@ struct version_hash{
 
 struct version_hash * get_vers_list(void);
 struct version_hash * version_hash_lookup(char * lookup);
+struct version_hash * version_hash_lookup_from_prev(char * lookup);
 struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0);
 int kvolve_check_version(char * vers_str);
 int kvolve_update_version(char * upd_code);
