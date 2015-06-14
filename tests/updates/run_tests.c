@@ -21,13 +21,13 @@ void check(int test_num, redisReply *reply, char * expected){
 /* Test updating with two namespaces.  Perform the updates on the two
  * keys.  Then load the 2nd udpate (namespace change), and perform the 
  * update.  Assert that the key at the old ns was deleted. */
-void test_1_and_2_separate(void){
+void test_update_separate(void){
 
   redisReply *reply;
 
   system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
   sleep(2);
-  printf("Inside test_1_and_2_separate\n");
+  printf("Inside test_update_separate\n");
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
   reply = redisCommand(c, "client setname %s", "order@v0,user@u0");
@@ -42,7 +42,7 @@ void test_1_and_2_separate(void){
 
   printf("about to load update\n");
   reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test1.so");
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_no_ns_change.so");
   check(4, reply, "OK");
 
   printf("done loading update\n");
@@ -52,7 +52,7 @@ void test_1_and_2_separate(void){
   check(6, reply, "9999");
 
   reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test2.so");
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
   check(7, reply, "OK");
   reply = redisCommand(c,"GET %s", "foo:order:111");
   check(8, reply, "ffffUPDATED");
@@ -77,7 +77,7 @@ void test_1_and_2_separate(void){
 
 /* The same test as before, except test running the updates one after the
  * other.*/
-void test_1_and_2_together(void){
+void test_update_consecu(void){
   redisReply *reply;
   system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
   sleep(2);
@@ -90,10 +90,10 @@ void test_1_and_2_together(void){
   check(102, reply, "OK");
 
   reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test1.so");
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_no_ns_change.so");
   check(103, reply, "OK");
   reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test2.so");
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
   check(104, reply, "OK");
 
   reply = redisCommand(c,"GET %s", "foo:order:111");
@@ -124,7 +124,7 @@ void test_nx(void){
   check(202, reply, "OK");
 
   reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test2.so");
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
   check(203, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "gggg", "nx");
@@ -170,7 +170,7 @@ void test_setnx(void){
   check(302, reply, "OK");
 
   reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test2.so");
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
   check(303, reply, "OK");
 
   reply = redisCommand(c,"SETNX %s %s", "foo:order:111", "gggg");
@@ -215,7 +215,7 @@ void test_xx(void){
   check(207, reply, "OK");
 
   reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test2.so");
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
   check(208, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "gggg", "xx");
@@ -250,10 +250,10 @@ int main(void){
 
   system("killall redis-server");
   sleep(2);
-  //test_1_and_2_separate();
-  //test_1_and_2_together();
-  //test_nx();
-  //test_xx();
+  test_update_separate();
+  test_update_consecu();
+  test_nx();
+  test_xx();
   test_setnx();
   printf("All pass.\n");
   return 0;

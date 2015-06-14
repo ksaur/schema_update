@@ -1,8 +1,8 @@
 
 all:
-	gcc -shared -fPIC -g test1.c -o test1.so -ldl -I../../redis-2.8.17/src/
-	gcc -shared -fPIC -g test2.c -o test2.so -ldl -I../../redis-2.8.17/src/
-	gcc -g run_test1_test2.c -o run_test1_test2 -lhiredis 
+	gcc -shared -fPIC -g test_upd_no_ns_change.c -o test_upd_no_ns_change.so -ldl -I../../redis-2.8.17/src/
+	gcc -shared -fPIC -g test_upd_with_ns_change.c -o test_upd_with_ns_change.so -ldl -I../../redis-2.8.17/src/
+	gcc -g run_tests.c -o run_tests -lhiredis 
 clean:
-	rm *so
-	rm run_test1_test2
+	rm -f *so
+	rm -f run_tests
