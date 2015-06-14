@@ -246,7 +246,7 @@ void test_xx(void){
   sleep(2);
 }
 
-void test_mset(void){
+void test_mset_mget(void){
   redisReply *reply;
   system("../../redis-2.8.17/src/redis-server ../../redis-2.8.17/redis.conf &");
   sleep(2);
@@ -258,14 +258,17 @@ void test_mset(void){
   reply = redisCommand(c,"MSET %s %s %s %s", "order:111", "ffff", "order:222", "wwww");
   check(302, reply, "OK");
 
-  reply = redisCommand(c,"client setname %s", 
-       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  reply = redisCommand(c,"MSET %s %s %s %s", "order:333", "ffff", "order:444", "wwww");
   check(303, reply, "OK");
 
+  reply = redisCommand(c,"client setname %s", 
+       "update/home/ksaur/AY1415/schema_update/tests/updates/test_upd_with_ns_change.so");
+  check(304, reply, "OK");
+
   reply = redisCommand(c,"GET %s", "foo:order:111");
-  check(304, reply, "ffff");
+  check(305, reply, "ffff");
   reply = redisCommand(c,"GET %s", "foo:order:222");
-  check(305, reply, "wwww");
+  check(306, reply, "wwww");
 
   // Make sure that the old got deleted
   reply = redisCommand(c,"GET %s", "order:111");
@@ -275,7 +278,13 @@ void test_mset(void){
   assert(reply->type == REDIS_REPLY_NIL);
   freeReplyObject(reply);
   reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 4);
+  freeReplyObject(reply);
+
+  reply = redisCommand(c,"MGET %s %s", "foo:order:333", "foo:order:444");
   assert(reply->elements == 2);
+  assert(strcmp(reply->element[0]->str, "ffff") == 0);
+  assert(strcmp(reply->element[1]->str, "wwww") == 0);
   freeReplyObject(reply);
 
   printf("Redis shutdown:\n");
@@ -292,7 +301,7 @@ int main(void){
   //test_nx();
   //test_xx();
   //test_setnx();
-  test_mset();
+  test_mset_mget();
   printf("All pass.\n");
   return 0;
 }

@@ -33,7 +33,7 @@ int kvolve_process_command(redisClient *c){
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
         kvolve_get(c);
     } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "mget") == 0){
-        kvolve_get(c);
+        kvolve_mget(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
         kvolve_setnx(c, NULL);
     }
@@ -102,8 +102,23 @@ void kvolve_mset(redisClient * c){
     zfree(c_fake);
     sdsfree(ren);
 }
-void kvolve_mget(redisClient * c){
 
+void kvolve_mget(redisClient * c){
+    int i;
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 2;
+    c_fake->argv = zmalloc(sizeof(void*)*2);
+    sds ren = sdsnew("get");
+    c_fake->cmd = lookupCommand(ren);
+
+    for (i=1; i < c->argc; i++){
+        c_fake->argv[1]= c->argv[i];
+        kvolve_get(c_fake);
+    }
+    zfree(c_fake->argv);
+    zfree(c_fake);
+    sdsfree(ren);
 }
 
 void kvolve_set(redisClient * c){
