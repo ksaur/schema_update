@@ -23,5 +23,8 @@ void kvolve_mset(redisClient * c);
 void kvolve_get(redisClient * c);
 void kvolve_mget(redisClient * c);
 
+/******* Sets ********/
+void kvolve_sadd(redisClient * c);
+void kvolve_smembers(redisClient * c);
 
 #endif
