@@ -121,7 +121,7 @@ void kvolve_mset(redisClient * c){
  * so it will be deleted properly (and return the right value count*/
 
 void kvolve_del(redisClient * c){
-    kvolve_check_rename(c);
+    kvolve_check_rename(c, c->argc);
 }
 
 /* check for update, the same as kvolve_get, but a substring */

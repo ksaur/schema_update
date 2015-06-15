@@ -406,40 +406,44 @@ void test_incr(void){
 }
 
 void test_getset(void){
-//  redisReply *reply;
-//  system(server_loc);
-//  sleep(2);
-//
-//  redisContext * c = redisConnect("127.0.0.1", 6379);
-//  reply = redisCommand(c, "client setname %s", "order@v1");
-//  check(601, reply, "OK");
-//
-//  reply = redisCommand(c, "INCR %s ", "order:111");
-//  check_int(602, reply, 1);
-//
-//  reply = redisCommand(c, "INCR %s ", "order:111");
-//  check_int(603, reply, 2);
-//
-//  reply = redisCommand(c, "INCRBY %s %s", "order:222", "10");
-//  check_int(604, reply, 10);
-//
-//
-//  reply = redisCommand(c,"client setname %s", w_ns_change);
-//  check(605, reply, "OK");
-//
-//  reply = redisCommand(c, "INCR %s ", "foo:order:111");
-//  check_int(606, reply, 3);
-//
-//  reply = redisCommand(c, "INCRBY %s %s", "foo:order:222", "10");
-//  check_int(607, reply, 20);
-//
-//  reply = redisCommand(c,"keys %s", "*");
-//  assert(reply->elements == 2);
-//  freeReplyObject(reply);
-//
-//  printf("Redis shutdown:\n");
-//  system("killall redis-server");
-//  sleep(2);
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v1");
+  check(701, reply, "OK");
+
+  /* next 3 calls verbatim from getset manual entry. Make sure the weird incr works 
+   * w/o versioning */
+  reply = redisCommand(c, "INCR %s ", "order:111");
+  check_int(702, reply, 1);
+
+  reply = redisCommand(c, "GETSET %s %s", "order:111", "0");
+  check(703, reply, "1");
+
+  reply = redisCommand(c, "GET %s", "order:111");
+  check(704, reply, "0");
+
+  reply = redisCommand(c, "INCR %s ", "order:111");
+  check_int(705, reply, 1);
+
+  reply = redisCommand(c,"client setname %s", w_ns_change);
+  check(706, reply, "OK");
+
+  reply = redisCommand(c, "GETSET %s %s", "foo:order:111", "33");
+  check(707, reply, "1");
+
+  reply = redisCommand(c, "GETSET %s %s", "foo:order:111", "0");
+  check(708, reply, "33");
+
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 1);
+  freeReplyObject(reply);
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
 }
 
 int main(void){

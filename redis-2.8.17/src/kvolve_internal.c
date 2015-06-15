@@ -334,8 +334,8 @@ void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
     free(old);
 }
 
-/* checks if name is necessary then performs it (for multiple args) .*/
-void kvolve_check_rename(redisClient * c){
+/* checks if name is necessary then performs it (for nargs args) .*/
+void kvolve_check_rename(redisClient * c, int nargs){
 
     int i;
     robj * o;
@@ -350,7 +350,7 @@ void kvolve_check_rename(redisClient * c){
     c_fake->argc = 2;
     c_fake->argv = zmalloc(sizeof(void*)*2);
 
-    for (i=1; i < c->argc; i++){
+    for (i=1; i < nargs; i++){
         c_fake->argv[1]= c->argv[i];
         o = kvolve_get_curr_ver(c_fake);
         if (o->encoding == REDIS_ENCODING_RAW && // non-raws don't have vers.
@@ -378,9 +378,15 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         if (!o) return;
     }
 
+    /* non-raws (like incr) don't have vers, and we handle keys only, as values
+     * are types such as ints.*/
+    if (o->encoding != REDIS_ENCODING_RAW){
+        kvolve_check_rename(c, 2);
+        return;
+    }
+
     /* Check to see if the version is current */
-    if (o->encoding == REDIS_ENCODING_RAW && // non-raws (like incr) don't have vers.
-           strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
 
     /* Key is present at an older version. Time to update, if available. */
