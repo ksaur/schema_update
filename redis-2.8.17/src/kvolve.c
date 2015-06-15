@@ -164,21 +164,23 @@ void kvolve_set(redisClient * c){
 
 
 void kvolve_get(redisClient * c){
-    kvolve_check_update_kv_pair(c, 1, NULL);
+    kvolve_check_update_kv_pair(c, 1, NULL, REDIS_STRING);
 }
 
 void kvolve_smembers(redisClient * c){
 
-    robj * o = kvolve_get_curr_ver(c);
     robj * objele = NULL;
     int64_t * unused = NULL;
     struct version_hash * v = NULL;
     int first = 1;
+    robj * o = kvolve_get_curr_ver(c);
+    if (!o) return;
 
     v = version_hash_lookup((char*)c->argv[1]->ptr);
+    assert(v);
     // The version is stored in set elements, which will all be the same version
     setTypeRandomElement(o, &objele, unused);
-    if (strcmp(objele->vers, v->versions[v->num_versions-1])==0)
+    if ((!objele) || strcmp(objele->vers, v->versions[v->num_versions-1])==0)
         return;
 
     redisClient * c_fake = createClient(-1);
@@ -191,7 +193,7 @@ void kvolve_smembers(redisClient * c){
     while(e){
         printf("%p\n", (void*)e);
         c_fake->argv[2] = e;
-        kvolve_check_update_kv_pair(c, first, e);
+        kvolve_check_update_kv_pair(c, first, e, REDIS_SET);
         e = setTypeNextObject(si);
         first = 0;
     }
@@ -206,6 +208,12 @@ void kvolve_sadd(redisClient * c){
     struct version_hash * v = NULL;
     v = version_hash_lookup((char*)c->argv[1]->ptr);
     assert(v != NULL);
+
+    /* make sure all set elements are at this current version. Else update them
+     * all.  Don't let different members of the same set be at different
+     * versions!! (would be a confusing mess.) This will check and return if current,
+     * else update other set members to the current version */
+    kvolve_smembers(c);
     
     for (elem=2; elem < c->argc; elem++)
         c->argv[elem]->vers = v->versions[v->num_versions-1];
@@ -216,6 +224,9 @@ void kvolve_sadd(redisClient * c){
         dbDelete(c->db,oldobj); /* will also free oldobj. */
         free(old);
     }
+
+
 }
+
 
 #define __GNUC__  // "re-unallow" malloc

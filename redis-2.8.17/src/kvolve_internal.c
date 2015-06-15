@@ -336,7 +336,7 @@ void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
 
 // Checks updates for key c->argv[1] and robj *o (if provided, else o looked up) 
 // If check_key is 0, it will not try to update the key (sets, hashes, etc)
-void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o){
+void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int type){
 
     int i, key_vers = -1, fun;
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
@@ -387,18 +387,24 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o){
                 DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
                 kvolve_internal_rename(c, v);
                 sdsfree(c->argv[1]->ptr); // free old memory
-                //TODO are keys sds???  or just a char *???
                 c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)
                 free(key); // free user-update-allocated memory
             }
             if (val != (char*)o->ptr){
                 DEBUG_PRINT(("Updated value from %s to %s\n", (char*)o->ptr, val));
-                sdsfree(o->ptr);
-                o->ptr = sdsnew(val);
-                free(val);
-                /* This will notify any client watching key (normally called 
-                 * automatically, but we bypassed by changing val directly */
-                signalModifiedKey(c->db,o);
+                if (type == REDIS_STRING){
+                    sdsfree(o->ptr);
+                    o->ptr = sdsnew(val);
+                    free(val);
+                    /* This will notify any client watching key (normally called 
+                     * automatically, but we bypassed by changing val directly */
+                    signalModifiedKey(c->db,o);
+                } else if (type == REDIS_SET){
+                    kvolve_update_set_elem(c, val, &o);
+                } else{
+                    printf("UPDATE NOT IMPLEMENTED FOR TYPE %d\n", type);
+                    assert(0); //TODO impl.
+                }
             }
         }
         o->vers = v->versions[key_vers+1];
@@ -411,4 +417,36 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o){
     }
     server.dirty++;
 }
+
+void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
+
+
+    sds ren = NULL;
+    robj * new;
+    // add new
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    c_fake->argv[1] = c->argv[1];
+    new = createStringObject(new_val,strlen(new_val));
+    c_fake->argv[2] = new;
+    ren = sdsnew("sadd");
+    c_fake->cmd = lookupCommand(ren);
+    sdsfree(ren);
+    c_fake->cmd->proc(c_fake);
+
+    // delete old
+    c_fake->argv[2] = *o;
+    ren = sdsnew("srem");
+    c_fake->cmd = lookupCommand(ren);
+    sdsfree(ren);
+    c_fake->cmd->proc(c_fake);
+
+    zfree(c_fake->argv);
+    zfree(c_fake);
+    *o = new;
+}
+
 #define __GNUC__  // "re-unallow" malloc
+
