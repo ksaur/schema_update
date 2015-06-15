@@ -35,7 +35,9 @@ int kvolve_process_command(redisClient *c){
     } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "mget") == 0){
         kvolve_mget(c);
     } else if (c->argc == 4 && strcasecmp((char*)c->argv[0]->ptr, "getrange") == 0){
-        kvolve_get(c);
+        kvolve_getrange(c);
+    } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "incr") == 0){
+        kvolve_incr(c);
     } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "del") == 0){
         kvolve_del(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
@@ -45,9 +47,9 @@ int kvolve_process_command(redisClient *c){
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "smembers") == 0){
         kvolve_smembers(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "sismember") == 0){
-        kvolve_smembers(c); /* will just check for update, and do if necessary*/
+        kvolve_sismember(c);
     } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "srem") == 0){
-        kvolve_smembers(c); /* will just check for update, and do if necessary*/
+        kvolve_srem(c);
     }
  
     // TODO, do we ever need to halt normal execution flow?
@@ -113,30 +115,41 @@ void kvolve_mset(redisClient * c){
 
 /* We only have to worry about namespace changes here. We need to do the rename
  * so it will be deleted properly (and return the right value count*/
+
 void kvolve_del(redisClient * c){
+    kvolve_check_rename(c);
+}
 
-    int i;
-    robj * o;
+/* check for update, the same as kvolve_get, but a substring */
+void kvolve_getrange(redisClient *c){
+    kvolve_get(c);
+}
+
+/* will just check for update, and do if necessary. Remember, we must keep all
+ * set elements at same version. this will do that.*/
+void kvolve_sismember(redisClient * c){
+    kvolve_smembers(c);
+}
+void kvolve_srem(redisClient * c){
+    kvolve_smembers(c);
+}
+
+/* the incr command blows away any version you pass it, because it creates its
+ * own object.  Since incr values can ONLY be strings that convert to ints,
+ * there is no way that there can be a meaninful value change.  Therefore, we
+ * just need to make sure the name is current and go from there. */
+void kvolve_incr(redisClient * c){
+
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    if(!v->prev_ns) return;
 
-    /* return immediately if there is no chance of ns change */
-    if(!v->prev_ns)
+    /* check if current at correct ns, or doesn't exist at all*/
+    if(lookupKeyRead(c->db, c->argv[1]) || (kvolve_get_curr_ver(c)==NULL))
         return;
 
-    redisClient * c_fake = createClient(-1);
-    c_fake->db = c->db;
-    c_fake->argc = 2;
-    c_fake->argv = zmalloc(sizeof(void*)*2);
+    /* at this point, we must update the namespace */
+    kvolve_internal_rename(c, v);
 
-    for (i=1; i < c->argc; i++){
-        c_fake->argv[1]= c->argv[i];
-        o = kvolve_get_curr_ver(c_fake);
-        if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
-            continue;
-        kvolve_internal_rename(c_fake, v);
-    }
-    zfree(c_fake->argv);
-    zfree(c_fake);
 }
 
 void kvolve_mget(redisClient * c){

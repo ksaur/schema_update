@@ -15,6 +15,14 @@ void check(int test_num, redisReply *reply, char * expected){
   freeReplyObject(reply);
 }
 
+void check_int(int test_num, redisReply *reply, int expected){
+#ifdef DEBUG
+  printf("(%d) Expected: %d, Got: %lld\n", test_num, expected, reply->integer);
+#endif
+  assert(reply->integer == expected);
+  freeReplyObject(reply);
+}
+
 
 const char * server_loc = "../../../redis-2.8.17/src/redis-server ../../../redis-2.8.17/redis.conf &";
 const char * no_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/strings/test_upd_no_ns_change.so";
@@ -321,17 +329,17 @@ void test_del(void){
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
   reply = redisCommand(c, "client setname %s", "order@v1");
-  check(401, reply, "OK");
+  check(501, reply, "OK");
 
   reply = redisCommand(c,"MSET %s %s %s %s %s %s %s %s", "order:111", "this is a string", "order:222", "wwww", "order:333", "ppp", "order:444", "ooo");
-  check(402, reply, "OK");
+  check(502, reply, "OK");
 
   reply = redisCommand(c,"DEL %s", "order:444");
   assert(reply->integer == 1);
   freeReplyObject(reply);
 
   reply = redisCommand(c,"client setname %s", w_ns_change); 
-  check(403, reply, "OK");
+  check(503, reply, "OK");
 
   reply = redisCommand(c,"DEL %s %s", "foo:order:111", "foo:order:333");
   assert(reply->integer == 2);
@@ -345,7 +353,38 @@ void test_del(void){
   freeReplyObject(reply);
 
   reply = redisCommand(c,"GET %s", "foo:order:222");
-  check(405, reply, "wwww");
+  check(505, reply, "wwww");
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
+
+void test_incr(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v1");
+  check(601, reply, "OK");
+
+  reply = redisCommand(c, "INCR %s ", "order:111");
+  check_int(602, reply, 1);
+
+  reply = redisCommand(c, "INCR %s ", "order:111");
+  check_int(603, reply, 2);
+
+
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
+  check(604, reply, "OK");
+
+  reply = redisCommand(c, "INCR %s ", "foo:order:111");
+  check_int(605, reply, 3);
+
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 1);
+  freeReplyObject(reply);
 
   printf("Redis shutdown:\n");
   system("killall redis-server");
@@ -364,6 +403,7 @@ int main(void){
   test_mset_mget();
   test_getrange();
   test_del();
+  test_incr();
   printf("All pass.\n");
   return 0;
 }

@@ -42,5 +42,6 @@ int kvolve_get_flags(redisClient *c);
 robj * kvolve_get_curr_ver(redisClient * c);
 void kvolve_check_update_kv_pair(redisClient * c, int key_check, robj * o, int type);
 void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o);
+void kvolve_check_rename(redisClient * c);
 
 #endif

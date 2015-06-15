@@ -228,7 +228,7 @@ struct version_hash * version_hash_lookup(char * lookup){
 }
 struct version_hash * version_hash_lookup_from_prev(char * lookup){
     struct version_hash *v = NULL;
-    /* Get the current version for the namespace, if it exists */
+    /* Get the prev version for the namespace, if it exists */
     HASH_FIND(hh, vers_list, lookup, strlen(lookup), v);
     return v;
 }
@@ -332,6 +332,33 @@ void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
     zfree(c_fake);
     sdsfree(ren);
     free(old);
+}
+
+/* checks if name is necessary then performs it (for multiple args) .*/
+void kvolve_check_rename(redisClient * c){
+
+    int i;
+    robj * o;
+    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+
+    /* return immediately if there is no chance of ns change */
+    if(!v->prev_ns)
+        return;
+
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 2;
+    c_fake->argv = zmalloc(sizeof(void*)*2);
+
+    for (i=1; i < c->argc; i++){
+        c_fake->argv[1]= c->argv[i];
+        o = kvolve_get_curr_ver(c_fake);
+        if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+            continue;
+        kvolve_internal_rename(c_fake, v);
+    }
+    zfree(c_fake->argv);
+    zfree(c_fake);
 }
 
 // Checks updates for key c->argv[1] and robj *o (if provided, else o looked up) 
