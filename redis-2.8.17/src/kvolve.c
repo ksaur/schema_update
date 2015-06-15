@@ -36,6 +36,8 @@ int kvolve_process_command(redisClient *c){
         kvolve_mget(c);
     } else if (c->argc == 4 && strcasecmp((char*)c->argv[0]->ptr, "getrange") == 0){
         kvolve_get(c);
+    } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "del") == 0){
+        kvolve_del(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
         kvolve_setnx(c, NULL);
     } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "sadd") == 0){
@@ -98,8 +100,6 @@ void kvolve_mset(redisClient * c){
     c_fake->db = c->db;
     c_fake->argc = 3;
     c_fake->argv = zmalloc(sizeof(void*)*3);
-    sds ren = sdsnew("set");
-    c_fake->cmd = lookupCommand(ren);
 
     assert(c->argc % 2 == 1);
     for (i=1; i < c->argc; i=i+2){
@@ -109,7 +109,34 @@ void kvolve_mset(redisClient * c){
     }
     zfree(c_fake->argv);
     zfree(c_fake);
-    sdsfree(ren);
+}
+
+/* We only have to worry about namespace changes here. We need to do the rename
+ * so it will be deleted properly (and return the right value count*/
+void kvolve_del(redisClient * c){
+
+    int i;
+    robj * o;
+    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+
+    /* return immediately if there is no chance of ns change */
+    if(!v->prev_ns)
+        return;
+
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 2;
+    c_fake->argv = zmalloc(sizeof(void*)*2);
+
+    for (i=1; i < c->argc; i++){
+        c_fake->argv[1]= c->argv[i];
+        o = kvolve_get_curr_ver(c_fake);
+        if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+            continue;
+        kvolve_internal_rename(c_fake, v);
+    }
+    zfree(c_fake->argv);
+    zfree(c_fake);
 }
 
 void kvolve_mget(redisClient * c){
@@ -118,8 +145,6 @@ void kvolve_mget(redisClient * c){
     c_fake->db = c->db;
     c_fake->argc = 2;
     c_fake->argv = zmalloc(sizeof(void*)*2);
-    sds ren = sdsnew("get");
-    c_fake->cmd = lookupCommand(ren);
 
     for (i=1; i < c->argc; i++){
         c_fake->argv[1]= c->argv[i];
@@ -127,7 +152,6 @@ void kvolve_mget(redisClient * c){
     }
     zfree(c_fake->argv);
     zfree(c_fake);
-    sdsfree(ren);
 }
 
 void kvolve_set(redisClient * c){

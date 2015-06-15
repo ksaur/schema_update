@@ -127,6 +127,7 @@ void test_nx(void){
 
   reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "gggg", "nx");
   assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
 
   // Make sure that the name got changed
   reply = redisCommand(c,"GET %s", "order:111");
@@ -140,6 +141,7 @@ void test_nx(void){
   // Make sure it still works without ns change
   reply = redisCommand(c,"SET %s %s %s", "foo:order:111", "pppp", "nx");
   assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
 
   reply = redisCommand(c,"GET %s", "foo:order:111");
   check(205, reply, "ffff");
@@ -173,6 +175,7 @@ void test_setnx(void){
   reply = redisCommand(c,"SETNX %s %s", "foo:order:111", "gggg");
   assert(reply->type == REDIS_REPLY_INTEGER);
   assert(reply->integer == 0);
+  freeReplyObject(reply);
 
   // Make sure that the name got changed
   reply = redisCommand(c,"GET %s", "order:111");
@@ -187,6 +190,7 @@ void test_setnx(void){
   reply = redisCommand(c,"SETNX %s %s", "foo:order:111", "pppp");
   assert(reply->type == REDIS_REPLY_INTEGER);
   assert(reply->integer == 0);
+  freeReplyObject(reply);
 
   reply = redisCommand(c,"GET %s", "foo:order:111");
   check(305, reply, "ffff");
@@ -310,17 +314,56 @@ void test_getrange(void){
   sleep(2);
 }
 
+void test_del(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v1");
+  check(401, reply, "OK");
+
+  reply = redisCommand(c,"MSET %s %s %s %s %s %s %s %s", "order:111", "this is a string", "order:222", "wwww", "order:333", "ppp", "order:444", "ooo");
+  check(402, reply, "OK");
+
+  reply = redisCommand(c,"DEL %s", "order:444");
+  assert(reply->integer == 1);
+  freeReplyObject(reply);
+
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
+  check(403, reply, "OK");
+
+  reply = redisCommand(c,"DEL %s %s", "foo:order:111", "foo:order:333");
+  assert(reply->integer == 2);
+  freeReplyObject(reply);
+
+  reply = redisCommand(c,"GET %s", "order:111");
+  assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
+  reply = redisCommand(c,"GET %s", "order:333");
+  assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
+
+  reply = redisCommand(c,"GET %s", "foo:order:222");
+  check(405, reply, "wwww");
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
+
 int main(void){
 
   system("killall redis-server");
   sleep(2);
-  //test_update_separate();
-  //test_update_consecu();
-  //test_nx();
-  //test_xx();
-  //test_setnx();
-  //test_mset_mget();
+  test_update_separate();
+  test_update_consecu();
+  test_nx();
+  test_xx();
+  test_setnx();
+  test_mset_mget();
   test_getrange();
+  test_del();
   printf("All pass.\n");
   return 0;
 }

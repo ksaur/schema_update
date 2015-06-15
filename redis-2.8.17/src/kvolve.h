@@ -23,6 +23,7 @@ void kvolve_mset(redisClient * c);
 void kvolve_get(redisClient * c);
 void kvolve_mget(redisClient * c);
 //GETRANGE uses kvolve_get
+void kvolve_del(redisClient * c);
 
 /******* Sets ********/
 void kvolve_sadd(redisClient * c);
