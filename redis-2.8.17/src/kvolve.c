@@ -164,33 +164,30 @@ void kvolve_set(redisClient * c){
 
 
 void kvolve_get(redisClient * c){
-    kvolve_check_update_kv_pair(c);
+    kvolve_check_update_kv_pair(c, 1, NULL);
 }
 
 void kvolve_smembers(redisClient * c){
 
+    robj * o = kvolve_get_curr_ver(c);
+    int first = 1;
 
-    robj * o = lookupKeyRead(c->db, c->argv[1]);
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    c_fake->argv[1] = c->argv[1];
     setTypeIterator *si = setTypeInitIterator(o);
     robj * e = setTypeNextObject(si);
     while(e){
         printf("%p\n", (void*)e);
+        c_fake->argv[2] = e;
+        kvolve_check_update_kv_pair(c, first, e);
         e = setTypeNextObject(si);
+        first = 0;
     }
-    // TODO OLD VERSIONS!!!
-   // redisClient * c_fake = createClient(-1);
-   // c_fake->db = c->db;
-   // c_fake->argc = 2;
-   // c_fake->argv = zmalloc(sizeof(void*)*2);
-   // sds ren = sdsnew("smembers");
-   // c_fake->cmd = lookupCommand(ren);
-   // c_fake->argv[1]= c->argv[1];
-   // c_fake->cmd->proc(c_fake);
-   // zfree(c_fake->argv);
-   // zfree(c_fake);
-   // sdsfree(ren);
-    //free(old);
-
+    zfree(c_fake->argv);
+    zfree(c_fake);
 }
 
 void kvolve_sadd(redisClient * c){

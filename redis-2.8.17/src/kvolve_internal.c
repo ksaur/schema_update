@@ -334,8 +334,9 @@ void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
     free(old);
 }
 
-// checks updates for key c->argv[1] and val c->argv[2]
-void kvolve_check_update_kv_pair(redisClient * c){
+// Checks updates for key c->argv[1] and robj *o (if provided, else o looked up) 
+// If check_key is 0, it will not try to update the key (sets, hashes, etc)
+void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o){
 
     int i, key_vers = -1, fun;
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
@@ -344,12 +345,13 @@ void kvolve_check_update_kv_pair(redisClient * c){
      * Also, should we support 'default namespace' automatically? */
     assert(v != NULL);
 
-    robj * o = kvolve_get_curr_ver(c);
-    if (!o)
-        return;
+    if (!o){
+        o = kvolve_get_curr_ver(c);
+        if (!o) return;
+    }
 
     /* Check to see if the version is current */
-    if (!v->prev_ns && strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
 
     /* Key is present at an older version. Time to update, if available. */
@@ -381,7 +383,7 @@ void kvolve_check_update_kv_pair(redisClient * c){
             char * val = (char*)o->ptr;
             /* next line calls the update func (mods key/val as specified): */
             v->info[key_vers+1]->funs[fun](&key, (void*)&val);
-            if (key != (char*)c->argv[1]->ptr){
+            if (check_key && (key != (char*)c->argv[1]->ptr)){
                 DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
                 kvolve_internal_rename(c, v);
                 sdsfree(c->argv[1]->ptr); // free old memory
@@ -402,6 +404,8 @@ void kvolve_check_update_kv_pair(redisClient * c){
         o->vers = v->versions[key_vers+1];
         if ((v->num_versions-1 == key_vers+1) && v->prev_ns){
             v = version_hash_lookup_from_prev(v->prev_ns);
+            if(v->num_versions == 1 && !v->info[0])
+                break; /* We're done, no updates in new ns */
             key_vers = -2; /* This will become -1 after the loop decrement */
         }
     }
