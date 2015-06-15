@@ -27,5 +27,6 @@ void kvolve_mget(redisClient * c);
 void kvolve_sadd(redisClient * c);
 void kvolve_smembers(redisClient * c);
 //SISMEMBERS command uses kvolve_smembers
+//SREM command uses kvolve_smembers
 
 #endif

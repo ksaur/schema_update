@@ -41,7 +41,9 @@ int kvolve_process_command(redisClient *c){
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "smembers") == 0){
         kvolve_smembers(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "sismember") == 0){
-        kvolve_smembers(c); /* will just check for update*/
+        kvolve_smembers(c); /* will just check for update, and do if necessary*/
+    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "srem") == 0){
+        kvolve_smembers(c); /* will just check for update, and do if necessary*/
     }
  
     // TODO, do we ever need to halt normal execution flow?

@@ -39,20 +39,41 @@ void test_sadd_smembers_nschange(void){
   check(101, reply, "OK");
 
   reply = redisCommand(c,"SADD %s %s %s", "order:111", "ffff", "wwww");
-  assert(reply->integer == 2);
-  freeReplyObject(reply);
+  check_int(102, reply, 2);
+
+  reply = redisCommand(c,"SADD %s %s %s", "order:222", "xxxx", "yyyy");
+  check_int(103, reply, 2);
+
+  reply = redisCommand(c,"SADD %s %s %s", "order:333", "qqqq", "eeee");
+  check_int(104, reply, 2);
+
+  reply = redisCommand(c,"SADD %s %s %s", "order:444", "aaaa", "nnnn");
+  check_int(105, reply, 2);
 
   reply = redisCommand(c,"client setname %s", w_ns_change); 
-  check(102, reply, "OK");
+  check(106, reply, "OK");
 
   reply = redisCommand(c,"SMEMBERS %s", "foo:order:111");
   assert(strcmp(reply->element[0]->str, "wwww") == 0  || strcmp(reply->element[0]->str, "ffff") == 0 );
   assert(strcmp(reply->element[1]->str, "wwww") == 0  || strcmp(reply->element[1]->str, "ffff") == 0 );
   freeReplyObject(reply);
 
-  reply = redisCommand(c,"keys %s", "*");
-  assert(reply->elements == 1);
-  freeReplyObject(reply);
+  reply = redisCommand(c,"SADD %s %s", "foo:order:222", "zzzz");
+  check_int(107, reply, 1);
+
+  /* test that modifying any member of the set (above) applies the update to all members */
+  reply = redisCommand(c,"SISMEMBER %s %s", "foo:order:222", "xxxx");
+  check_int(108, reply, 1);
+
+  /* test that calling sismember triggers an update */
+  reply = redisCommand(c,"SISMEMBER %s %s", "foo:order:333", "qqqq");
+  check_int(108, reply, 1);
+
+  /* test that calling srem correctly deletes after update*/
+  reply = redisCommand(c,"SREM %s %s", "foo:order:444", "aaaa");
+  check_int(109, reply, 1);
+  reply = redisCommand(c,"SISMEMBER %s %s", "foo:order:444", "aaaa");
+  check_int(110, reply, 0);
 
   printf("Redis shutdown:\n");
   system("killall redis-server");
@@ -77,8 +98,11 @@ void test_sadd_smembers_valchange(void){
   reply = redisCommand(c,"SADD %s %s %s", "order:333", "qqqq", "eeee");
   check_int(204, reply, 2);
 
+  reply = redisCommand(c,"SADD %s %s %s", "order:444", "aaaa", "nnnn");
+  check_int(205, reply, 2);
+
   reply = redisCommand(c,"client setname %s", no_ns_change); 
-  check(205, reply, "OK");
+  check(206, reply, "OK");
 
   reply = redisCommand(c,"SMEMBERS %s", "order:111");
   assert(strcmp(reply->element[0]->str, "wwwwUPDATED") == 0  || strcmp(reply->element[0]->str, "ffffUPDATED") == 0 );
@@ -86,15 +110,23 @@ void test_sadd_smembers_valchange(void){
   freeReplyObject(reply);
 
   reply = redisCommand(c,"SADD %s %s", "order:222", "zzzzUPDATED");
-  check_int(206, reply, 1);
+  check_int(207, reply, 1);
 
   /* test that modifying any member of the set (above) applies the update to all members */
   reply = redisCommand(c,"SISMEMBER %s %s", "order:222", "xxxxUPDATED");
-  check_int(207, reply, 1);
+  check_int(208, reply, 1);
 
   /* test that calling sismember triggers an update */
   reply = redisCommand(c,"SISMEMBER %s %s", "order:333", "qqqqUPDATED");
   check_int(208, reply, 1);
+
+  /* test that calling srem correctly deletes after update*/
+  reply = redisCommand(c,"SREM %s %s", "order:444", "aaaaUPDATED");
+  check_int(209, reply, 1);
+  reply = redisCommand(c,"SISMEMBER %s %s", "order:444", "aaaaUPDATED");
+  check_int(210, reply, 0);
+  reply = redisCommand(c,"SISMEMBER %s %s", "order:444", "aaaa");
+  check_int(211, reply, 0);
 
   printf("Redis shutdown:\n");
   system("killall redis-server");
