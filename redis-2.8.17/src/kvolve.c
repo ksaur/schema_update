@@ -34,6 +34,8 @@ int kvolve_process_command(redisClient *c){
         kvolve_get(c);
     } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "mget") == 0){
         kvolve_mget(c);
+    } else if (c->argc == 4 && strcasecmp((char*)c->argv[0]->ptr, "getrange") == 0){
+        kvolve_get(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
         kvolve_setnx(c, NULL);
     } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "sadd") == 0){

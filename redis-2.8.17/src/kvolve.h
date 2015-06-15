@@ -22,6 +22,7 @@ void kvolve_setxx(redisClient * c, struct version_hash * v);
 void kvolve_mset(redisClient * c);
 void kvolve_get(redisClient * c);
 void kvolve_mget(redisClient * c);
+//GETRANGE uses kvolve_get
 
 /******* Sets ********/
 void kvolve_sadd(redisClient * c);

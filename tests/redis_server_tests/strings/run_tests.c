@@ -287,16 +287,40 @@ void test_mset_mget(void){
   sleep(2);
 }
 
+void test_getrange(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v1");
+  check(401, reply, "OK");
+
+  reply = redisCommand(c,"SET %s %s", "order:111", "this is a string");
+  check(402, reply, "OK");
+
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
+  check(403, reply, "OK");
+
+  reply = redisCommand(c,"GETRANGE %s %s %s", "foo:order:111", "0", "3");
+  check(404, reply, "this");
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
+
 int main(void){
 
   system("killall redis-server");
   sleep(2);
-  test_update_separate();
-  test_update_consecu();
-  test_nx();
-  test_xx();
-  test_setnx();
-  test_mset_mget();
+  //test_update_separate();
+  //test_update_consecu();
+  //test_nx();
+  //test_xx();
+  //test_setnx();
+  //test_mset_mget();
+  test_getrange();
   printf("All pass.\n");
   return 0;
 }
