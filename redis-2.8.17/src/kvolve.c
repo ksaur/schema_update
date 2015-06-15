@@ -170,7 +170,16 @@ void kvolve_get(redisClient * c){
 void kvolve_smembers(redisClient * c){
 
     robj * o = kvolve_get_curr_ver(c);
+    robj * objele = NULL;
+    int64_t * unused = NULL;
+    struct version_hash * v = NULL;
     int first = 1;
+
+    v = version_hash_lookup((char*)c->argv[1]->ptr);
+    // The version is stored in set elements, which will all be the same version
+    setTypeRandomElement(o, &objele, unused);
+    if (strcmp(objele->vers, v->versions[v->num_versions-1])==0)
+        return;
 
     redisClient * c_fake = createClient(-1);
     c_fake->db = c->db;
