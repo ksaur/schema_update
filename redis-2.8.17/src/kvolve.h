@@ -33,5 +33,6 @@ void kvolve_sadd(redisClient * c);
 void kvolve_smembers(redisClient * c);
 void kvolve_sismember(redisClient * c);
 void kvolve_srem(redisClient * c);
+void kvolve_scard(redisClient * c);
 
 #endif

@@ -48,6 +48,8 @@ int kvolve_process_command(redisClient *c){
         kvolve_setnx(c, NULL);
     } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "sadd") == 0){
         kvolve_sadd(c);
+    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "scard") == 0){
+        kvolve_scard(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "smembers") == 0){
         kvolve_smembers(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "sismember") == 0){
@@ -135,6 +137,9 @@ void kvolve_sismember(redisClient * c){
     kvolve_smembers(c);
 }
 void kvolve_srem(redisClient * c){
+    kvolve_smembers(c);
+}
+void kvolve_scard(redisClient * c){
     kvolve_smembers(c);
 }
 void kvolve_incrby(redisClient * c){
