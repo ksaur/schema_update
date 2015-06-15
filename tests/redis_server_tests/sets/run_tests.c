@@ -74,8 +74,11 @@ void test_sadd_smembers_valchange(void){
   reply = redisCommand(c,"SADD %s %s %s", "order:222", "xxxx", "yyyy");
   check_int(203, reply, 2);
 
+  reply = redisCommand(c,"SADD %s %s %s", "order:333", "qqqq", "eeee");
+  check_int(204, reply, 2);
+
   reply = redisCommand(c,"client setname %s", no_ns_change); 
-  check(204, reply, "OK");
+  check(205, reply, "OK");
 
   reply = redisCommand(c,"SMEMBERS %s", "order:111");
   assert(strcmp(reply->element[0]->str, "wwwwUPDATED") == 0  || strcmp(reply->element[0]->str, "ffffUPDATED") == 0 );
@@ -83,11 +86,15 @@ void test_sadd_smembers_valchange(void){
   freeReplyObject(reply);
 
   reply = redisCommand(c,"SADD %s %s", "order:222", "zzzzUPDATED");
-  check_int(205, reply, 1);
+  check_int(206, reply, 1);
 
   /* test that modifying any member of the set (above) applies the update to all members */
   reply = redisCommand(c,"SISMEMBER %s %s", "order:222", "xxxxUPDATED");
-  check_int(206, reply, 1);
+  check_int(207, reply, 1);
+
+  /* test that calling sismember triggers an update */
+  reply = redisCommand(c,"SISMEMBER %s %s", "order:333", "qqqqUPDATED");
+  check_int(208, reply, 1);
 
   printf("Redis shutdown:\n");
   system("killall redis-server");

@@ -26,5 +26,6 @@ void kvolve_mget(redisClient * c);
 /******* Sets ********/
 void kvolve_sadd(redisClient * c);
 void kvolve_smembers(redisClient * c);
+//SISMEMBERS command uses kvolve_smembers
 
 #endif

@@ -40,6 +40,8 @@ int kvolve_process_command(redisClient *c){
         kvolve_sadd(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "smembers") == 0){
         kvolve_smembers(c);
+    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "sismember") == 0){
+        kvolve_smembers(c); /* will just check for update*/
     }
  
     // TODO, do we ever need to halt normal execution flow?
@@ -224,8 +226,6 @@ void kvolve_sadd(redisClient * c){
         dbDelete(c->db,oldobj); /* will also free oldobj. */
         free(old);
     }
-
-
 }
 
 
