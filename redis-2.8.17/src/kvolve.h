@@ -24,6 +24,7 @@ void kvolve_get(redisClient * c);
 void kvolve_mget(redisClient * c);
 void kvolve_del(redisClient * c);
 void kvolve_incr(redisClient * c);
+void kvolve_incrby(redisClient * c);
 void kvolve_getrange(redisClient * c);
 
 /******* Sets ********/

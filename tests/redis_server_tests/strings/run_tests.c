@@ -375,15 +375,21 @@ void test_incr(void){
   reply = redisCommand(c, "INCR %s ", "order:111");
   check_int(603, reply, 2);
 
+  reply = redisCommand(c, "INCRBY %s %s", "order:222", "10");
+  check_int(604, reply, 10);
+
 
   reply = redisCommand(c,"client setname %s", w_ns_change); 
-  check(604, reply, "OK");
+  check(605, reply, "OK");
 
   reply = redisCommand(c, "INCR %s ", "foo:order:111");
-  check_int(605, reply, 3);
+  check_int(606, reply, 3);
+
+  reply = redisCommand(c, "INCRBY %s %s", "foo:order:222", "10");
+  check_int(607, reply, 20);
 
   reply = redisCommand(c,"keys %s", "*");
-  assert(reply->elements == 1);
+  assert(reply->elements == 2);
   freeReplyObject(reply);
 
   printf("Redis shutdown:\n");

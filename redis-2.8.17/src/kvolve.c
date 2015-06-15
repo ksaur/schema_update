@@ -38,6 +38,8 @@ int kvolve_process_command(redisClient *c){
         kvolve_getrange(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "incr") == 0){
         kvolve_incr(c);
+    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "incrby") == 0){
+        kvolve_incrby(c);
     } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "del") == 0){
         kvolve_del(c);
     } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
@@ -132,6 +134,9 @@ void kvolve_sismember(redisClient * c){
 }
 void kvolve_srem(redisClient * c){
     kvolve_smembers(c);
+}
+void kvolve_incrby(redisClient * c){
+    kvolve_incr(c);
 }
 
 /* the incr command blows away any version you pass it, because it creates its
