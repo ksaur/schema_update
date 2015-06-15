@@ -34,6 +34,8 @@ int kvolve_process_command(redisClient *c){
         kvolve_get(c);
     } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "mget") == 0){
         kvolve_mget(c);
+    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "getset") == 0){
+        kvolve_getset(c);
     } else if (c->argc == 4 && strcasecmp((char*)c->argv[0]->ptr, "getrange") == 0){
         kvolve_getrange(c);
     } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "incr") == 0){
@@ -137,6 +139,9 @@ void kvolve_srem(redisClient * c){
 }
 void kvolve_incrby(redisClient * c){
     kvolve_incr(c);
+}
+void kvolve_getset(redisClient * c){
+    kvolve_get(c);
 }
 
 /* the incr command blows away any version you pass it, because it creates its

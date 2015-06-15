@@ -353,7 +353,8 @@ void kvolve_check_rename(redisClient * c){
     for (i=1; i < c->argc; i++){
         c_fake->argv[1]= c->argv[i];
         o = kvolve_get_curr_ver(c_fake);
-        if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+        if (o->encoding == REDIS_ENCODING_RAW && // non-raws don't have vers.
+              strcmp(o->vers, v->versions[v->num_versions-1])==0)
             continue;
         kvolve_internal_rename(c_fake, v);
     }
@@ -378,7 +379,8 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
     }
 
     /* Check to see if the version is current */
-    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (o->encoding == REDIS_ENCODING_RAW && // non-raws (like incr) don't have vers.
+           strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
 
     /* Key is present at an older version. Time to update, if available. */

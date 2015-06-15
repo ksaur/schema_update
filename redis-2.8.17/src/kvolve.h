@@ -22,6 +22,7 @@ void kvolve_setxx(redisClient * c, struct version_hash * v);
 void kvolve_mset(redisClient * c);
 void kvolve_get(redisClient * c);
 void kvolve_mget(redisClient * c);
+void kvolve_getset(redisClient * c);
 void kvolve_del(redisClient * c);
 void kvolve_incr(redisClient * c);
 void kvolve_incrby(redisClient * c);
