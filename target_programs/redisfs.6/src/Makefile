@@ -2,7 +2,7 @@
 #
 #  Flags and stuffs.
 #
-CFLAGS=-ggdb -Wall -Werror  -I. -DVERSION=$(VERSION) `pkg-config fuse --cflags`
+CFLAGS=-ggdb -Wall -Werror `pkg-config fuse --cflags` -I. -DVERSION=$(VERSION)
 LDFLAGS=`pkg-config fuse --libs`
 
 
@@ -65,5 +65,7 @@ link:
 	ln -sf ../hiredis/net.c .
 	ln -sf ../hiredis/net.h .
 	ln -sf ../hiredis/util.h .
-
+	@echo "TODO READ THIS *********************************************"
+	@echo "TODOFIXME, Makefile bug:\nchange flag order to to fix the\nundefined reference to \`fuse_get_context' bug that you're about to see.\n\n'cc  redisfs.o pathutil.o hiredis.o sds.o net.o   -o redisfs \`pkg-config fuse --libs\` -lz'  \n\nFor now just 'cd src', copy/paste/execute the line above after the error, and it will work.\n"
+	@echo "*********************************************"
 
