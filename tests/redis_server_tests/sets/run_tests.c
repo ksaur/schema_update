@@ -29,7 +29,7 @@ const char * no_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_
 const char * w_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/sets/test_upd_with_ns_change.so";
 
 
-void test_sadd_smembers_nschange(void){
+void test_sets_nschange(void){
   redisReply *reply;
   system(server_loc);
   sleep(2);
@@ -80,7 +80,7 @@ void test_sadd_smembers_nschange(void){
   sleep(2);
 }
 
-void test_sadd_smembers_valchange(void){
+void test_sets_valchange(void){
   redisReply *reply;
   system(server_loc);
   sleep(2);
@@ -138,13 +138,49 @@ void test_sadd_smembers_valchange(void){
   sleep(2);
 
 }
+/* could combine with above, but breaking it up*/
+void test_spop(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v0,user@u0");
+  check(301, reply, "OK");
+
+  reply = redisCommand(c,"SADD %s %s %s", "order:111", "ffff", "wwww");
+  check_int(302, reply, 2);
+
+  reply = redisCommand(c,"SADD %s %s %s", "order:222", "gggg", "zzzz");
+  check_int(303, reply, 2);
+
+  reply = redisCommand(c,"client setname %s", no_ns_change);
+  check(304, reply, "OK");
+
+  reply = redisCommand(c,"SPOP %s", "order:222");
+  assert(strcmp(reply->str, "ggggUPDATED") == 0  || strcmp(reply->str, "zzzzUPDATED") == 0 );
+  freeReplyObject(reply);
+
+//  reply = redisCommand(c,"client setname %s", w_ns_change);
+//  check(305, reply, "OK");
+//
+//  reply = redisCommand(c,"SPOP %s", "foo:order:222");
+//  assert(strcmp(reply->str, "ggggUPDATED") == 0  || strcmp(reply->str, "zzzzUPDATED") == 0 );
+//  freeReplyObject(reply);
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+
+}
 
 int main(void){
 
   system("killall redis-server");
   sleep(2);
-  test_sadd_smembers_nschange();
-  test_sadd_smembers_valchange();
+  test_sets_nschange();
+  test_sets_valchange();
+  test_spop();
   printf("All pass.\n");
   return 0;
 }
