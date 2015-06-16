@@ -161,12 +161,12 @@ void test_spop(void){
   assert(strcmp(reply->str, "ggggUPDATED") == 0  || strcmp(reply->str, "zzzzUPDATED") == 0 );
   freeReplyObject(reply);
 
-//  reply = redisCommand(c,"client setname %s", w_ns_change);
-//  check(305, reply, "OK");
-//
-//  reply = redisCommand(c,"SPOP %s", "foo:order:222");
-//  assert(strcmp(reply->str, "ggggUPDATED") == 0  || strcmp(reply->str, "zzzzUPDATED") == 0 );
-//  freeReplyObject(reply);
+  reply = redisCommand(c,"client setname %s", w_ns_change);
+  check(305, reply, "OK");
+
+  reply = redisCommand(c,"SPOP %s", "foo:order:222");
+  assert(strcmp(reply->str, "ggggUPDATED") == 0  || strcmp(reply->str, "zzzzUPDATED") == 0 );
+  freeReplyObject(reply);
 
   printf("Redis shutdown:\n");
   system("killall redis-server");

@@ -15,28 +15,41 @@
 #include "kvolve_upd.h"
 
 static struct version_hash * vers_list = NULL;
-#define KV_INIT_SZ 10
+#define KV_INIT_SZ 20
 
 struct version_hash * get_vers_list(void){
    return vers_list;
 }
 
 
-struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0){
-    struct version_hash * v = (struct version_hash*)malloc(sizeof(struct version_hash));
+struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list){
+    struct version_hash *tmp, * v = (struct version_hash*)malloc(sizeof(struct version_hash));
+    int i;
     v->ns = malloc(strlen(ns_lookup)+1);
     strcpy(v->ns, ns_lookup); 
     v->prev_ns = NULL;
     if (prev_ns){
         v->prev_ns = malloc(strlen(prev_ns)+1);
         strcpy(v->prev_ns, prev_ns); 
+        tmp = version_hash_lookup_nsonly(prev_ns);
+        v->num_versions = 1+ tmp->num_versions;
+        v->versions = calloc(KV_INIT_SZ,sizeof(char*)); //TODO check resize
+        v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info*));
+        for(i = 0; i< tmp->num_versions; i++){
+            v->versions[i] = tmp->versions[i];
+            v->info[i] = tmp->info[i];
+        }
+        v->versions[tmp->num_versions] = malloc(strlen(v0)+1);
+        strcpy(v->versions[tmp->num_versions], v0);
+        v->info[tmp->num_versions] = list;
+    } else {
+        v->num_versions = 1;
+        v->versions = calloc(KV_INIT_SZ,sizeof(char*));
+        v->versions[0] = malloc(strlen(v0)+1);
+        v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info*));
+        v->info[0] = NULL;
+        strcpy(v->versions[0], v0);
     }
-    v->num_versions = 1;
-    v->versions = calloc(KV_INIT_SZ,sizeof(char*));
-    v->versions[0] = malloc(strlen(v0)+1);
-    v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info*));
-    v->info[0] = NULL;
-    strcpy(v->versions[0], v0);
     HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);  /* id: name of key field */
     return v;
 }
@@ -72,7 +85,7 @@ int kvolve_check_version(char * vers_str){
   
         HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), v);  /* id already in the hash? */
         if (v==NULL){
-            kvolve_create_ns(ns_lookup, NULL, vers);
+            kvolve_create_ns(ns_lookup, NULL, vers, NULL);
         } else if (strcmp(v->versions[v->num_versions-1], vers) != 0){
             printf("ERROR, INVALID VERSION (%s). System is at \'%s\' for ns \'%s\'\n", 
                    vers, v->versions[v->num_versions-1], v->ns);
@@ -148,8 +161,7 @@ int kvolve_update_version(char * upd_code){
                        list->to_ns, list->from_ns);
             }
             else{
-                v = kvolve_create_ns(list->to_ns, list->from_ns, list->to_vers);
-                v->info[0] = list;
+                v = kvolve_create_ns(list->to_ns, list->from_ns, list->to_vers, list);
                 item_used = 1;
                 succ_loaded++;
             }
@@ -226,7 +238,7 @@ struct version_hash * version_hash_lookup(char * lookup){
         free(ns);
     return v;
 }
-struct version_hash * version_hash_lookup_from_prev(char * lookup){
+struct version_hash * version_hash_lookup_nsonly(char * lookup){
     struct version_hash *v = NULL;
     /* Get the prev version for the namespace, if it exists */
     HASH_FIND(hh, vers_list, lookup, strlen(lookup), v);
@@ -397,13 +409,6 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         }
     }
 
-    /* Check if we're in the current version for the _old_ namespace */
-    if (v->prev_ns && (key_vers == (v->num_versions - 1))){
-        DEBUG_PRINT(("Updating from old namespace\n"));
-        v = version_hash_lookup_from_prev(v->prev_ns);
-        key_vers = -1;
-    }
-
     /* call all update functions */
     for ( ; key_vers < v->num_versions-1; key_vers++){
         /* in some cases, there may be multiple updates */
@@ -443,12 +448,6 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
             }
         }
         o->vers = v->versions[key_vers+1];
-        if ((v->num_versions-1 == key_vers+1) && v->prev_ns){
-            v = version_hash_lookup_from_prev(v->prev_ns);
-            if(v->num_versions == 1 && !v->info[0])
-                break; /* We're done, no updates in new ns */
-            key_vers = -2; /* This will become -1 after the loop decrement */
-        }
     }
     server.dirty++;
 }
