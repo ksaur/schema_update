@@ -13,7 +13,7 @@ void test_fun_1(char ** key, void ** value){
 
 void test_fun_2_updval(char ** key, void ** value){
     size_t s = strlen("UPDATED")+strlen((char*)*value)+1;
-    char * cons = malloc(s);
+    char * cons = calloc(s,sizeof(char));
     strcat(cons, *value);
     strcat(cons, "UPDATED");
     *value = cons;
