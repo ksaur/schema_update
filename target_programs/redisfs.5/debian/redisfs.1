@@ -1,0 +1,58 @@
+.TH REDISFS 1
+
+
+.SH NAME
+redisfs \(hy mount \-\-bind in user\-space
+
+
+.SH SYNOPSIS
+\fBredisfs\fP [\fIoptions\fP]\fI
+
+
+.SH DESCRIPTION
+A FUSE filesystem which stores files in a redis-server, which
+may potentially be remote.
+
+
+.SH OPTIONS
+.TP
+.B \-d, \-\-debug
+Enable full debug output, but from FUSE and from the program itself.
+
+.B \-h, \-\-help
+Displays a help message and exits.
+
+.B \-s, \-\-host
+Specify a remote hostname to connect to.  (Default is "localhost").
+
+.B \-m, \-\-mount
+Specify the local directory to mount the filesystem at.  (Default is "/mnt/redis").
+
+.B \-P, \-\-port
+Specify the port to connect to a redis-server upon.  (Default is 6379).
+
+.B \-p, \-\-prefix
+Specify a prefix to use for all Redis keys.  (Default is "skx:").
+
+.B \-r, \-\-read-only
+Specify that the filesystem is read-only, all write-attempts will fail.
+
+.TP
+.B \-V, \-\-version
+Displays version information and exits.
+
+
+.SH LIMITATIONS
+Although symbolic links are permitted hard links are not implemented.
+
+
+.SH BUGS
+Please report any issues to the author.
+
+.SH AUTHOR
+Steve Kemp <steve@steve.org.uk>
+
+
+.SH SEE ALSO
+\fBfusermount\fP(1)
+

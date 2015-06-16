@@ -1,0 +1,19 @@
+Source: redisfs
+Section: utils
+Priority: optional
+Maintainer: Steve Kemp <steve@steve.org.uk>
+Build-Depends: debhelper (>= 6), libfuse-dev, pkg-config
+Standards-Version: 3.8.4
+Homepage: http://steve.org.uk/Software/redisfs/
+
+Package: redisfs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, fuse-utils
+Suggests: redis-server
+Description: filesystem which uses redis for data-storage
+ redisfs is a FUSE filesystem which stores its state inside a redis-server
+ allowing a simple replicated filesystem to be setup.
+ .
+ Non-root users can use almost all features, but most interesting
+ use-cases need user_allow_other to be defined in /etc/fuse.conf
+

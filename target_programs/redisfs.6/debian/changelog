@@ -1,0 +1,17 @@
+redisfs (0.6-1) unstable; urgency=low
+
+  * New release - Using zlib compression of file contents.
+
+ -- Steve Kemp <steve@steve.org.uk>  Thu, 10 Mar 2011 22:11:00 +0000
+
+redisfs (0.5-1) unstable; urgency=low
+
+  * New release - includes the snapshot tool "redisfs-snapshot".
+
+ -- Steve Kemp <steve@steve.org.uk>  Fri, 4 Mar 2011 20:11:22 +0000
+
+redisfs (0.3-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Steve Kemp <steve@steve.org.uk>  Thu, 3 Mar 2011 19:11:19 +0000
