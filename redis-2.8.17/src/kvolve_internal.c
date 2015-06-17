@@ -164,7 +164,7 @@ int kvolve_update_version(char * upd_code){
         return 0;
     }
 
-    handle = dlopen(upd_code, RTLD_LAZY);
+    handle = dlopen(upd_code, RTLD_NOW | RTLD_GLOBAL);
     if (handle == NULL){
         errstr = dlerror();
         printf ("A dynamic linking error occurred: (%s)\n", errstr);
