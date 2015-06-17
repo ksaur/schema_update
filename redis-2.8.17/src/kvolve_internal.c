@@ -56,12 +56,42 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
 
 /* Get the keyname from @orig_key and combine it with @old_ns.  
  * Allocates memory for the new string and returns it. */
-char * kvolve_prev_name(char * orig_key, char *old_ns){
+char * kvolve_construct_prev_name(char * orig_key, char *old_ns){
     char * name = strrchr(orig_key, ':');
     char * ret = malloc(strlen(name)+strlen(old_ns) +1);
     strcpy(ret, old_ns);
     strcat(ret, name);
     return ret;
+}
+
+/* return 1 if key present in outdated ns. */
+int kvolve_exists_old(redisClient * c){
+
+    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    struct version_hash * tmp = v;
+    robj * key, * val;
+    assert(v != NULL);
+
+    /* first check the obvious (current) */
+    val = lookupKeyRead(c->db, c->argv[1]);
+    if(val) return 0;
+
+    /* Iterate prev namespaces */
+    while(tmp && tmp->prev_ns){
+        char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
+        key = createStringObject(old,strlen(old));
+        free(old);
+        val = lookupKeyRead(c->db, key);
+        if (val){
+            zfree(key);
+            return 1;
+        }
+        zfree(key);
+        if(!tmp->prev_ns)
+            break;
+        tmp = version_hash_lookup(tmp->prev_ns);
+    }
+    return 0;
 }
 
 /* return 1 if OK.  else return 0. TODO don't allow connect if err */
@@ -269,7 +299,7 @@ struct version_hash * version_hash_lookup_nsonly(char * lookup){
 //    /* curr = 1 because arr[0] already assigned w current vers */
 //    tmp = v;
 //    for(curr=1; curr<num_vers; curr++){
-//        char * old = kvolve_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
+//        char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
 //        printf("creating with old = %s\n", old);
 //        (*arr)[curr] = createStringObject(old,strlen(old));
 //        free(old);
@@ -316,8 +346,7 @@ robj * kvolve_get_curr_ver(redisClient * c){
 
     /* Iterate prev namespaces */
     while(tmp && tmp->prev_ns){
-        printf("tmp is %p\n", (void*)tmp);
-        char * old = kvolve_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
+        char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
         DEBUG_PRINT(("creating with old = %s\n", old));
         key = createStringObject(old,strlen(old));
         free(old);
@@ -331,12 +360,13 @@ robj * kvolve_get_curr_ver(redisClient * c){
     return NULL;
 }
 
+
 void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
 
     redisClient * c_fake = createClient(-1);
     c_fake->argc = 3;
     c_fake->argv = zmalloc(sizeof(void*)*3);
-    char * old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+    char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
     c_fake->argv[1] = createStringObject(old,strlen(old));  // do not free. added to db
     c_fake->argv[2] = c->argv[1]; 
     sds ren = sdsnew("rename");
@@ -347,6 +377,7 @@ void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
     sdsfree(ren);
     free(old);
 }
+
 
 /* checks if name is necessary then performs it (for nargs args) .*/
 void kvolve_check_rename(redisClient * c, int nargs){
@@ -367,10 +398,13 @@ void kvolve_check_rename(redisClient * c, int nargs){
     for (i=1; i < nargs; i++){
         c_fake->argv[1]= c->argv[i];
         o = kvolve_get_curr_ver(c_fake);
-        if (o->encoding == REDIS_ENCODING_RAW && // non-raws don't have vers.
-              strcmp(o->vers, v->versions[v->num_versions-1])==0)
-            continue;
-        kvolve_internal_rename(c_fake, v);
+        // non-raws (ex: integer sets) don't have vers. Check for rename manually.
+        if ((o->encoding != REDIS_ENCODING_RAW) && kvolve_exists_old(c)){
+            kvolve_internal_rename(c_fake, v);
+        } else if(o->encoding == REDIS_ENCODING_RAW &&
+                 strcmp(o->vers, v->versions[v->num_versions-1])!=0){
+            kvolve_internal_rename(c_fake, v);
+        }
     }
     zfree(c_fake->argv);
     zfree(c_fake);

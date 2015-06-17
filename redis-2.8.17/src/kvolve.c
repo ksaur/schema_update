@@ -218,7 +218,7 @@ void kvolve_set(redisClient * c){
      * Check to see if it's possible that an old version exists 
      * under another namespace that should be deleted. */
     if(v->prev_ns != NULL){ //TODO recurse multiple old ns
-        old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+        old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
         oldobj = createStringObject(old,strlen(old));
         dbDelete(c->db,oldobj); /* will also free oldobj. */
         free(old);
@@ -238,10 +238,20 @@ void kvolve_smembers(redisClient * c){
     int first = 1;
     robj * o = kvolve_get_curr_ver(c);
     if (!o) return;
-
     v = version_hash_lookup((char*)c->argv[1]->ptr);
     assert(v);
-    // The version is stored in set elements, which will all be the same version
+
+    /* REDIS_ENCODING_INTSET can only have ints for values, so we only have to
+     * worry about the key/namespace change */
+    if(o->encoding == REDIS_ENCODING_INTSET){
+        if(v->prev_ns){
+            kvolve_check_rename(c, 2);
+        }
+        return;
+    }
+
+    /* The version is stored in set elements, which will all be the same version.
+       Also, we're handling int sets above, so 3rd param is unused */
     setTypeRandomElement(o, &objele, unused);
     if ((!objele) || strcmp(objele->vers, v->versions[v->num_versions-1])==0)
         return;
@@ -282,7 +292,7 @@ void kvolve_sadd(redisClient * c){
         c->argv[elem]->vers = v->versions[v->num_versions-1];
         
     if(v->prev_ns != NULL){ //TODO recurse multiple old ns
-        old = kvolve_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+        old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
         oldobj = createStringObject(old,strlen(old));
         dbDelete(c->db,oldobj); /* will also free oldobj. */
         free(old);

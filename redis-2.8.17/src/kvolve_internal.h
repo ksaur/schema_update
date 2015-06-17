@@ -35,7 +35,7 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
 int kvolve_check_version(char * vers_str);
 int kvolve_update_version(char * upd_code);
 void kvolve_internal_rename(redisClient * c, struct version_hash * v);
-char * kvolve_prev_name(char * orig_key, char *old_ns);
+char * kvolve_construct_prev_name(char * orig_key, char *old_ns);
 int kvolve_get_flags(redisClient *c);
 //int kvolve_exists_anywhere(redisClient * c);
 //int kvolve_get_all_versions(redisClient * c, robj *** arr);
@@ -43,5 +43,6 @@ robj * kvolve_get_curr_ver(redisClient * c);
 void kvolve_check_update_kv_pair(redisClient * c, int key_check, robj * o, int type);
 void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o);
 void kvolve_check_rename(redisClient * c, int nargs);
+int kvolve_exists_old(redisClient * c);
 
 #endif

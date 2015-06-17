@@ -173,6 +173,31 @@ void test_spop(void){
   sleep(2);
 
 }
+void test_int_sets(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v0,user@u0");
+  check(401, reply, "OK");
+
+  reply = redisCommand(c,"SADD %s %s %s", "order:111", "3", "2");
+  check_int(402, reply, 2);
+
+  reply = redisCommand(c,"client setname %s", w_ns_change);
+  check(403, reply, "OK");
+
+
+  reply = redisCommand(c,"SMEMBERS %s", "foo:order:111");
+  assert((reply->integer == 3) || (reply->integer, 2));
+  freeReplyObject(reply);
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+
+}
 
 int main(void){
 
@@ -181,6 +206,7 @@ int main(void){
   test_sets_nschange();
   test_sets_valchange();
   test_spop();
+  test_int_sets();
   printf("All pass.\n");
   return 0;
 }
