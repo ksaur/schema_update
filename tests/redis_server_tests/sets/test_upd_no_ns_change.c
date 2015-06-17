@@ -43,7 +43,7 @@ struct kvolve_upd_info * get_update_func_list(void){
     info2->from_vers = "u0";
     info2->to_vers = "u1";
     info2->num_funs = 1;
-    info2->funs = calloc(info->num_funs, sizeof(kvolve_update_kv_fun));
+    info2->funs = calloc(info2->num_funs, sizeof(kvolve_update_kv_fun));
     info2->funs[0] = test_fun_2;
     info2->next = NULL;
     return info;
