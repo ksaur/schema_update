@@ -446,6 +446,37 @@ void test_getset(void){
   sleep(2);
 }
 
+void test_int_encoding(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v1");
+  check(801, reply, "OK");
+
+  reply = redisCommand(c, "SET %s  %s", "order:111", "4");
+  check(802, reply, "OK");
+
+  reply = redisCommand(c, "GET %s", "order:111");
+  check(803, reply, "4");
+
+  reply = redisCommand(c,"client setname %s", w_ns_change);
+  check(804, reply, "OK");
+
+  reply = redisCommand(c, "GET %s", "foo:order:111");
+  check(805, reply, "4");
+
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 1);
+  freeReplyObject(reply);
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
+
+
 int main(void){
 
   system("killall redis-server");
@@ -460,6 +491,7 @@ int main(void){
   test_del();
   test_incr();
   test_getset();
+  test_int_encoding();
   printf("All pass.\n");
   return 0;
 }

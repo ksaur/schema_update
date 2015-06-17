@@ -285,7 +285,7 @@ robj *tryObjectEncoding(robj *o) {
     sds s = o->ptr;
     size_t len;
 
-    if (o->encoding != REDIS_ENCODING_RAW || o->vers != NULL)
+    if (o->encoding != REDIS_ENCODING_RAW)
         return o; /* Already encoded */
 
     /* It's not safe to encode shared objects: shared objects can be shared
