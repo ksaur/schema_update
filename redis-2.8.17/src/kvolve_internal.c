@@ -457,7 +457,7 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         for (fun=0; fun < v->info[key_vers+1]->num_funs; fun++){
             char * key = (char*)c->argv[1]->ptr;
             char * val = (char*)o->ptr;
-            size_t * val_len = sdslen((sds)o->ptr);
+            size_t val_len = sdslen((sds)o->ptr);
             /* next line calls the update func (mods key/val as specified): */
             v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
 
@@ -472,7 +472,7 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
                 DEBUG_PRINT(("Updated value from %s to %s\n", (char*)o->ptr, val));
                 if (type == REDIS_STRING){
                     sdsfree(o->ptr);
-                    o->ptr = sdsnew(val);
+                    o->ptr = sdsnewlen(val, val_len);
                     free(val);
                     /* This will notify any client watching key (normally called 
                      * automatically, but we bypassed by changing val directly */

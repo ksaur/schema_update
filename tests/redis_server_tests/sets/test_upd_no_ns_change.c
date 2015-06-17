@@ -7,19 +7,20 @@
 /* test with multiple functions */
 /* test with value change */
 
-void test_fun_1(char ** key, void ** value, size_t **val_len){
+void test_fun_1(char ** key, void ** value, size_t * val_len){
     printf("ORDER CALLEDDDDDDDDDD\n");
 }
 
-void test_fun_2_updval(char ** key, void ** value, size_t **val_len){
+void test_fun_2_updval(char ** key, void ** value, size_t * val_len){
     size_t s = strlen("UPDATED")+strlen((char*)*value)+1;
     char * cons = calloc(s,sizeof(char));
     strcat(cons, *value);
     strcat(cons, "UPDATED");
     *value = cons;
+    *val_len = s;
 }
 
-void test_fun_2(char ** key, void ** value, size_t **val_len){
+void test_fun_2(char ** key, void ** value, size_t * val_len){
     printf("USER CALLEDDDDDDDDDD\n");
 }
 

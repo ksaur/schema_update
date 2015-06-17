@@ -5,7 +5,7 @@
 
 /* test with key change */
 
-void test_fun_ns_change(char ** key, void ** value, size_t **val_len){
+void test_fun_ns_change(char ** key, void ** value, size_t * val_len){
     /* The new-version code will already query with the correct string,
        if we've reached this part of the update in the new namespace.
        Just preserve the string and return it */

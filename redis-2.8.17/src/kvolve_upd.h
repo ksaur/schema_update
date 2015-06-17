@@ -1,7 +1,7 @@
 #ifndef _KVOLVE_UPD_H
 #define _KVOLVE_UPD_H
 
-typedef void (*kvolve_update_kv_fun)(char ** key, void ** value, size_t **val_len);
+typedef void (*kvolve_update_kv_fun)(char ** key, void ** value, size_t * val_len);
 typedef struct kvolve_upd_info * (*kvolve_upd_info_getter)(void);
 
 struct kvolve_upd_info{
