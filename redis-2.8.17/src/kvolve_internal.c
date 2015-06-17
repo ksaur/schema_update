@@ -457,8 +457,10 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         for (fun=0; fun < v->info[key_vers+1]->num_funs; fun++){
             char * key = (char*)c->argv[1]->ptr;
             char * val = (char*)o->ptr;
+            size_t * val_len = sdslen((sds)o->ptr);
             /* next line calls the update func (mods key/val as specified): */
-            v->info[key_vers+1]->funs[fun](&key, (void*)&val);
+            v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
+
             if (check_key && (key != (char*)c->argv[1]->ptr)){
                 DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
                 kvolve_internal_rename(c, v);
