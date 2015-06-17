@@ -177,6 +177,12 @@ redis_alive()
         if (_g_debug)
             fprintf(stderr, "Reconnected to redis server on [%s:%d]\n",
                     _g_redis_host, _g_redis_port);
+        reply = redisCommand(_g_redis, "client setname %s", "skx@v5,skx:INODE@v5,skx:PATH@v5,skx:GLOBAL@v5");
+        if(strcmp(reply->str, "OK")!=0){
+            fprintf(stderr, "Failed to connect to redis kvolve v5.\n");
+            exit(1);
+        }
+        freeReplyObject(reply);
     }
 }
 

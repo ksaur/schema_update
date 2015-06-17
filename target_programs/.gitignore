@@ -17,4 +17,4 @@ redisfs.6/src/redisfs
 redisfs.6/src/sds.c
 redisfs.6/src/sds.h
 redisfs.6/src/util.h
-
+redisfs.6/src/redisfs-snapshot
