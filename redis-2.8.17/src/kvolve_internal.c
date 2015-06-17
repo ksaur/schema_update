@@ -234,6 +234,8 @@ struct version_hash * version_hash_lookup(char * lookup){
 
     /* Get the current version for the namespace, if it exists */
     HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
+    if(!v && tofree && strrchr(ns, ':') ) //recurse search for next longest substring
+        v = version_hash_lookup(ns);
     if (tofree)
         free(ns);
     return v;
