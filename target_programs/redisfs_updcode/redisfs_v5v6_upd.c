@@ -15,15 +15,20 @@ void upd_fun_dir_ns_change(char ** key, void ** value, size_t * val_len){
     *key = save;
 }
 void upd_fun_add_compression(char ** key, void ** value, size_t * val_len){
+
     char * split = strrchr(*key, ':');
+
+    /* This update is for the DATA member of the INODE namespace
+     * (skx:INODE:inode:DATA).  We also need to update (skx:INODE:inode:SIZE) and
+     * (skx:INODE:inode:MTIME), but that can only be done along with the DATA
+     * update.  Therefore, return if not ":DATA". */
     if((split == NULL) || (strncmp(":DATA", split, 5) != 0))
         return;
 
-
-    size_t size = strlen((char*)*value);
-    char *compressed = malloc((size * 2) + 1);
-    uLongf compressed_len = ((size * 2) + 1); //uLongf from zlib
-    int ret = compress2((void *)compressed, &compressed_len, *value, size,
+    // The next several lines from redisfs.c v.6 (ln 848)
+    char *compressed = malloc((*val_len * 2) + 1);
+    uLongf compressed_len = ((*val_len * 2) + 1); //uLongf from zlib
+    int ret = compress2((void *)compressed, &compressed_len, *value, *val_len,
                   Z_BEST_SPEED);
     if (ret != Z_OK)
     {

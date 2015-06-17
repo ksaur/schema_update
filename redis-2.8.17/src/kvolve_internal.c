@@ -410,8 +410,16 @@ void kvolve_check_rename(redisClient * c, int nargs){
     zfree(c_fake);
 }
 
-// Checks updates for key c->argv[1] and robj *o (if provided, else o looked up) 
-// If check_key is 0, it will not try to update the key (sets, hashes, etc)
+/* THIS IS THE UPDATE FUNCTION.  It's used by both strings and sets.
+ *   @c : the client provided at kvolve entry
+ *   @check_key : if check_key is 0, this function will not try to update the
+ *       key.  This is used on repetitve calls for sets (key_not_checked,
+ *       set_item1_not_checked), (key_already_checked, set_item2_not_checked), etc.
+ *   @o : This option is used by set types only (always NULL for strings). If non-NULL,
+ *       this function will try to update this 'o' object, rather than
+ *       looking it up from @c.
+ *   @type: REDIS_STRING (strings) or REDIS_SET (sets).  More to be impl.
+*/
 void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int type){
 
     int i, key_vers = -1, fun;
