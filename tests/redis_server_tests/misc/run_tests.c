@@ -64,12 +64,52 @@ void test_client_call(void){
   sleep(2);
 }
 
+void test_default_ns(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+
+  reply = redisCommand(c, "SET %s  %s", "test", "oooo");
+  check(101, reply, "OK");
+
+  reply = redisCommand(c, "SADD %s  %s", "testset", "oooo");
+  check_int(102, reply, 1);
+
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 2);
+  freeReplyObject(reply);
+
+  reply = redisCommand(c, "GET %s", "test");
+  check(103, reply, "oooo");
+
+  reply = redisCommand(c, "SMEMBERS  %s", "testset");
+  assert(strcmp(reply->element[0]->str, "oooo") == 0);
+  freeReplyObject(reply);
+
+  reply = redisCommand(c,"keys %s", "*");
+  assert(reply->elements == 2);
+  freeReplyObject(reply);
+
+  reply = redisCommand(c, "SET %s  %s", "test:nonethanks", "oooo");
+  check(104, reply, "OK");
+
+  reply = redisCommand(c, "GET %s", "test:nonethanks");
+  check(105, reply, "oooo");
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
+
 
 int main(void){
 
   system("killall redis-server");
   sleep(2);
   test_client_call();
+  test_default_ns();
   printf("All pass.\n");
   return 0;
 }

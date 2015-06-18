@@ -69,7 +69,7 @@ int kvolve_exists_old(redisClient * c){
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
     robj * key, * val;
-    assert(v != NULL);
+    if(v == NULL) return 0;
 
     /* first check the obvious (current) */
     val = lookupKeyRead(c->db, c->argv[1]);
@@ -242,31 +242,33 @@ int kvolve_update_version(char * upd_code){
     return succ_loaded;
 }
 
-/* Looks for a prepended namespace in @lookup, and then lookups and returns the
- * version information in the hashtable if it exists, else returns null.  */
+/* Looks for a prepended namespace in @lookup (longest matching prefix), and
+ * then lookups and returns the version information in the hashtable if it
+ * exists, else returns null.  */
 struct version_hash * version_hash_lookup(char * lookup){
     struct version_hash *v = NULL;
     char * ns;
     size_t len;
-    int tofree = 0;
 
     /* Split out the namespace from the key, if a namespace exists. */
     char * split = strrchr(lookup, ':');
+    if (split == NULL){
+        DEBUG_PRINT(("WARNING: No namespace declared for key %s\n", lookup));
+        return NULL;
+    }
     if (split != NULL){
         len = split - lookup + 1;
         ns = malloc(len);
-        tofree = 1;
         snprintf(ns, len, "%s", lookup);
     }
-    else
-        ns = "*"; 
 
     /* Get the current version for the namespace, if it exists */
     HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
-    if(!v && tofree && strrchr(ns, ':') ) //recurse search for next longest substring
+
+    /* If not found, recurse search for next longest prefix */
+    if(!v && strrchr(ns, ':'))
         v = version_hash_lookup(ns);
-    if (tofree)
-        free(ns);
+    free(ns);
     return v;
 }
 struct version_hash * version_hash_lookup_nsonly(char * lookup){
@@ -337,7 +339,7 @@ robj * kvolve_get_curr_ver(redisClient * c){
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
     robj * key, * val;
-    assert(v != NULL);
+    if(v == NULL) return NULL;
 
     /* first check the obvious (current) */
     val = lookupKeyRead(c->db, c->argv[1]);
@@ -431,10 +433,7 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         return;
 
     v = version_hash_lookup((char*)c->argv[1]->ptr);
-
-    /* TODO something better than assert fail.
-     * Also, should we support 'default namespace' automatically? */
-    assert(v != NULL);
+    if(v == NULL) return;
 
     /* If the object wasn't passed in (set type, not string type),
      * then look it up (as a robj with version info) */

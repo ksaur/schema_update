@@ -213,9 +213,7 @@ void kvolve_set(redisClient * c){
     struct version_hash * v = NULL;
 
     v = version_hash_lookup((char*)c->argv[1]->ptr);
-    /* TODO something better than assert fail.
-     * Also, should we support 'default namespace' automatically? */
-    assert(v != NULL);
+    if(v == NULL) return;
 
     /* check to see if any xx/nx flags set */
     flags = kvolve_get_flags(c);
@@ -254,10 +252,10 @@ void kvolve_smembers(redisClient * c){
     int64_t * unused = NULL;
     struct version_hash * v = NULL;
     int first = 1;
+    v = version_hash_lookup((char*)c->argv[1]->ptr);
+    if(v == NULL) return;
     robj * o = kvolve_get_curr_ver(c);
     if (!o) return;
-    v = version_hash_lookup((char*)c->argv[1]->ptr);
-    assert(v);
 
     /* REDIS_ENCODING_INTSET can only have ints for values, so we only have to
      * worry about the key/namespace change */
@@ -298,7 +296,7 @@ void kvolve_sadd(redisClient * c){
     char * old = NULL; 
     struct version_hash * v = NULL;
     v = version_hash_lookup((char*)c->argv[1]->ptr);
-    assert(v != NULL);
+    if(v == NULL) return;
 
     /* make sure all set elements are at this current version. Else update them
      * all.  Don't let different members of the same set be at different
