@@ -67,7 +67,7 @@ int kvolve_process_command(redisClient *c){
  * update function (mu). */
 void kvolve_user_call(char* userinput){
     redisClient * c_fake = createClient(-1);
-    char * q = malloc(strlen(userinput)+3);
+    char * q = malloc(strlen(userinput)+3); //do not free this, done auto.
     /* add redis protocol fun */
     sprintf(q,"%s\r\n",userinput);
     c_fake->querybuf = q;
@@ -79,6 +79,8 @@ void kvolve_user_call(char* userinput){
      * value, else infinite loop!), then call properly*/
     kvolve_process_command(c_fake);
     call(c_fake, 0);
+    zfree(c_fake->argv);
+    zfree(c_fake);
 }
 
 /* NX -- Only set the key if it does not already exist*/
