@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <zlib.h>
+#include <time.h>
 #include "kvolve_upd.h"
 
 
@@ -11,12 +12,13 @@
 
 void upd_fun_add_compression(char ** key, void ** value, size_t * val_len){
 
+    char callstr[256];
+    char inode_info[256];
     char * split = strrchr(*key, ':');
 
-    /* This update is for the DATA member of the INODE namespace
-     * (skx:INODE:inode:DATA).  We also need to update (skx:INODE:inode:SIZE) and
-     * (skx:INODE:inode:MTIME), but that can only be done along with the DATA
-     * update.  Therefore, return if not ":DATA". */
+    /* This update is only for the DATA member of the INODE namespace
+     * (skx:INODE:inode:DATA), where 'inode' is the inode number.
+     * Return if not the ":DATA" member. */
     if((split == NULL) || (strncmp(":DATA", split, 5) != 0))
         return;
 
@@ -30,21 +32,22 @@ void upd_fun_add_compression(char ** key, void ** value, size_t * val_len){
         fprintf(stderr, "compress2() failed - aborting write for %s\n", *key);
         free(compressed);
     }
+
+    /* Now set the modification time.  (see redisfs.6/src/redisfs.c:878). (We
+     *   don't need to set size, since the size of the decompressed data didn't change.)
+     * Grab the prefix by substracting from the split point.(ex: "skx:INODE:inode")*/
+    snprintf(inode_info, (split-*key)+1, "%s\0", *key);
+    sprintf(callstr, "set %s:MTIME %d", inode_info, (int)time(NULL));
+    kvolve_user_call(callstr);
+
+    /* Set the new value and length (don't touch key),
+     * to be stored in redis by kvolve */
     *value = compressed;
     *val_len = compressed_len;
-    
-
-//        reply = redisCommand(_g_redis, "SET %s:INODE:%d:SIZE %d",
-//                             _g_prefix, inode, size);
-//        freeReplyObject(reply);
-//
-//        reply = redisCommand(_g_redis, "SET %s:INODE:%d:MTIME %d",
-//                             _g_prefix, inode, time(NULL));
-//        freeReplyObject(reply);
-
-
 }
 
+
+/* This is the update structure for redisfs.5 to redisfs.6 */
 struct kvolve_upd_info * get_update_func_list(void){
 
     struct kvolve_upd_info * head = malloc(sizeof(struct kvolve_upd_info));
