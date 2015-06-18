@@ -15,7 +15,6 @@
 #include "kvolve_upd.h"
 #include "kvolve_internal.h"
 
-
 /* return 1 to halt normal execution flow. return 0 to continue as normal */
 int kvolve_process_command(redisClient *c){
   
@@ -64,10 +63,25 @@ int kvolve_process_command(redisClient *c){
     return 0;
 }
 
+/* This API function allows the update-writer to call into redis from the
+ * update function (mu). */
+void kvolve_user_call(char* userinput){
+    redisClient * c_fake = createClient(-1);
+    char * q = malloc(strlen(userinput)+3);
+    /* add redis protocol fun */
+    sprintf(q,"%s\r\n",userinput);
+    c_fake->querybuf = q;
+    /* parse the user input string */
+    processInlineBuffer(c_fake);
+    /* lookup the newly parsed command */
+    c_fake->cmd = lookupCommandOrOriginal(c_fake->argv[0]->ptr);
+    /* run through kvolve (set vers, and set flag to not run updates on this
+     * value, else infinite loop!), then call properly*/
+    kvolve_process_command(c_fake);
+    call(c_fake, 0);
+}
 
-/* NX -- Only set the key if it does not already exist 
-   Return 0 if set will not occur.  Return 1 if set will occurr. */
-/* TODO This assumes that namespace changes do not have value updates as well */
+/* NX -- Only set the key if it does not already exist*/
 void kvolve_setnx(redisClient * c, struct version_hash * v){
 
     /* Do nothing if already at current namespace, do nothing*/

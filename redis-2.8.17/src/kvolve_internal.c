@@ -17,10 +17,9 @@
 static struct version_hash * vers_list = NULL;
 #define KV_INIT_SZ 20
 
-struct version_hash * get_vers_list(void){
-   return vers_list;
-}
-
+/* this flag indicates that an update function is being processed.  (Prevents
+ * recursion in case of user making calls during update function*/
+int upd_fun_running = 0;
 
 struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list){
     struct version_hash *tmp, * v = (struct version_hash*)malloc(sizeof(struct version_hash));
@@ -425,12 +424,20 @@ void kvolve_check_rename(redisClient * c, int nargs){
 void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int type){
 
     int i, key_vers = -1, fun;
-    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    struct version_hash * v;
+
+    /* Make sure that we're not here because of user update code (kvolve_user_call)*/
+    if (upd_fun_running == 1)
+        return;
+
+    v = version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* TODO something better than assert fail.
      * Also, should we support 'default namespace' automatically? */
     assert(v != NULL);
 
+    /* If the object wasn't passed in (set type, not string type),
+     * then look it up (as a robj with version info) */
     if (!o){
         o = kvolve_get_curr_ver(c);
         if (!o) return;
@@ -449,6 +456,7 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         return;
 
     /* Key is present at an older version. Time to update, get version. */
+    upd_fun_running = 1;
     for (i = 0; i < v->num_versions; i++){
         if (strcmp(v->versions[i], o->vers) == 0){
             key_vers = i;
@@ -511,6 +519,7 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         /* Update the version string in the key to match the update we just did.*/
         o->vers = v->versions[key_vers+1];
     }
+    upd_fun_running = 0;
 }
 
 void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){

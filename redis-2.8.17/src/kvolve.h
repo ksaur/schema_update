@@ -6,9 +6,13 @@
 #include "kvolve_upd.h"
 #include "kvolve_internal.h"
 
+extern int processInlineBuffer(redisClient *c);
+
 
 /* gateway function. TODO, change return type to void? */
 int kvolve_process_command(redisClient *c);
+/* this API call allows the user to call redis in the update function*/
+void kvolve_user_call(char * userinput);
 
 /************* Currently supported Redis commands ************/
 
