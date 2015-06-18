@@ -10,23 +10,7 @@ void test_fun_ns_change(char ** key, void ** value, size_t * val_len){
      * Namespace will update automatically*/
 }
 
-struct kvolve_upd_info * get_update_func_list(void){
-
-    struct kvolve_upd_info * info = malloc(sizeof(struct kvolve_upd_info));
-
-    info->from_ns = "order";
-    info->to_ns = "foo:order";
-    info->from_vers = "v1";
-    info->to_vers = "fv2";
-    info->num_funs = 1;
-    info->funs = calloc(info->num_funs, sizeof(kvolve_update_kv_fun));
-    info->funs[0] = test_fun_ns_change;
-    info->next = NULL;
-    return info;
-}
-
-int main(void){
-   get_update_func_list();
-   return 0;
+void kvolve_declare_update(){
+    kvolve_upd_spec("order", "foo:order", "v1", "fv2", 1, test_fun_ns_change);
 }
 

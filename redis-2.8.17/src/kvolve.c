@@ -59,28 +59,6 @@ void kvolve_process_command(redisClient *c){
     }
 }
 
-/* This API function allows the update-writer to call into redis from the
- * update function (mu). */
-void kvolve_user_call(char* userinput){
-    redisClient * c_fake = createClient(-1);
-    size_t buff = strlen(userinput)+3;
-    char * q = malloc(buff);
-    /* add redis protocol fun */
-    sprintf(q,"%s\r\n",userinput);
-    c_fake->querybuf = sdsnew(q);
-    /* parse the user input string */
-    processInlineBuffer(c_fake);
-    /* lookup the newly parsed command */
-    c_fake->cmd = lookupCommandOrOriginal(c_fake->argv[0]->ptr);
-    /* run through kvolve (set vers, and set flag to not run updates on this
-     * value, else infinite loop!), then call properly*/
-    kvolve_process_command(c_fake);
-    call(c_fake, 0);
-    /* teardown */
-    freeClient(c_fake);
-    free(q);
-}
-
 /* NX -- Only set the key if it does not already exist*/
 void kvolve_setnx(redisClient * c, struct version_hash * v){
 

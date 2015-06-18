@@ -6,9 +6,6 @@
 #include "kvolve_upd.h"
 #include "kvolve_internal.h"
 
-extern int processInlineBuffer(redisClient *c);
-
-
 /* gateway function, the hook into the kvolve system. */
 void kvolve_process_command(redisClient *c);
 

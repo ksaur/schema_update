@@ -8,12 +8,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <stdarg.h>
 #undef __GNUC__  // allow malloc (needed for uthash)  (see redis.h ln 1403)
 #include "uthash.h"
 #include "kvolve_internal.h"
 #include "redis.h"
 #include "kvolve_upd.h"
+#include "kvolve.h"
 
+extern int processInlineBuffer(redisClient *c);
 static struct version_hash * vers_list = NULL;
 #define KV_INIT_SZ 20
 
@@ -52,6 +55,7 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
     HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);  /* id: name of key field */
     return v;
 }
+
 
 /* Get the keyname from @orig_key and combine it with @old_ns.  
  * Allocates memory for the new string and returns it. */
@@ -145,101 +149,118 @@ int kvolve_get_flags(redisClient *c){
     return flags;
 }
 
-/* return number of "struct kvolve_upd_info"'s loaded. */
-int kvolve_update_version(char * upd_code){
+void kvolve_update_version(char * upd_code){
 
     void *handle;
     char *errstr;
-    kvolve_upd_info_getter fun;
-    struct kvolve_upd_info * list, * tmp;
-    struct version_hash * v;
-    int ok_to_load, succ_loaded = 0, item_used, err, i;
+    int err;
     struct stat s;
   
     DEBUG_PRINT(("Updating with %s\n", upd_code));
     err = stat(upd_code, &s);
     if(-1 == err) {
         printf("ERROR, update file %s does not exist.\n", upd_code);
-        return 0;
+        return;
     }
 
-    handle = dlopen(upd_code, RTLD_NOW | RTLD_GLOBAL);
+    /* The GLOBAL flag for 3rd party libraries.  The DEEPBIND flag so that
+     * previous versions of 'kvolve_upd_spec' are replaced with the one about to be
+     * loaded.*/
+
+    handle = dlopen(upd_code, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
     if (handle == NULL){
         errstr = dlerror();
         printf ("A dynamic linking error occurred: (%s)\n", errstr);
-        return 0;
+        return;
     }
-    /* apparently there is no way to suppress -pedantic with -02 for dlsym on fptr?*/
-    fun = (kvolve_upd_info_getter)dlsym(handle, "get_update_func_list");
-    list = fun();
-    
-    while(list != NULL){
-        ok_to_load = 1; 
-        item_used = 0;
+}
 
-        HASH_FIND(hh, vers_list, list->from_ns, strlen(list->from_ns), v);
-        /* make sure namespace exists */
-        if (v == NULL){
-            printf("No such namespace (%s) to upgrade.\n", list->from_ns);
-            ok_to_load = 0;
-        } else if (strcmp(list->from_ns, list->to_ns) != 0){
-            /* check to see if we need a new namespace */
-            HASH_FIND(hh, vers_list, list->to_ns, strlen(list->to_ns), v);
-            if (v != NULL){
-                printf("Cannot merge into existing ns (%s) from ns (%s).\n", 
-                       list->to_ns, list->from_ns);
-            }
-            else{
-                v = kvolve_create_ns(list->to_ns, list->from_ns, list->to_vers, list);
-                item_used = 1;
-                succ_loaded++;
-            }
-            ok_to_load = 0;
-        } else {
-            /* make sure update was not already loaded */
-            for (i = 0; i < v->num_versions; i++){
-                if (strcmp(v->versions[i], list->to_ns) == 0){
-                    printf("ERROR, previous version %s already loaded...\n", list->to_ns);
-                    ok_to_load = 0;
-                    break;
-                }
+/* This API function allows the update-writer to call into redis from the
+ * update function (mu). */
+void kvolve_upd_redis_call(char* userinput){
+    redisClient * c_fake = createClient(-1);
+    size_t buff = strlen(userinput)+3;
+    char * q = malloc(buff);
+    /* add redis protocol fun */
+    sprintf(q,"%s\r\n",userinput);
+    c_fake->querybuf = sdsnew(q);
+    /* parse the user input string */
+    processInlineBuffer(c_fake);
+    /* lookup the newly parsed command */
+    c_fake->cmd = lookupCommandOrOriginal(c_fake->argv[0]->ptr);
+    /* run through kvolve (set vers, and set flag to not run updates on this
+     * value, else infinite loop!), then call properly*/
+    kvolve_process_command(c_fake);
+    call(c_fake, 0);
+    /* teardown */
+    freeClient(c_fake);
+    free(q);
+}
+
+/* This is the API function that the update-writer calls to load the updates */
+void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_vers, int n_funs, ...){
+
+    int i;
+    struct version_hash * v;
+    struct kvolve_upd_info * info;
+    va_list arguments;
+
+    /* Initializing arguments to store all values after num */
+    va_start(arguments, n_funs);
+
+    HASH_FIND(hh, vers_list, from_ns, strlen(from_ns), v);
+    /* make sure namespace exists */
+    if (v == NULL){
+        printf("No such namespace (%s) to upgrade.\n", from_ns);
+        return;
+    } else if (strcmp(from_ns, to_ns) != 0){
+        /* check if namespace exists already */
+        HASH_FIND(hh, vers_list, to_ns, strlen(to_ns), v);
+        if (v != NULL){
+            printf("Cannot merge into existing ns (%s) from ns (%s).\n",
+                   to_ns, from_ns);
+            return;
+        }
+    } else {
+        /* make sure update was not already loaded */
+        for (i = 0; i < v->num_versions; i++){
+            if (strcmp(v->versions[i], to_ns) == 0){
+                printf("ERROR, previous version %s already loaded...\n", to_ns);
+                return;
             }
         }
-        /* If not a new ns, make sure the previous version exists */
-        if (v->prev_ns == NULL && strcmp(v->versions[v->num_versions-1], list->from_vers) != 0){
-            printf("No such version (%s) to upgrade for ns (%s).\n", 
-                   list->from_vers, list->from_ns);
-            ok_to_load = 0;
-        }
-
-        /* if none of the prior checks fired, then load */
-        if (ok_to_load){
-            
-            v->num_versions++;
-            if (v->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
-                /* TODO realloc*/ /* TODO, dynamically resize array */
-                printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS.\n");
-                return 0;
-            }
-            v->versions[v->num_versions-1] = malloc(strlen(list->to_vers)+1);
-            strcpy(v->versions[v->num_versions-1], list->to_vers);
-
-            v->info[v->num_versions-1] = list;
-            item_used = 1;
-            succ_loaded++;
-        }
-
-        /* if error above, free list and function info. else just advance ptr */
-        tmp = list->next;
-        if (!item_used) {
-            if (list->num_funs)
-                free(list->funs);
-            free(list);
-        }
-        list = tmp;
-
     }
-    return succ_loaded;
+    /* If not a new ns, make sure the previous version exists */
+    if (v && v->prev_ns == NULL && strcmp(v->versions[v->num_versions-1], from_vers) != 0){
+        printf("No such version (%s) to upgrade for ns (%s).\n",
+               from_vers, from_ns);
+        return;
+    }
+
+    /* If we've made it this far, create the info stucture */
+    info = malloc(sizeof(struct kvolve_upd_info));
+    info->from_ns = from_ns;
+    info->to_ns = to_ns;
+    info->from_vers = from_vers;
+    info->to_vers = to_vers;
+    info->num_funs = n_funs;
+    info->funs = calloc(n_funs, sizeof(kvolve_upd_fun));
+    for (i = 0; i<n_funs; i++){
+        info->funs[i] = va_arg(arguments, kvolve_upd_fun);
+    }
+    /* If v is null, we need a new namespace */
+    if (!v)
+        v = kvolve_create_ns(to_ns, from_ns, to_vers, info);
+    if (v->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
+        /* TODO, dynamically resize array */
+        printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS.\n");
+        return;
+    }
+    v->versions[v->num_versions] = malloc(strlen(to_vers)+1);
+    strcpy(v->versions[v->num_versions], to_vers);
+    v->info[v->num_versions] = info;
+    v->num_versions++;
+ 
 }
 
 /* Looks for a prepended namespace in @lookup (longest matching prefix), and

@@ -19,6 +19,16 @@
 #define REDIS_SET_NX (1<<0)     /* Set if key not exists. */
 #define REDIS_SET_XX (1<<1)     /* Set if key exists. */
 
+/* This structure forms the linked list that stores the user-supplied update data */
+struct kvolve_upd_info{
+  char * from_ns;
+  char * to_ns;
+  char * from_vers;
+  char * to_vers;
+  kvolve_upd_fun * funs;
+  int num_funs;
+};
+
 struct version_hash{
     char * ns; /* key */
     char * prev_ns; /* key */
@@ -35,7 +45,7 @@ struct version_hash * version_hash_lookup(char * lookup);
 struct version_hash * version_hash_lookup_nsonly(char * lookup);
 struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list);
 int kvolve_check_version(char * vers_str);
-int kvolve_update_version(char * upd_code);
+void kvolve_update_version(char * upd_code);
 void kvolve_namespace_update(redisClient * c, struct version_hash * v);
 char * kvolve_construct_prev_name(char * orig_key, char *old_ns);
 int kvolve_get_flags(redisClient *c);
