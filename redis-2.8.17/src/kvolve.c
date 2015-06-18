@@ -153,7 +153,7 @@ void kvolve_getset(redisClient * c){
 void kvolve_incr(redisClient * c){
 
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
-    if(!v->prev_ns) return;
+    if(!v || !v->prev_ns) return;
 
     /* check if current at correct ns, or doesn't exist at all*/
     if(lookupKeyRead(c->db, c->argv[1]) || (kvolve_get_curr_ver(c)==NULL))

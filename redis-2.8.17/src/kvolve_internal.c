@@ -351,7 +351,7 @@ void kvolve_check_rename(redisClient * c, int nargs){
     struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* return immediately if there is no chance of ns change */
-    if(!v->prev_ns)
+    if(!v || !v->prev_ns)
         return;
 
     redisClient * c_fake = createClient(-1);
