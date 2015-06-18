@@ -89,7 +89,7 @@ void kvolve_setnx(redisClient * c, struct version_hash * v){
      *     (Note that the set will not occur!!!) 
      * This leaves the version number at the old, so when a set _does_ occur,
      * the version will be bumped up only at that time. */
-    kvolve_internal_rename(c,v);
+    kvolve_namespace_update(c,v);
 
 }
 
@@ -168,7 +168,7 @@ void kvolve_incr(redisClient * c){
         return;
 
     /* at this point, we must update the namespace */
-    kvolve_internal_rename(c, v);
+    kvolve_namespace_update(c, v);
 
 }
 

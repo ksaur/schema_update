@@ -361,7 +361,7 @@ robj * kvolve_get_curr_ver(redisClient * c){
 }
 
 
-void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
+void kvolve_namespace_update(redisClient * c, struct version_hash * v) {
 
     redisClient * c_fake = createClient(-1);
     c_fake->argc = 3;
@@ -372,6 +372,8 @@ void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
     sds ren = sdsnew("rename");
     c_fake->cmd = lookupCommand(ren);
     c_fake->cmd->proc(c_fake);
+    DEBUG_PRINT(("Updated key (namespace) from %s to %s\n", 
+                 old, (char*)c_fake->argv[2]->ptr));
     zfree(c_fake->argv);
     zfree(c_fake);
     sdsfree(ren);
@@ -379,7 +381,7 @@ void kvolve_internal_rename(redisClient * c, struct version_hash * v) {
 }
 
 
-/* checks if name is necessary then performs it (for nargs args) .*/
+/* checks if rename is necessary then performs it (for nargs args) .*/
 void kvolve_check_rename(redisClient * c, int nargs){
 
     int i;
@@ -400,10 +402,10 @@ void kvolve_check_rename(redisClient * c, int nargs){
         o = kvolve_get_curr_ver(c_fake);
         // non-raws (ex: integer sets) don't have vers. Check for rename manually.
         if ((o->encoding != REDIS_ENCODING_RAW) && kvolve_exists_old(c)){
-            kvolve_internal_rename(c_fake, v);
+            kvolve_namespace_update(c_fake, v);
         } else if(o->encoding == REDIS_ENCODING_RAW &&
                  strcmp(o->vers, v->versions[v->num_versions-1])!=0){
-            kvolve_internal_rename(c_fake, v);
+            kvolve_namespace_update(c_fake, v);
         }
     }
     zfree(c_fake->argv);
@@ -418,7 +420,7 @@ void kvolve_check_rename(redisClient * c, int nargs){
  *   @o : This option is used by set types only (always NULL for strings). If non-NULL,
  *       this function will try to update this 'o' object, rather than
  *       looking it up from @c.
- *   @type: REDIS_STRING (strings) or REDIS_SET (sets).  More to be impl.
+ *   @type : REDIS_STRING (strings) or REDIS_SET (sets).  More to be impl.
 */
 void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int type){
 
@@ -434,23 +436,30 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         if (!o) return;
     }
 
-    /* non-raws (like incr) don't have vers, and we handle keys only, as values
-     * are types such as ints.*/
+    /* Non-raws (such as an integer counter) don't have versions because redis
+     * stores these values differently (EX: REDIS_ENCODING_INT).  However, the
+     * keys could still be renamed, check for this, then return. */
     if (o->encoding != REDIS_ENCODING_RAW){
         kvolve_check_rename(c, 2);
         return;
     }
 
-    /* Check to see if the version is current */
+    /* Check to see if the version is current, if so, return. */
     if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
 
-    /* Key is present at an older version. Time to update, if available. */
+    /* Key is present at an older version. Time to update, get version. */
     for (i = 0; i < v->num_versions; i++){
         if (strcmp(v->versions[i], o->vers) == 0){
             key_vers = i;
             break;
         }
+    }
+    
+    /* check if we need to rename the key based on a new namespace */
+    if(check_key && v->info[key_vers+1] && 
+                 (strcmp(v->info[key_vers+1]->from_ns, v->ns)!=0)){
+        kvolve_namespace_update(c, v);
     }
 
     /* call all update functions */
@@ -470,11 +479,16 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
             v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
 
             if (check_key && (key != (char*)c->argv[1]->ptr)){
-                DEBUG_PRINT(("Updated key from %s to %s\n", (char*)c->argv[1]->ptr, key));
-                kvolve_internal_rename(c, v);
+                /* The key will automatically be renamed if a namespace change
+                 * is specified in 'struct version_hash'.  However, this gives the user a
+                 * chance to do some further custom modifications if necessary. */ 
+                DEBUG_PRINT(("Updated key (custom) from %s to %s\n", 
+                             (char*)c->argv[1]->ptr, key));
                 sdsfree(c->argv[1]->ptr); // free old memory
                 c->argv[1]->ptr = sdsnew(key); // memcpy's key (user alloc'ed)
                 free(key); // free user-update-allocated memory
+                /* This will write the user-modified key to disk */
+                kvolve_namespace_update(c, v);
             }
             if (val != (char*)o->ptr){
                 DEBUG_PRINT(("Updated value from %s to %s\n", (char*)o->ptr, val));
@@ -485,6 +499,7 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
                     /* This will notify any client watching key (normally called 
                      * automatically, but we bypassed by changing val directly */
                     signalModifiedKey(c->db,o);
+                    server.dirty++;
                 } else if (type == REDIS_SET){
                     kvolve_update_set_elem(c, val, &o);
                 } else{
@@ -493,9 +508,9 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
                 }
             }
         }
+        /* Update the version string in the key to match the update we just did.*/
         o->vers = v->versions[key_vers+1];
     }
-    server.dirty++;
 }
 
 void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
