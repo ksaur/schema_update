@@ -81,9 +81,7 @@ void kvolve_user_call(char* userinput){
     kvolve_process_command(c_fake);
     call(c_fake, 0);
     /* teardown */
-    zfree(c_fake->argv);
-    sdsfree(c_fake->querybuf);
-    zfree(c_fake);
+    freeClient(c_fake);
     free(q);
 }
 
