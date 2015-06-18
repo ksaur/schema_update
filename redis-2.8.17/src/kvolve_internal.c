@@ -33,7 +33,7 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
     if (prev_ns){
         v->prev_ns = malloc(strlen(prev_ns)+1);
         strcpy(v->prev_ns, prev_ns); 
-        tmp = version_hash_lookup_nsonly(prev_ns);
+        HASH_FIND(hh, vers_list, prev_ns, strlen(prev_ns), tmp);
         v->num_versions = 1+ tmp->num_versions;
         v->versions = calloc(KV_INIT_SZ,sizeof(char*)); //TODO check resize
         v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info*));
@@ -292,67 +292,7 @@ struct version_hash * version_hash_lookup(char * lookup){
     free(ns);
     return v;
 }
-struct version_hash * version_hash_lookup_nsonly(char * lookup){
-    struct version_hash *v = NULL;
-    /* Get the prev version for the namespace, if it exists */
-    HASH_FIND(hh, vers_list, lookup, strlen(lookup), v);
-    return v;
-}
 
-///* returns an array of objects at all possible versions of c->arg[v]@ns v 
-//  
-//   Allocates memory.  You must free it yourself.
-//*/
-//int kvolve_get_all_versions(redisClient * c, robj *** arr){
-//
-//    int num_vers = 1, curr;
-//    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
-//    struct version_hash * tmp = v;
-//    assert(v != NULL);
-//    /* Get number of prev namespaces */
-//    while(tmp && tmp->prev_ns != NULL){
-//        tmp = version_hash_lookup(tmp->prev_ns);
-//        num_vers++;
-//    }
-//    *arr = calloc(num_vers, sizeof(robj*));
-//    (*arr)[0] = createStringObject((char*)c->argv[1]->ptr,strlen((char*)c->argv[1]->ptr));
-//    printf("%p\n", (void*)(*arr)[0]);
-//
-//    /* curr = 1 because arr[0] already assigned w current vers */
-//    tmp = v;
-//    for(curr=1; curr<num_vers; curr++){
-//        char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
-//        printf("creating with old = %s\n", old);
-//        (*arr)[curr] = createStringObject(old,strlen(old));
-//        free(old);
-//        if(tmp->prev_ns)
-//            tmp = version_hash_lookup(tmp->prev_ns);
-//    }
-//   return num_vers;
-//}
-//
-///* Return 1 if the key exists at any version; else return 0 */
-//int kvolve_exists_anywhere(redisClient * c){
-//    robj ** objarr = NULL;
-//    int i, ret=0, numobj;
-//    /* first, check for the current to see if we can short-cut */
-//    if(lookupKeyRead(c->db, c->argv[1]))
-//        return 1;
-//
-//    numobj = kvolve_get_all_versions(c, &objarr);
-//    for(i=0; i<numobj; i++){
-//        printf("Looking up key at %p\n", (void*)objarr[i]);
-//        if(lookupKeyRead(c->db, objarr[i])){
-//            ret = 1;
-//            break;
-//        }
-//    }
-//    for(i=0; i<numobj; i++){
-//       zfree(objarr[i]);
-//    }
-//    free(objarr);
-//    return ret;
-//}
 
 /* return the VALUE with the namespace that's currently in the db */
 robj * kvolve_get_curr_ver(redisClient * c){
