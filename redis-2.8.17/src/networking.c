@@ -1108,8 +1108,7 @@ void processInputBuffer(redisClient *c) {
         } else {
 
             /****** KVolve edit ******/
-            if (kvolve_process_command(c))
-                return;
+            kvolve_process_command(c);
             /****** End KVolve edit ******/
 
             /* Only reset the client when the command was executed. */

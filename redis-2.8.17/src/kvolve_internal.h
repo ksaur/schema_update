@@ -27,6 +27,8 @@ struct version_hash{
     int num_versions;
     UT_hash_handle hh; /* makes this structure hashable */
 };
+/* This typedef is used to call the user-written update functions. */
+typedef struct kvolve_upd_info * (*kvolve_upd_info_getter)(void);
 
 struct version_hash * get_vers_list(void);
 struct version_hash * version_hash_lookup(char * lookup);

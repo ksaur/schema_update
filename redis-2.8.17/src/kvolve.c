@@ -15,8 +15,7 @@
 #include "kvolve_upd.h"
 #include "kvolve_internal.h"
 
-/* return 1 to halt normal execution flow. return 0 to continue as normal */
-int kvolve_process_command(redisClient *c){
+void kvolve_process_command(redisClient *c){
   
     if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
             && (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)
@@ -58,9 +57,6 @@ int kvolve_process_command(redisClient *c){
     } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "srem") == 0){
         kvolve_srem(c);
     }
- 
-    // TODO, do we ever need to halt normal execution flow?
-    return 0;
 }
 
 /* This API function allows the update-writer to call into redis from the

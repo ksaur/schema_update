@@ -9,10 +9,8 @@
 extern int processInlineBuffer(redisClient *c);
 
 
-/* gateway function. TODO, change return type to void? */
-int kvolve_process_command(redisClient *c);
-/* this API call allows the user to call redis in the update function*/
-void kvolve_user_call(char * userinput);
+/* gateway function, the hook into the kvolve system. */
+void kvolve_process_command(redisClient *c);
 
 /************* Currently supported Redis commands ************/
 

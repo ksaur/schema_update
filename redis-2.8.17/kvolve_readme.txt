@@ -1,9 +1,8 @@
-Changes made to original redis source code  (5 lines of code):
+Changes made to original redis source code  (4 lines of code):
 
-networking.c  (3 changes)
+networking.c  (2 changes)
 < #include "kvolve.h"
-<             if (kvolve_process_command(c))
-<                 return;
+<             kvolve_process_command(c);
 
 redis.h  (1 change)
 <    char *vers;
