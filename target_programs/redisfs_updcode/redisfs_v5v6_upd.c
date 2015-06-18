@@ -5,15 +5,10 @@
 #include "kvolve_upd.h"
 
 
-void upd_fun_dir_ns_change(char ** key, void ** value, size_t * val_len){
-    /* The new-version code will already query with the correct string,
-       if we've reached this part of the update in the new namespace.
-       Just preserve the string and return it */
-    size_t s = strlen((char*)*key)+1;
-    char * save = malloc(s);
-    strcpy(save, *key);
-    *key = save;
-}
+//void upd_fun_dir_ns_change(char ** key, void ** value, size_t * val_len){
+//  /* Done automatically */
+//}
+
 void upd_fun_add_compression(char ** key, void ** value, size_t * val_len){
 
     char * split = strrchr(*key, ':');
@@ -60,9 +55,8 @@ struct kvolve_upd_info * get_update_func_list(void){
     head->to_ns = "skx:DIR";
     head->from_vers = "v5";
     head->to_vers = "v6";
-    head->num_funs = 1;
-    head->funs = calloc(head->num_funs, sizeof(kvolve_update_kv_fun));
-    head->funs[0] = upd_fun_dir_ns_change;
+    head->num_funs = 0;
+    head->funs = NULL;
     head->next = info2;
 
     /* Add compression to DATA members of the INODE namespace */
