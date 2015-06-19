@@ -183,7 +183,7 @@ void kvolve_set(redisClient * c){
 
     int flags;
     char * old = NULL; 
-    robj * oldobj = NULL;
+    robj *o, * oldobj = NULL;
     struct version_hash * v = NULL;
 
     v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
@@ -200,6 +200,7 @@ void kvolve_set(redisClient * c){
         return;
     }
 
+
     /* Set the version field in the value (only the string is stored for the
      * key).  Note that this will automatically blow away any old version. */
     c->argv[2]->vers = v->versions[v->num_versions-1];
@@ -208,13 +209,15 @@ void kvolve_set(redisClient * c){
      * Check to see if it's possible that an old version exists 
      * under another namespace that should be deleted. */
     if(v->prev_ns != NULL){ //TODO recurse multiple old ns
+        o = kvolve_get_db_val(c);  //if we're current, return
+        if ((!o) || strcmp(o->vers, v->versions[v->num_versions-1])==0)
+            return;
         old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
         oldobj = createStringObject(old,strlen(old));
         dbDelete(c->db,oldobj); /* will also free oldobj. */
         free(old);
     }
 }
-
 
 void kvolve_get(redisClient * c){
     kvolve_check_update_kv_pair(c, 1, NULL, REDIS_STRING);
