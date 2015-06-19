@@ -17,6 +17,7 @@
 #include "kvolve.h"
 
 extern int processInlineBuffer(redisClient *c);
+char * kvolve_set_version_fixup = NULL;
 static struct version_hash * vers_list = NULL;
 #define KV_INIT_SZ 20
 
@@ -360,8 +361,10 @@ void kvolve_check_rename(redisClient * c, int nargs){
     for (i=1; i < nargs; i++){
         c_fake->argv[1]= c->argv[i];
         o = kvolve_get_db_val(c_fake);
-        // non-raws (ex: integer sets) don't have vers. Check for rename manually.
-        if ((o->encoding != REDIS_ENCODING_RAW) && kvolve_exists_old(c)){
+
+        // strings stored as ints don't have vers. Check for rename manually.
+        if (o->type == REDIS_STRING && o->encoding == REDIS_ENCODING_INT 
+                 && kvolve_exists_old(c)){
             kvolve_namespace_update(c_fake, v);
         } else if(o->encoding == REDIS_ENCODING_RAW &&
                  strcmp(o->vers, v->versions[v->num_versions-1])!=0){
@@ -392,10 +395,12 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
         if (!o) return;
     }
 
-    /* Non-raws (such as an integer counter) don't have versions because redis
-     * stores these values differently (EX: REDIS_ENCODING_INT).  However, the
-     * keys could still be renamed, check for this, then return. */
-    if (o->encoding != REDIS_ENCODING_RAW){
+    /* String types that have integer values don't have versions because redis
+     * uses shared.integer[val] objects to encode these.  (Because the values may
+     * be shared by multiple keys, there's no safe way to store the version as they
+     * may not be consistent.) However, the keys could still be renamed, check for
+     * this, then return. */
+    if (o->type == REDIS_STRING && o->encoding == REDIS_ENCODING_INT){
         kvolve_check_rename(c, 2);
         return;
     }
@@ -499,6 +504,36 @@ void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
     zfree(c_fake->argv);
     zfree(c_fake);
     *o = new;
+}
+
+void kvolve_newset_version_setter(redisClient *c){
+    robj * o, * key;
+    setTypeIterator *si;
+    struct version_hash * v;
+    if(kvolve_set_version_fixup == NULL)
+        return;
+    v = kvolve_version_hash_lookup(kvolve_set_version_fixup);
+ 
+    if(v){
+        key = createStringObject(kvolve_set_version_fixup, strlen(kvolve_set_version_fixup));
+        o = lookupKeyRead(c->db, key);//TODO store prev db
+        zfree(key);
+        o->vers = v->versions[v->num_versions-1];
+        si = setTypeInitIterator(o);
+        robj * e = setTypeNextObject(si);
+        while(e){
+            e->vers = v->versions[v->num_versions-1];
+            e = setTypeNextObject(si);
+        }
+    }
+    free(kvolve_set_version_fixup);
+    kvolve_set_version_fixup = NULL;
+
+}
+
+void kvolve_newset_version(redisClient *c){
+    kvolve_set_version_fixup = malloc(sdslen(c->argv[1]->ptr)+1);
+    strcpy(kvolve_set_version_fixup, (char*)c->argv[1]->ptr);
 }
 
 #define __GNUC__  // "re-unallow" malloc

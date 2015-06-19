@@ -15,7 +15,10 @@
 #include "kvolve_upd.h"
 #include "kvolve_internal.h"
 
+
 void kvolve_process_command(redisClient *c){
+
+    kvolve_newset_version_setter(c);
   
     if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
             && (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)
@@ -225,28 +228,14 @@ void kvolve_get(redisClient * c){
 
 void kvolve_smembers(redisClient * c){
 
-    robj * objele = NULL;
-    int64_t * unused = NULL;
     struct version_hash * v = NULL;
     int first = 1;
     v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
-    if(v == NULL) return;
-    robj * o = kvolve_get_db_val(c);
-    if (!o) return;
-
-    /* REDIS_ENCODING_INTSET can only have ints for values, so we only have to
-     * worry about the key/namespace change */
-    if(o->encoding == REDIS_ENCODING_INTSET){
-        if(v->prev_ns){
-            kvolve_check_rename(c, 2);
-        }
+    if(v == NULL) 
         return;
-    }
-
-    /* The version is stored in set elements, which will all be the same version.
-       Also, we're handling int sets above, so 3rd param is unused */
-    setTypeRandomElement(o, &objele, unused);
-    if ((!objele) || strcmp(objele->vers, v->versions[v->num_versions-1])==0)
+    robj * o = kvolve_get_db_val(c);
+    /* return if object isn't present or is already current */
+    if (!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
 
     redisClient * c_fake = createClient(-1);
@@ -256,8 +245,8 @@ void kvolve_smembers(redisClient * c){
     c_fake->argv[1] = c->argv[1];
     setTypeIterator *si = setTypeInitIterator(o);
     robj * e = setTypeNextObject(si);
+    /* call update on each of the set elements */
     while(e){
-        printf("%p\n", (void*)e);
         c_fake->argv[2] = e;
         kvolve_check_update_kv_pair(c, first, e, REDIS_SET);
         e = setTypeNextObject(si);
@@ -274,6 +263,19 @@ void kvolve_sadd(redisClient * c){
     struct version_hash * v = NULL;
     v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(v == NULL) return;
+
+    /* Check if the set exists or if we're creating a new set.  If we're
+     * creating a new set, redis will create it during the call.  (We can't create
+     * it ahead of time because redis doesn't allow empty sets. And we can't add
+     * the element because it will throw off the return response.)  Therefore,
+     * notify networking.c to patchup the set version after the call where the set
+     * is created. */
+    robj * o = kvolve_get_db_val(c);
+    if (o == NULL) {
+        kvolve_newset_version(c);
+        return;
+    }
+    printf("VERSION IS: %s\n", o->vers);
 
     /* make sure all set elements are at this current version. Else update them
      * all.  Don't let different members of the same set be at different

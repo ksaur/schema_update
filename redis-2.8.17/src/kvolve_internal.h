@@ -97,4 +97,16 @@ void kvolve_check_rename(redisClient * c, int nargs);
 /* Return 1 if key present in outdated ns, else return 0. */
 int kvolve_exists_old(redisClient * c);
 
+/* Redis doesn't allow empty sets/lists/hashes, so when a new set/list/hash is
+ * created, it's not possible to set the version string before the call happens
+ * without throwing off the return response to the client and counters/etc.
+ * This function will retrieve the name of the new set/list/hash, and set the
+ * version on the next call to kvolve (before the user can possibly make any
+ * other calls) */
+void kvolve_newset_version_setter(redisClient *c);
+
+/* Stores the keyname when to creating a new set */
+void kvolve_newset_version(redisClient *c);
+
+
 #endif
