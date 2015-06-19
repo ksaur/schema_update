@@ -70,7 +70,7 @@ char * kvolve_construct_prev_name(char * orig_key, char *old_ns){
 /* return 1 if key present in outdated ns. */
 int kvolve_exists_old(redisClient * c){
 
-    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
     robj * key, * val;
     if(v == NULL) return 0;
@@ -92,7 +92,7 @@ int kvolve_exists_old(redisClient * c){
         zfree(key);
         if(!tmp->prev_ns)
             break;
-        tmp = version_hash_lookup(tmp->prev_ns);
+        tmp = kvolve_version_hash_lookup(tmp->prev_ns);
     }
     return 0;
 }
@@ -149,7 +149,7 @@ int kvolve_get_flags(redisClient *c){
     return flags;
 }
 
-void kvolve_update_version(char * upd_code){
+void kvolve_load_update(char * upd_code){
 
     void *handle;
     char *errstr;
@@ -266,7 +266,7 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_ve
 /* Looks for a prepended namespace in @lookup (longest matching prefix), and
  * then lookups and returns the version information in the hashtable if it
  * exists, else returns null.  */
-struct version_hash * version_hash_lookup(char * lookup){
+struct version_hash * kvolve_version_hash_lookup(char * lookup){
     struct version_hash *v = NULL;
     char * ns;
     size_t len;
@@ -277,27 +277,25 @@ struct version_hash * version_hash_lookup(char * lookup){
         DEBUG_PRINT(("WARNING: No namespace declared for key %s\n", lookup));
         return NULL;
     }
-    if (split != NULL){
-        len = split - lookup + 1;
-        ns = malloc(len);
-        snprintf(ns, len, "%s", lookup);
-    }
+    len = split - lookup + 1;
+    ns = malloc(len);
+    snprintf(ns, len, "%s", lookup);
 
     /* Get the current version for the namespace, if it exists */
-    HASH_FIND(hh, vers_list, ns, strlen(ns), v);  
+    HASH_FIND(hh, vers_list, ns, len-1, v);
 
     /* If not found, recurse search for next longest prefix */
     if(!v && strrchr(ns, ':'))
-        v = version_hash_lookup(ns);
+        v = kvolve_version_hash_lookup(ns);
     free(ns);
     return v;
 }
 
 
 /* return the VALUE with the namespace that's currently in the db */
-robj * kvolve_get_curr_ver(redisClient * c){
+robj * kvolve_get_db_val(redisClient * c){
 
-    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
     robj * key, * val;
     if(v == NULL) return NULL;
@@ -317,7 +315,7 @@ robj * kvolve_get_curr_ver(redisClient * c){
         if (val) return val;
         if(!tmp->prev_ns)
             break;
-        tmp = version_hash_lookup(tmp->prev_ns);
+        tmp = kvolve_version_hash_lookup(tmp->prev_ns);
     }
     return NULL;
 }
@@ -348,7 +346,7 @@ void kvolve_check_rename(redisClient * c, int nargs){
 
     int i;
     robj * o;
-    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* return immediately if there is no chance of ns change */
     if(!v || !v->prev_ns)
@@ -361,7 +359,7 @@ void kvolve_check_rename(redisClient * c, int nargs){
 
     for (i=1; i < nargs; i++){
         c_fake->argv[1]= c->argv[i];
-        o = kvolve_get_curr_ver(c_fake);
+        o = kvolve_get_db_val(c_fake);
         // non-raws (ex: integer sets) don't have vers. Check for rename manually.
         if ((o->encoding != REDIS_ENCODING_RAW) && kvolve_exists_old(c)){
             kvolve_namespace_update(c_fake, v);
@@ -374,16 +372,7 @@ void kvolve_check_rename(redisClient * c, int nargs){
     zfree(c_fake);
 }
 
-/* THIS IS THE UPDATE FUNCTION.  It's used by both strings and sets.
- *   @c : the client provided at kvolve entry
- *   @check_key : if check_key is 0, this function will not try to update the
- *       key.  This is used on repetitve calls for sets (key_not_checked,
- *       set_item1_not_checked), (key_already_checked, set_item2_not_checked), etc.
- *   @o : This option is used by set types only (always NULL for strings). If non-NULL,
- *       this function will try to update this 'o' object, rather than
- *       looking it up from @c.
- *   @type : REDIS_STRING (strings) or REDIS_SET (sets).  More to be impl.
-*/
+/* THIS IS THE UPDATE FUNCTION. See header for documentation */
 void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int type){
 
     int i, key_vers = -1, fun;
@@ -393,13 +382,13 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
     if (upd_fun_running == 1)
         return;
 
-    v = version_hash_lookup((char*)c->argv[1]->ptr);
+    v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(v == NULL) return;
 
     /* If the object wasn't passed in (set type, not string type),
      * then look it up (as a robj with version info) */
     if (!o){
-        o = kvolve_get_curr_ver(c);
+        o = kvolve_get_db_val(c);
         if (!o) return;
     }
 

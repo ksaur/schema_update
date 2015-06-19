@@ -1,12 +1,10 @@
 #ifndef _KVOLVE_UPD_H
 #define _KVOLVE_UPD_H
 
-
 /* This API call allows the user to call redis in the update function.
  *    Ex: kvolve_upd_redis_call("set order:222 wwwww");
  */
 void kvolve_upd_redis_call(char * userinput);
-
 
 /* This is the typedef for the function prototype that the user must write.
  *    Ex: void test_fun_1(char ** key, void ** value, size_t * val_len){...}
@@ -28,7 +26,6 @@ void kvolve_upd_redis_call(char * userinput);
  *           performed, this length must be updated by setting *val_len to the new length.
  */
 typedef void (*kvolve_upd_fun)(char ** key, void ** value, size_t * val_len);
-
 
 /* This function specifies an update.  There must be 1 more calls to this function per update.
  *    Ex: kvolve_upd_specify("order", "order:region", "v0", "v1", upd_fun_name);

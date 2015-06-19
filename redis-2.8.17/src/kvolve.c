@@ -20,7 +20,7 @@ void kvolve_process_command(redisClient *c){
     if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
             && (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)
             && (strncasecmp((char*)c->argv[2]->ptr, "update", 6) == 0)){
-        kvolve_update_version((char*)(c->argv[2]->ptr)+6);
+        kvolve_load_update((char*)(c->argv[2]->ptr)+6);
     } else if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0) && 
             (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)){
         kvolve_check_version((char*)c->argv[2]->ptr);
@@ -66,14 +66,14 @@ void kvolve_setnx(redisClient * c, struct version_hash * v){
     if (lookupKeyRead(c->db, c->argv[1]))
         return;
 
-    robj * present = kvolve_get_curr_ver(c);
+    robj * present = kvolve_get_db_val(c);
     DEBUG_PRINT(("Present is = %p\n", (void*)present));
     /* If doesn't exist anywhere, do nothing */
     if (present == NULL)
         return;
 
     if(!v) /* if the user calls setnx directly instead of using flags w set*/
-       v = version_hash_lookup((char*)c->argv[1]->ptr);
+       v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* But if the key DOES exist at a PRIOR namespace, then we need to
      * rename the key, so that the set doesn't erroneously occur (because
@@ -152,11 +152,11 @@ void kvolve_getset(redisClient * c){
  * just need to make sure the name is current and go from there. */
 void kvolve_incr(redisClient * c){
 
-    struct version_hash * v = version_hash_lookup((char*)c->argv[1]->ptr);
+    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(!v || !v->prev_ns) return;
 
     /* check if current at correct ns, or doesn't exist at all*/
-    if(lookupKeyRead(c->db, c->argv[1]) || (kvolve_get_curr_ver(c)==NULL))
+    if(lookupKeyRead(c->db, c->argv[1]) || (kvolve_get_db_val(c)==NULL))
         return;
 
     /* at this point, we must update the namespace */
@@ -186,7 +186,7 @@ void kvolve_set(redisClient * c){
     robj * oldobj = NULL;
     struct version_hash * v = NULL;
 
-    v = version_hash_lookup((char*)c->argv[1]->ptr);
+    v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(v == NULL) return;
 
     /* check to see if any xx/nx flags set */
@@ -226,9 +226,9 @@ void kvolve_smembers(redisClient * c){
     int64_t * unused = NULL;
     struct version_hash * v = NULL;
     int first = 1;
-    v = version_hash_lookup((char*)c->argv[1]->ptr);
+    v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(v == NULL) return;
-    robj * o = kvolve_get_curr_ver(c);
+    robj * o = kvolve_get_db_val(c);
     if (!o) return;
 
     /* REDIS_ENCODING_INTSET can only have ints for values, so we only have to
@@ -269,7 +269,7 @@ void kvolve_sadd(redisClient * c){
     robj * oldobj = NULL;
     char * old = NULL; 
     struct version_hash * v = NULL;
-    v = version_hash_lookup((char*)c->argv[1]->ptr);
+    v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(v == NULL) return;
 
     /* make sure all set elements are at this current version. Else update them
