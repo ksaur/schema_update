@@ -103,10 +103,13 @@ int kvolve_exists_old(redisClient * c);
  * This function will retrieve the name of the new set/list/hash, and set the
  * version on the next call to kvolve (before the user can possibly make any
  * other calls) */
-void kvolve_newset_version_setter(redisClient *c);
+void kvolve_prevcall_check(void);
 
 /* Stores the keyname when to creating a new set */
 void kvolve_newset_version(redisClient *c);
+/* Sets the keyname after creating a new set */
+void kvolve_newset_version_setter(void);
+
 
 
 #endif

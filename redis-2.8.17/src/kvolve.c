@@ -18,7 +18,7 @@
 
 void kvolve_process_command(redisClient *c){
 
-    kvolve_newset_version_setter(c);
+    kvolve_prevcall_check();
   
     if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
             && (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)

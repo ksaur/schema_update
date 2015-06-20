@@ -17,9 +17,11 @@
 #include "kvolve.h"
 
 extern int processInlineBuffer(redisClient *c);
-char * kvolve_set_version_fixup = NULL;
 static struct version_hash * vers_list = NULL;
 #define KV_INIT_SZ 20
+
+redisDb * prev_db = NULL;
+char * kvolve_set_version_fixup = NULL;
 
 /* this flag indicates that an update function is being processed.  (Prevents
  * recursion in case of user making calls during update function*/
@@ -506,17 +508,22 @@ void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
     *o = new;
 }
 
-void kvolve_newset_version_setter(redisClient *c){
+void kvolve_prevcall_check(void){
+    if(kvolve_set_version_fixup == NULL)
+        return;
+    kvolve_newset_version_setter();
+
+}
+
+void kvolve_newset_version_setter(void){
     robj * o, * key;
     setTypeIterator *si;
     struct version_hash * v;
-    if(kvolve_set_version_fixup == NULL)
-        return;
     v = kvolve_version_hash_lookup(kvolve_set_version_fixup);
  
     if(v){
         key = createStringObject(kvolve_set_version_fixup, strlen(kvolve_set_version_fixup));
-        o = lookupKeyRead(c->db, key);//TODO store prev db
+        o = lookupKeyRead(prev_db, key);
         zfree(key);
         o->vers = v->versions[v->num_versions-1];
         si = setTypeInitIterator(o);
@@ -534,6 +541,7 @@ void kvolve_newset_version_setter(redisClient *c){
 void kvolve_newset_version(redisClient *c){
     kvolve_set_version_fixup = malloc(sdslen(c->argv[1]->ptr)+1);
     strcpy(kvolve_set_version_fixup, (char*)c->argv[1]->ptr);
+    prev_db = c->db;
 }
 
 #define __GNUC__  // "re-unallow" malloc
