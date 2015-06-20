@@ -81,6 +81,7 @@ void kvolve_declare_update() __attribute__((constructor));
 /* This is an optional helper call that allows the update-writer to call redis
  * in the update function.
  *    Ex: kvolve_upd_redis_call("set order:222 wwwww");
+ * //TODO clarify this function.  this currently only works for sets, there is no return type (ex: gets wont work)...maybe implement this...TODO
  */
 void kvolve_upd_redis_call(char * userinput);
 

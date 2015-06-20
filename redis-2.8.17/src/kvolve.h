@@ -35,4 +35,10 @@ void kvolve_srem(redisClient * c);
 void kvolve_scard(redisClient * c);
 void kvolve_spop(redisClient * c);
 
+/******* Sorted Sets (zsets) ********/
+void kvolve_zadd(redisClient *c);
+void kvolve_zcard(redisClient * c);
+void kvolve_zrem(redisClient * c);
+void kvolve_zscore(redisClient * c);
+
 #endif

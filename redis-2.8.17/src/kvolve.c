@@ -59,6 +59,14 @@ void kvolve_process_command(redisClient *c){
         kvolve_sismember(c);
     } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "srem") == 0){
         kvolve_srem(c);
+    } else if (c->argc >= 4 && strcasecmp((char*)c->argv[0]->ptr, "zadd") == 0){
+        kvolve_zadd(c);
+    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "zcard") == 0){
+        kvolve_zcard(c);
+    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "zscore") == 0){
+        kvolve_zscore(c);
+    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "zrem") == 0){
+        kvolve_zrem(c);
     }
 }
 
@@ -147,6 +155,17 @@ void kvolve_incrby(redisClient * c){
 }
 void kvolve_getset(redisClient * c){
     kvolve_get(c);
+}
+void kvolve_zcard(redisClient * c){
+    robj * o = kvolve_get_db_val(c);
+    if (o != NULL)
+        kvolve_update_all_hash_or_zset(c, o);
+}
+void kvolve_zrem(redisClient * c){
+    kvolve_zcard(c);
+}
+void kvolve_zscore(redisClient * c){
+    kvolve_zcard(c);
 }
 
 /* the incr command blows away any version you pass it, because it creates its
@@ -257,9 +276,9 @@ void kvolve_smembers(redisClient * c){
 }
 
 void kvolve_sadd(redisClient * c){
-    int elem;
     robj * oldobj = NULL;
     char * old = NULL; 
+    int i;
     struct version_hash * v = NULL;
     v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(v == NULL) return;
@@ -272,21 +291,54 @@ void kvolve_sadd(redisClient * c){
      * is created. */
     robj * o = kvolve_get_db_val(c);
     if (o == NULL) {
-        kvolve_newset_version(c);
+        kvolve_new_version(c,REDIS_SET);
         return;
     }
-    printf("VERSION IS: %s\n", o->vers);
 
-    /* make sure all set elements are at this current version. Else update them
-     * all.  Don't let different members of the same set be at different
+    /* make sure all set elements are at this current version and update them
+     * all if necessary.  Don't let different members of the same set be at different
      * versions!! (would be a confusing mess.) This will check and return if current,
      * else update other set members to the current version */
-    kvolve_smembers(c);
-    
-    for (elem=2; elem < c->argc; elem++)
-        c->argv[elem]->vers = v->versions[v->num_versions-1];
+    if (strcmp(o->vers, v->versions[v->num_versions-1])!=0)
+        kvolve_smembers(c);
+
+    /* Set the version for the new element(s) that is not yet a member */
+    for(i=2; i < c->argc; i++)
+        c->argv[i]->vers = v->versions[v->num_versions-1];
         
-    if(v->prev_ns != NULL){ //TODO recurse multiple old ns
+    if((v->prev_ns != NULL) && (strcmp(o->vers,
+             v->versions[v->num_versions-1])==0)){ //TODO recurse multiple old ns
+        old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+        oldobj = createStringObject(old,strlen(old));
+        dbDelete(c->db,oldobj); /* will also free oldobj. */
+        free(old);
+    }
+}
+
+void kvolve_zadd(redisClient * c){
+    robj * oldobj = NULL;
+    char * old = NULL;
+    int i;
+    struct version_hash * v = NULL;
+    v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
+    if(v == NULL) return;
+
+    /* Check if the zset exists or if we're creating a new set.*/
+    robj * o = kvolve_get_db_val(c);
+    if (o == NULL) {
+        kvolve_new_version(c, REDIS_ZSET);
+        return;
+    }
+
+    /* make sure all set elements are at this current version. Else update all*/
+    kvolve_update_all_hash_or_zset(c, o);
+
+    /* Set the version for the new element(s) */
+    for(i=3; i < c->argc; i=i+2)
+        c->argv[i]->vers = v->versions[v->num_versions-1];
+
+    if((v->prev_ns != NULL) && (strcmp(o->vers,
+             v->versions[v->num_versions-1])==0)){ //TODO recurse multiple old ns
         old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
         oldobj = createStringObject(old,strlen(old));
         dbDelete(c->db,oldobj); /* will also free oldobj. */

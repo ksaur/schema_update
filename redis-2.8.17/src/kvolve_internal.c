@@ -17,11 +17,13 @@
 #include "kvolve.h"
 
 extern int processInlineBuffer(redisClient *c);
+extern unsigned char *zzlFind(unsigned char *zl, robj *ele, double *score);
 static struct version_hash * vers_list = NULL;
 #define KV_INIT_SZ 20
 
 redisDb * prev_db = NULL;
 char * kvolve_set_version_fixup = NULL;
+char * kvolve_zset_version_fixup = NULL;
 
 /* this flag indicates that an update function is being processed.  (Prevents
  * recursion in case of user making calls during update function*/
@@ -466,7 +468,9 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
                     server.dirty++;
                 } else if (type == REDIS_SET){
                     kvolve_update_set_elem(c, val, &o);
-                } else{
+                } else if (type == REDIS_ZSET){
+                    kvolve_update_zset_elem(c, val, &o);
+                } else {
                     printf("UPDATE NOT IMPLEMENTED FOR TYPE %d\n", type);
                     assert(0); //TODO impl.
                 }
@@ -479,7 +483,6 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
 }
 
 void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
-
 
     sds ren = NULL;
     robj * new;
@@ -508,10 +511,82 @@ void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
     *o = new;
 }
 
+//TODO TESTING
+void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o){
+
+	//TODO this function needs additional error checking...it assumes since we
+	//found the object/item above, it will be present.  However, it assumes the
+	//encoding is all correct.
+
+    sds ren = NULL;
+    robj * new, *scoreobj;
+    double score;
+    char output[50];
+
+    /* get existing score */
+    if ((*o)->encoding == REDIS_ENCODING_ZIPLIST)
+        zzlFind((*o)->ptr,c->argv[2],&score);
+    else{
+        zset *zs = (*o)->ptr;
+        dictEntry *de = dictFind(zs->dict,tryObjectEncoding(*o));
+        score = *(double*)dictGetVal(de);
+    }
+    snprintf(output,50,"%f",score);
+
+
+    /* add new */
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    c_fake->argv[1] = c->argv[1];
+    new = createStringObject(new_val,strlen(new_val));
+    scoreobj = createStringObject(output,strlen(output));
+    c_fake->argv[2] = scoreobj;
+    c_fake->argv[3] = new;
+    ren = sdsnew("zadd");
+    c_fake->cmd = lookupCommand(ren);
+    sdsfree(ren);
+    c_fake->cmd->proc(c_fake);
+
+    /* delete old */
+    c_fake->argv[2] = *o;
+    ren = sdsnew("zrem");
+    c_fake->cmd = lookupCommand(ren);
+    sdsfree(ren);
+    c_fake->cmd->proc(c_fake);
+
+    zfree(c_fake->argv);
+    zfree(c_fake);
+    zfree(scoreobj);
+    *o = new; //TODO check freeing
+}
+
+void kvolve_update_all_hash_or_zset(redisClient * c, robj *o){
+
+    unsigned char *p = ziplistIndex(o->ptr,0);
+    unsigned char *vstr;
+    unsigned int vlen;
+    long long vll;
+    robj * elem;
+    int first = 1;
+
+    while(p) { //db.c:515
+        ziplistGet(p,&vstr,&vlen,&vll);
+        elem = (vstr != NULL) ? createStringObject((char*)vstr,vlen) :
+                         createStringObjectFromLongLong(vll);
+        kvolve_check_update_kv_pair(c, first, elem, o->type);
+        p = ziplistNext(o->ptr,p);
+        first = 0;
+    }
+}
+
+
 void kvolve_prevcall_check(void){
-    if(kvolve_set_version_fixup == NULL)
-        return;
-    kvolve_newset_version_setter();
+    if(kvolve_set_version_fixup != NULL)
+        kvolve_newset_version_setter();
+    else if(kvolve_zset_version_fixup != NULL)
+        kvolve_newzset_version_setter();
 
 }
 
@@ -525,7 +600,11 @@ void kvolve_newset_version_setter(void){
         key = createStringObject(kvolve_set_version_fixup, strlen(kvolve_set_version_fixup));
         o = lookupKeyRead(prev_db, key);
         zfree(key);
+        /* set the version for the set object */
         o->vers = v->versions[v->num_versions-1];
+        /* only store the version in the set elements if the encoding supports it. */
+        if(o->encoding == REDIS_ENCODING_INTSET)
+            return;
         si = setTypeInitIterator(o);
         robj * e = setTypeNextObject(si);
         while(e){
@@ -538,9 +617,29 @@ void kvolve_newset_version_setter(void){
 
 }
 
-void kvolve_newset_version(redisClient *c){
-    kvolve_set_version_fixup = malloc(sdslen(c->argv[1]->ptr)+1);
-    strcpy(kvolve_set_version_fixup, (char*)c->argv[1]->ptr);
+void kvolve_newzset_version_setter(void){
+    unsigned char *p;
+    unsigned char *vstr;
+    unsigned int vlen;
+    long long vll;
+    robj * o, *elem, * key;
+    struct version_hash * v;
+    v = kvolve_version_hash_lookup(kvolve_zset_version_fixup);
+    if (v)
+        o->vers = v->versions[v->num_versions-1];
+    free(kvolve_zset_version_fixup);
+    kvolve_zset_version_fixup = NULL;
+
+}
+
+void kvolve_new_version(redisClient *c, int type){
+    if(type == REDIS_SET){
+        kvolve_set_version_fixup = malloc(sdslen(c->argv[1]->ptr)+1);
+        strcpy(kvolve_set_version_fixup, (char*)c->argv[1]->ptr);
+    } else if (type == REDIS_ZSET){
+        kvolve_zset_version_fixup = malloc(sdslen(c->argv[1]->ptr)+1);
+        strcpy(kvolve_zset_version_fixup, (char*)c->argv[1]->ptr);
+    }
     prev_db = c->db;
 }
 

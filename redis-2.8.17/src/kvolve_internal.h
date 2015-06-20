@@ -77,16 +77,22 @@ robj * kvolve_get_db_val(redisClient * c);
  *   @check_key : if check_key is 0, this function will not try to update the
  *       key.  This is used on repetitve calls for sets (key_not_checked,
  *       set_item1_not_checked), (key_already_checked, set_item2_not_checked), etc.
- *   @o : This option is used by set types only (always NULL for strings). If
+ *   @o : This option is used by set/zsets/etc types only (always NULL for strings). If
  *       non-NULL, this function will try to update this 'o' object, rather than
  *       looking it up from @c.
- *   @type : REDIS_STRING (strings) or REDIS_SET (sets).  More to be impl.
+ *   @type : The container type of the to-be-updated element (Ex: REDIS_ZSET if @o
+*        belongs to a zset).
 */
 void kvolve_check_update_kv_pair(redisClient * c, int key_check, robj * o, int type);
 
-/* Update the key/value pair stored in the database by adding the new version
+/* Update a member of a set adding the new version (@new_val)
  * and delete the old version.  This is called by the update function. */
 void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o);
+
+/* Update a member of a zset adding the new version (@new_val)
+ * and delete the old version.  This is called by the update function.
+ * //TODO support score updates */
+void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o);
 
 /* Check if a rename is necessary, and if so, rename.  @nargs is the number of
  * keys stored in @c->argv to check.  The @nargs is necessary for thing such as
@@ -97,18 +103,23 @@ void kvolve_check_rename(redisClient * c, int nargs);
 /* Return 1 if key present in outdated ns, else return 0. */
 int kvolve_exists_old(redisClient * c);
 
-/* Redis doesn't allow empty sets/lists/hashes, so when a new set/list/hash is
+/* check if updated needed for robjs of REDIS_HASH || REDIS_ZSET */
+void kvolve_update_all_hash_or_zset(redisClient * c, robj *o);
+
+/* Redis doesn't allow empty sets/zset/lists/hashes, so when a new one is
  * created, it's not possible to set the version string before the call happens
  * without throwing off the return response to the client and counters/etc.
- * This function will retrieve the name of the new set/list/hash, and set the
+ * This function will retrieve the name of the new (z)set/list/hash, and set the
  * version on the next call to kvolve (before the user can possibly make any
  * other calls) */
 void kvolve_prevcall_check(void);
 
-/* Stores the keyname when to creating a new set */
-void kvolve_newset_version(redisClient *c);
+/* Stores the keyname when to creating a new (z)set/list/hash */
+void kvolve_new_version(redisClient *c, int type);
 /* Sets the keyname after creating a new set */
 void kvolve_newset_version_setter(void);
+/* Sets the keyname after creating a new zset */
+void kvolve_newzset_version_setter(void);
 
 
 
