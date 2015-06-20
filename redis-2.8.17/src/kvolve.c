@@ -159,12 +159,7 @@ void kvolve_getset(redisClient * c){
     kvolve_get(c);
 }
 void kvolve_zcard(redisClient * c){
-    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
-    robj * o = kvolve_get_db_val(c);
-    /* return if object isn't present or is already current */
-    if (!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
-        return;
-    kvolve_update_all_hash_or_zset(c, o);
+    kvolve_update_all_zset(c);
 }
 void kvolve_zrem(redisClient * c){
     kvolve_zcard(c);
@@ -250,7 +245,7 @@ void kvolve_set(redisClient * c){
 }
 
 void kvolve_get(redisClient * c){
-    kvolve_check_update_kv_pair(c, 1, NULL, REDIS_STRING);
+    kvolve_check_update_kv_pair(c, 1, NULL, REDIS_STRING, NULL);
 }
 
 void kvolve_smembers(redisClient * c){
@@ -275,7 +270,7 @@ void kvolve_smembers(redisClient * c){
     /* call update on each of the set elements */
     while(e){
         c_fake->argv[2] = e;
-        kvolve_check_update_kv_pair(c, first, e, REDIS_SET);
+        kvolve_check_update_kv_pair(c, first, e, REDIS_SET, NULL);
         e = setTypeNextObject(si);
         first = 0;
     }
@@ -326,7 +321,6 @@ void kvolve_sadd(redisClient * c){
 void kvolve_zadd(redisClient * c){
     robj * oldobj = NULL;
     char * old = NULL;
-    int i;
     struct version_hash * v = NULL;
     v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(v == NULL) return;
@@ -337,16 +331,9 @@ void kvolve_zadd(redisClient * c){
         kvolve_new_version(c, REDIS_ZSET);
         return;
     }
-    /* return if object isn't present or is already current */
-    if (!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
-        return;
 
     /* make sure all set elements are at this current version. Else update all*/
-    kvolve_update_all_hash_or_zset(c, o);
-
-    /* Set the version for the new element(s) */
-    for(i=3; i < c->argc; i=i+2)
-        c->argv[i]->vers = v->versions[v->num_versions-1];
+    kvolve_update_all_zset(c);
 
     if((v->prev_ns != NULL) && (strcmp(o->vers,
              v->versions[v->num_versions-1])==0)){ //TODO recurse multiple old ns

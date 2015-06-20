@@ -81,9 +81,10 @@ robj * kvolve_get_db_val(redisClient * c);
  *       non-NULL, this function will try to update this 'o' object, rather than
  *       looking it up from @c.
  *   @type : The container type of the to-be-updated element (Ex: REDIS_ZSET if @o
-*        belongs to a zset).
-*/
-void kvolve_check_update_kv_pair(redisClient * c, int key_check, robj * o, int type);
+ *        belongs to a zset).
+ *   @s : If a zset, a pointer to the score.  Else NULL
+ */
+void kvolve_check_update_kv_pair(redisClient * c, int key_check, robj * o, int type, double * s);
 
 /* Update a member of a set adding the new version (@new_val)
  * and delete the old version.  This is called by the update function. */
@@ -92,7 +93,7 @@ void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o);
 /* Update a member of a zset adding the new version (@new_val)
  * and delete the old version.  This is called by the update function.
  * //TODO support score updates */
-void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o);
+void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double s);
 
 /* Check if a rename is necessary, and if so, rename.  @nargs is the number of
  * keys stored in @c->argv to check.  The @nargs is necessary for thing such as
@@ -103,8 +104,8 @@ void kvolve_check_rename(redisClient * c, int nargs);
 /* Return 1 if key present in outdated ns, else return 0. */
 int kvolve_exists_old(redisClient * c);
 
-/* check if updated needed for robjs of REDIS_HASH || REDIS_ZSET */
-void kvolve_update_all_hash_or_zset(redisClient * c, robj *o);
+/* check if updated needed for robjs of REDIS_ZSET */
+void kvolve_update_all_zset(redisClient * c);
 
 /* Redis doesn't allow empty sets/zset/lists/hashes, so when a new one is
  * created, it's not possible to set the version string before the call happens
