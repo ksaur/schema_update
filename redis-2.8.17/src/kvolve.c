@@ -67,6 +67,8 @@ void kvolve_process_command(redisClient *c){
         kvolve_zscore(c);
     } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "zrem") == 0){
         kvolve_zrem(c);
+    } else if (c->argc >= 4 && strcasecmp((char*)c->argv[0]->ptr, "zrange") == 0){
+        kvolve_zrange(c);
     }
 }
 
@@ -157,14 +159,20 @@ void kvolve_getset(redisClient * c){
     kvolve_get(c);
 }
 void kvolve_zcard(redisClient * c){
+    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     robj * o = kvolve_get_db_val(c);
-    if (o != NULL)
-        kvolve_update_all_hash_or_zset(c, o);
+    /* return if object isn't present or is already current */
+    if (!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
+        return;
+    kvolve_update_all_hash_or_zset(c, o);
 }
 void kvolve_zrem(redisClient * c){
     kvolve_zcard(c);
 }
 void kvolve_zscore(redisClient * c){
+    kvolve_zcard(c);
+}
+void kvolve_zrange(redisClient * c){
     kvolve_zcard(c);
 }
 
@@ -329,6 +337,9 @@ void kvolve_zadd(redisClient * c){
         kvolve_new_version(c, REDIS_ZSET);
         return;
     }
+    /* return if object isn't present or is already current */
+    if (!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
+        return;
 
     /* make sure all set elements are at this current version. Else update all*/
     kvolve_update_all_hash_or_zset(c, o);

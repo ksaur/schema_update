@@ -573,11 +573,16 @@ void kvolve_update_all_hash_or_zset(redisClient * c, robj *o){
 
     while(p) { //db.c:515
         ziplistGet(p,&vstr,&vlen,&vll);
-        elem = (vstr != NULL) ? createStringObject((char*)vstr,vlen) :
-                         createStringObjectFromLongLong(vll);
-        kvolve_check_update_kv_pair(c, first, elem, o->type);
+        //TODO every other will be the score. impl update?
+        if(vstr){
+            //elem = (vstr != NULL) ? createStringObject((char*)vstr,vlen) :
+            //                 createStringObjectFromLongLong(vll);
+            elem = createStringObject((char*)vstr,vlen);
+            elem->vers = o->vers;
+            kvolve_check_update_kv_pair(c, first, elem, o->type);
+            first = 0;
+        }
         p = ziplistNext(o->ptr,p);
-        first = 0;
     }
 }
 
@@ -618,15 +623,16 @@ void kvolve_newset_version_setter(void){
 }
 
 void kvolve_newzset_version_setter(void){
-    unsigned char *p;
-    unsigned char *vstr;
-    unsigned int vlen;
-    long long vll;
-    robj * o, *elem, * key;
+    robj * o, *key;
     struct version_hash * v;
     v = kvolve_version_hash_lookup(kvolve_zset_version_fixup);
-    if (v)
+    if (v){
+        key = createStringObject(kvolve_zset_version_fixup, strlen(kvolve_zset_version_fixup));
+        o = lookupKeyRead(prev_db, key);
+        zfree(key);
+        /* set the version for the zset object */
         o->vers = v->versions[v->num_versions-1];
+    }
     free(kvolve_zset_version_fixup);
     kvolve_zset_version_fixup = NULL;
 

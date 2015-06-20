@@ -40,5 +40,6 @@ void kvolve_zadd(redisClient *c);
 void kvolve_zcard(redisClient * c);
 void kvolve_zrem(redisClient * c);
 void kvolve_zscore(redisClient * c);
+void kvolve_zrange(redisClient * c);
 
 #endif
