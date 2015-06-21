@@ -40,12 +40,13 @@
 /* This is the typedef for the function prototype that the user must write.
  *    Ex: void test_fun_1(char ** key, void ** value, size_t * val_len){...}
  *
+ *    Important: No user-written function is necessary to update namespaces unless
+ *           additional modifications are necessary. The @key parameter allows the
+ *           user to do some additional changes to a specific key if desired.
+ *
  *    @key : A modifiable pointer to the key.  If the user specifies a namespace
  *           change in the update info, that namespace change will be applied automatically.
  *           In case of a namespace change, @key will be the already-modified key.
- *           Note: No user-written function is necessary to update namespaces unless
- *              additional modifications are necessary. This parameter allows the user
- *              to do some additional changes to a specific key if desired.
  *
  *           If a change to the key is desired, set "*key" in this function.
  *
@@ -81,9 +82,10 @@ void kvolve_declare_update() __attribute__((constructor));
 /* This is an optional helper call that allows the update-writer to call redis
  * in the update function.
  *    Ex: kvolve_upd_redis_call("set order:222 wwwww");
- * //TODO clarify this function.  this currently only works for sets, there is no return type (ex: gets wont work)...maybe implement this...TODO
+ * This returns the server response as a string following the usual redis protocol, which
+ * may be either ignored (if a set) or parsed with hiredis redisReaderFeed.
  */
-void kvolve_upd_redis_call(char * userinput);
+char * kvolve_upd_redis_call(char * userinput);
 
 
 

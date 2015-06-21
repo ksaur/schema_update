@@ -24,6 +24,7 @@ static struct version_hash * vers_list = NULL;
 redisDb * prev_db = NULL;
 char * kvolve_set_version_fixup = NULL;
 char * kvolve_zset_version_fixup = NULL;
+redisClient * c_fake_user = NULL; // for the user's mu code calls
 
 /* this flag indicates that an update function is being processed.  (Prevents
  * recursion in case of user making calls during update function*/
@@ -182,24 +183,27 @@ void kvolve_load_update(char * upd_code){
 
 /* This API function allows the update-writer to call into redis from the
  * update function (mu). */
-void kvolve_upd_redis_call(char* userinput){
-    redisClient * c_fake = createClient(-1);
+char * kvolve_upd_redis_call(char* userinput){
+
+    /* free from prev if necessary*/
+    if(c_fake_user)
+        freeClient(c_fake_user);
+    c_fake_user = createClient(-1);
     size_t buff = strlen(userinput)+3;
     char * q = malloc(buff);
     /* add redis protocol fun */
     sprintf(q,"%s\r\n",userinput);
-    c_fake->querybuf = sdsnew(q);
+    c_fake_user->querybuf = sdsnew(q);
+    free(q);
     /* parse the user input string */
-    processInlineBuffer(c_fake);
+    processInlineBuffer(c_fake_user);
     /* lookup the newly parsed command */
-    c_fake->cmd = lookupCommandOrOriginal(c_fake->argv[0]->ptr);
+    c_fake_user->cmd = lookupCommandOrOriginal(c_fake_user->argv[0]->ptr);
     /* run through kvolve (set vers, and set flag to not run updates on this
      * value, else infinite loop!), then call properly*/
-    kvolve_process_command(c_fake);
-    call(c_fake, 0);
-    /* teardown */
-    freeClient(c_fake);
-    free(q);
+    kvolve_process_command(c_fake_user);
+    call(c_fake_user, 0);
+    return c_fake_user->buf;
 }
 
 /* This is the API function that the update-writer calls to load the updates */
