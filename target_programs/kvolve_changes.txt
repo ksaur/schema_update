@@ -1,3 +1,6 @@
+For redisfs:
+
+
 +++ b/src/redisfs.c    (6 LoC)
 @@ -177,6 +177,12 @@ redis_alive()
          if (_g_debug)
@@ -9,4 +12,14 @@
 +            exit(1);
 +        }
 +        freeReplyObject(reply);
+
+
+For amico:  (4 LoC)  
+lib/amico/relationships.rb (3):
++    def setns()
++      Amico.redis.client.call(["client", "setname", "amico:followers@v1.2,amico:following@v1.2,amico:blocked@v1.2,amico:reciprocated@v1.2,amico:pending@v1.2"])
++    end
+
+to the program startup (1):
+Amico.setns
 

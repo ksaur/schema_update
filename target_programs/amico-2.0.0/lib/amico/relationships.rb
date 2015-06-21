@@ -1,5 +1,10 @@
 module Amico
   module Relationships
+    # modification for kvolve connect
+    def setns()
+      Amico.redis.client.call(["client", "setname", "amico:followers:default@v2.0,amico:following:default@v2.0,amico:blocked:default@v2.0,amico:reciprocated:default@v2.0,amico:pending:default@v2.0"])
+    end
+
     # Establish a follow relationship between two IDs. After adding the follow 
     # relationship, it checks to see if the relationship is reciprocated and establishes that 
     # relationship if so.
