@@ -64,6 +64,63 @@ void kvolve_process_command(redisClient *c){
     }
 }
 
+void kvolve_set(redisClient * c, struct version_hash * v){
+
+    int flags;
+    robj * oldobj = NULL;
+
+    if(v == NULL) return;
+
+    /* check to see if any xx/nx flags set */
+    flags = kvolve_get_flags(c);
+    if(flags & REDIS_SET_XX){
+        kvolve_setxx(c, v);
+        return;
+    }
+    if(flags & REDIS_SET_NX){
+        kvolve_setnx(c, v);
+        return;
+    }
+
+
+    /* Set the version field in the value (only the string is stored for the
+     * key).  Note that this will automatically blow away any old version. */
+    c->argv[2]->vers = v->versions[v->num_versions-1];
+
+    /* Since there are no (nx,xx) flags, the set will occur.
+     * Check to see if it's possible that an old version exists
+     * under another namespace that should be deleted. */
+    if(v->prev_ns != NULL){
+        oldobj = kvolve_exists_old(c, v);
+        if(oldobj){
+            dbDelete(c->db,oldobj);
+            zfree(oldobj);
+        }
+    }
+}
+
+/* multi-set ... loop over all args */
+void kvolve_mset(redisClient * c, struct version_hash * v){
+    int i;
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+
+    assert(c->argc % 2 == 1);
+    for (i=1; i < c->argc; i=i+2){
+        c_fake->argv[1]= c->argv[i];
+        c_fake->argv[2]= c->argv[i+1];
+        kvolve_set(c_fake, v);
+    }
+    zfree(c_fake->argv);
+    zfree(c_fake);
+}
+
+void kvolve_get(redisClient * c, struct version_hash * v){
+    kvolve_check_update_kv_pair(c, v, 1, NULL, REDIS_STRING, NULL);
+}
+
 /* NX -- Only set the key if it does not already exist*/
 void kvolve_setnx(redisClient * c, struct version_hash * v){
 
@@ -96,23 +153,6 @@ void kvolve_setxx(redisClient * c, struct version_hash * v){
 	/* If the set occurs, this will correctly bump the version.  If doesn't
      * occur, this will be ignored.*/
     c->argv[2]->vers = v->versions[v->num_versions-1];
-}
-
-void kvolve_mset(redisClient * c, struct version_hash * v){
-    int i;
-    redisClient * c_fake = createClient(-1);
-    c_fake->db = c->db;
-    c_fake->argc = 3;
-    c_fake->argv = zmalloc(sizeof(void*)*3);
-
-    assert(c->argc % 2 == 1);
-    for (i=1; i < c->argc; i=i+2){
-        c_fake->argv[1]= c->argv[i];
-        c_fake->argv[2]= c->argv[i+1];
-        kvolve_set(c_fake, v);
-    }
-    zfree(c_fake->argv);
-    zfree(c_fake);
 }
 
 /* We only have to worry about namespace changes here. We need to do the rename
@@ -190,45 +230,6 @@ void kvolve_mget(redisClient * c, struct version_hash * v){
     }
     zfree(c_fake->argv);
     zfree(c_fake);
-}
-
-void kvolve_set(redisClient * c, struct version_hash * v){
-
-    int flags;
-    robj * oldobj = NULL;
-
-    if(v == NULL) return;
-
-    /* check to see if any xx/nx flags set */
-    flags = kvolve_get_flags(c);
-    if(flags & REDIS_SET_XX){
-        kvolve_setxx(c, v);
-        return;
-    }
-    if(flags & REDIS_SET_NX){
-        kvolve_setnx(c, v);
-        return;
-    }
-
-
-    /* Set the version field in the value (only the string is stored for the
-     * key).  Note that this will automatically blow away any old version. */
-    c->argv[2]->vers = v->versions[v->num_versions-1];
-
-    /* Since there are no (nx,xx) flags, the set will occur. 
-     * Check to see if it's possible that an old version exists 
-     * under another namespace that should be deleted. */
-    if(v->prev_ns != NULL){
-        oldobj = kvolve_exists_old(c, v);
-        if(oldobj){
-            dbDelete(c->db,oldobj);
-            zfree(oldobj);
-        }
-    }
-}
-
-void kvolve_get(redisClient * c, struct version_hash * v){
-    kvolve_check_update_kv_pair(c, v, 1, NULL, REDIS_STRING, NULL);
 }
 
 void kvolve_smembers(redisClient * c, struct version_hash * v){
