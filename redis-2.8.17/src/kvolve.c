@@ -52,7 +52,7 @@ void kvolve_process_command(redisClient *c){
         kvolve_load_update((char*)(c->argv[2]->ptr)+6);
     } else if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0) && 
             (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)){
-        kvolve_check_version((char*)c->argv[2]->ptr);
+        kvolve_check_version(c);
     } else if(c->argc > 1) {
         struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
         kvolve_call fun = kvolve_lookup_kv_command(c);

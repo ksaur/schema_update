@@ -37,6 +37,7 @@ struct version_hash{
     char ** versions;
     struct kvolve_upd_info ** info;
     int num_versions;
+    unsigned int * ids; /* the client ids connected to this version */
     UT_hash_handle hh; /* makes this structure hashable */
 };
 
@@ -57,8 +58,8 @@ struct version_hash * kvolve_version_hash_lookup(char * lookup);
 struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list);
 
 /* Used on client connect, validates the requested namespaces.  If valid,
- * return 1, else return 0 */
-int kvolve_check_version(char * vers_str);
+ * continues, else kills the connection. */
+void kvolve_check_version(redisClient *c);
 
 /* Call dlopen on the user code provided at @upd_code, which will trigger the
  * auto calling of the user-supplied function kvolve_declare_update() (because

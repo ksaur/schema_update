@@ -105,9 +105,9 @@ robj * kvolve_exists_old(redisClient * c, struct version_hash * v){
     return NULL;
 }
 
-/* return 1 if OK.  else return 0. TODO don't allow connect if err */
-int kvolve_check_version(char * vers_str){
-  
+void kvolve_check_version(redisClient *c){
+
+    char *  vers_str = (char*)c->argv[2]->ptr;
     int toprocess =  strlen(vers_str);
     char * cpy = malloc(strlen(vers_str)+1);
     strcpy(cpy, vers_str);
@@ -124,17 +124,19 @@ int kvolve_check_version(char * vers_str){
   
         struct version_hash *v = NULL;
   
-        HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), v);  /* id already in the hash? */
+        HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), v);
         if (v==NULL){
             kvolve_create_ns(ns_lookup, NULL, vers, NULL);
         } else if (strcmp(v->versions[v->num_versions-1], vers) != 0){
             printf("ERROR, INVALID VERSION (%s). System is at \'%s\' for ns \'%s\'\n", 
                    vers, v->versions[v->num_versions-1], v->ns);
-            //TODO don't let it connect.
-            return 0;
+            sdsfree(c->argv[0]->ptr);
+            /* This will close the connection */
+            c->argv[0]->ptr = sdsnew("quit");
+            return;
         } 
         if (&vers[pos] == &cpy[toprocess])
-            return 1;
+            return;
     }
 }
 
@@ -174,7 +176,6 @@ void kvolve_load_update(char * upd_code){
     /* The GLOBAL flag for 3rd party libraries.  The DEEPBIND flag so that
      * previous versions of 'kvolve_upd_spec' are replaced with the one about to be
      * loaded.*/
-
     handle = dlopen(upd_code, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
     if (handle == NULL){
         errstr = dlerror();
