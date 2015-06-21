@@ -4,9 +4,9 @@
 /*****************************************************
  Connecting to Redis-KVolve:
 
-    Connect to Redis as normal, and then immediately after connecting call:
+    Connect to Redis as normal, and then immediately after connecting call
+       client setname [namespace]@[version],...
        Ex: client setname order@v0,user@u0
-    In the form of [namespace]@[version],[namespace]@[version]
 
 *****************************************************/
 
@@ -14,11 +14,11 @@
 /*****************************************************
  Writing the Update Function:
 
-	To write the update, the update-writer uses one function call to
+    To write the update, the update-writer uses one function call to
       describe each update (version info), with optional parameters of update
       functions to perform along with updating the version info.
 
-	The specifics are described below, but here is a brief example of appending
+    The specifics are described below, but here is a brief example of appending
       a string "UPDATED" to all values of keys in the namespace "order":
 
       -------------------------------------------------------------------
@@ -53,31 +53,34 @@
  *    @value : A modifiable pointer to the data.  If a change to the value is
  *           desired, set "*value" in this function.
  *
- *    @val_en : The modifiable length of the data. This is necessary because not all @value
+ *    @val_len : The modifiable length of the data. This is necessary because not all @value
  *           will be null-terminated (Ex: binary file data).  If a change to the value is
  *           performed, this length must be updated by setting *val_len to the new length.
  */
 typedef void (*kvolve_upd_fun)(char ** key, void ** value, size_t * val_len);
 
+
 /* This function specifies an update.  There must be 1 more calls to this function per update.
- *    Ex: kvolve_upd_specify("order", "order:region", "v0", "v1", upd_fun_name);
+ *    Ex: kvolve_upd_spec("order", "order", "v0", "v1", 1, upd_fun_name);
+ *        kvolve_upd_spec("user", "user:region", "v0", "v1", 0);
  *
  *    @from_ns : The namespace we're updating from. This must have already been
  *           declared by a connecting program.
- *
  *    @to_ns : The namespace we're updating to. This will be equal to @from_ns unless
  *           there is a namespace change
  *    @from_vers : The version we're updating from. This must have already been
  *           declared by a connecting program.
- *    @to_vers : The version we're updating to.  These must be uniquely named.
+ *    @to_vers : The version we're updating to.  These must be uniquely named with a namespace.
  *    @n_funs : The number of functions of type kvolve_upd_fun for this update
- *    @... : One or more function pointers to type kvolve_upd_fun.
+ *    @... : Zero or more function pointers to type kvolve_upd_fun.
  */
 void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_vers, int n_funs, ...);
 
+
 /* This is the function where to place the calls to kvolve_upd_spec.  This will
- * load up all of the update information */
+ * load up all of the update information automatically */
 void kvolve_declare_update() __attribute__((constructor));
+
 
 /* This is an optional helper call that allows the update-writer to call redis
  * in the update function.
@@ -90,7 +93,7 @@ char * kvolve_upd_redis_call(char * userinput);
 
 
 /*****************************************************
- Compiling the Update Function:
+ Compiling the Update Module:
 
     Compile the above function to a shared object by adding these flags:
        -shared -fPIC -g your_upd_fun_file.c -o your_upd_name.so -ldl -I../redis-2.8.17/src/
@@ -100,13 +103,13 @@ char * kvolve_upd_redis_call(char * userinput);
 
 
 /*****************************************************
- Calling the Update Function:
+ Calling the Update Module:
 
     Updates may be requested within the program or outside the program by issuing
-    the following command to redis:
-       client setname update/your_upd_name.so
+    'client setname update/' concatenated with the path to your module.
+       Ex: client setname update/path_to_your_module/your_upd_name.so
 
-	This will automatically advance the namespace for the calling client, all
+    This will automatically advance the namespace for the calling client, all
        other programs connected to the updated namespace must update.
 
 *****************************************************/
