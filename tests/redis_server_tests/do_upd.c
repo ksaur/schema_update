@@ -28,7 +28,6 @@ void do_upd(char * name, char * loc){
 
 }
 
-// TODO parameterize
 int main(int argc, char *argv[]){
 
   if(argc!=3){

@@ -561,7 +561,7 @@ void kvolve_update_all_zset(redisClient * c){
     /* return if object isn't present or is already current */
     if(!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
-    if(o->encoding == REDIS_ENCODING_ZIPLIST){
+    if(o->encoding != REDIS_ENCODING_ZIPLIST){
         DEBUG_PRINT(("Type %d not implemented for zset\n", o->encoding)); //TODO
         return;
     }
