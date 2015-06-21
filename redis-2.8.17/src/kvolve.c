@@ -44,6 +44,7 @@ struct kvolve_cmd_hash * kvolve_commands = NULL;
 void kvolve_process_command(redisClient *c){
 
     kvolve_prevcall_check();
+
     if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
             && (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)
             && (strncasecmp((char*)c->argv[2]->ptr, "update", 6) == 0)){
@@ -274,7 +275,7 @@ void kvolve_sadd(redisClient * c, struct version_hash * v){
      * is created. */
     robj * o = kvolve_get_db_val(c, v);
     if (o == NULL) {
-        kvolve_new_version(c,REDIS_SET);
+        kvolve_new_version(c, v);
         return;
     }
 
@@ -305,7 +306,7 @@ void kvolve_zadd(redisClient * c, struct version_hash * v){
     /* Check if the zset exists or if we're creating a new set.*/
     robj * o = kvolve_get_db_val(c, v);
     if (o == NULL) {
-        kvolve_new_version(c, REDIS_ZSET);
+        kvolve_new_version(c, v);
         return;
     }
 

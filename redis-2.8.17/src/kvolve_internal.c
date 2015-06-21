@@ -20,13 +20,10 @@ extern int processInlineBuffer(redisClient *c);
 extern double zzlGetScore(unsigned char *sptr);
 /* The hash handle for all of the namespace versions*/
 static struct version_hash * vers_list = NULL;
+/* The hash handle for temporary version storage */
+struct tmp_vers_store_hash * tmp_store = NULL;
 /* The initial size of the version arrays in the hashtable*/
 #define KV_INIT_SZ 20
-
-/* Globals for subsequent calls */
-redisDb * prev_db = NULL;
-char * kvolve_set_version_fixup = NULL;
-char * kvolve_zset_version_fixup = NULL;
 
 /* client for the user's mu code calls (stored to free) */
 redisClient * c_fake_user = NULL; 
@@ -63,7 +60,7 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
         v->info[0] = NULL;
         strcpy(v->versions[0], v0);
     }
-    HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);  /* id: name of key field */
+    HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);
     return v;
 }
 
@@ -606,68 +603,56 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
 
 
 void kvolve_prevcall_check(void){
-    if(kvolve_set_version_fixup != NULL)
-        kvolve_newset_version_setter();
-    else if(kvolve_zset_version_fixup != NULL)
-        kvolve_newzset_version_setter();
 
-}
-
-void kvolve_newset_version_setter(void){
-    robj * o, * key;
-    setTypeIterator *si;
-    struct version_hash * v;
-    v = kvolve_version_hash_lookup(kvolve_set_version_fixup);
- 
-    if(v){
-        key = createStringObject(kvolve_set_version_fixup, strlen(kvolve_set_version_fixup));
-        o = lookupKeyRead(prev_db, key);
-        zfree(key);
-        /* set the version for the set object */
-        o->vers = v->versions[v->num_versions-1];
-        /* only store the version in the set elements if the encoding supports it. */
-        if(o->encoding == REDIS_ENCODING_INTSET){
-            free(kvolve_set_version_fixup);
-            kvolve_set_version_fixup = NULL;
-            return;
-        }
-        si = setTypeInitIterator(o);
-        robj * e = setTypeNextObject(si);
-        while(e){
-            e->vers = v->versions[v->num_versions-1];
-            e = setTypeNextObject(si);
-        }
-    }
-    free(kvolve_set_version_fixup);
-    kvolve_set_version_fixup = NULL;
-
-}
-
-void kvolve_newzset_version_setter(void){
+    struct tmp_vers_store_hash *current_fix, *tmp;
     robj * o, *key;
-    struct version_hash * v;
-    v = kvolve_version_hash_lookup(kvolve_zset_version_fixup);
-    if (v){
-        key = createStringObject(kvolve_zset_version_fixup, strlen(kvolve_zset_version_fixup));
-        o = lookupKeyRead(prev_db, key);
-        zfree(key);
-        /* set the version for the zset object */
-        o->vers = v->versions[v->num_versions-1];
-    }
-    free(kvolve_zset_version_fixup);
-    kvolve_zset_version_fixup = NULL;
+    int remains = 0;
 
+    if(!tmp_store) return;
+
+    HASH_ITER(hh, tmp_store, current_fix, tmp) {
+        key = createStringObject(current_fix->key, strlen(current_fix->key));
+        o = lookupKeyRead(current_fix->prev_db, key);
+        zfree(key);
+        if(!o){ /* happens if multi block */
+            remains = 1;
+            continue;
+        }
+        o->vers = current_fix->vers;
+        /* only store the version in the set elements if the encoding supports it. */
+        if(o->encoding == REDIS_ENCODING_HT && o->type == REDIS_SET){
+            setTypeIterator *si = setTypeInitIterator(o);
+            robj * e = setTypeNextObject(si);
+            while(e){
+                e->vers = current_fix->vers;
+                e = setTypeNextObject(si);
+            }
+        }
+
+        HASH_DEL(tmp_store,current_fix);
+        free(current_fix->key);
+        free(current_fix);
+    }
+    if(!remains)
+        tmp_store = NULL;
 }
 
-void kvolve_new_version(redisClient *c, int type){
-    if(type == REDIS_SET){
-        kvolve_set_version_fixup = malloc(sdslen(c->argv[1]->ptr)+1);
-        strcpy(kvolve_set_version_fixup, (char*)c->argv[1]->ptr);
-    } else if (type == REDIS_ZSET){
-        kvolve_zset_version_fixup = malloc(sdslen(c->argv[1]->ptr)+1);
-        strcpy(kvolve_zset_version_fixup, (char*)c->argv[1]->ptr);
+void kvolve_new_version(redisClient *c, struct version_hash * v){
+    struct tmp_vers_store_hash * t;
+    char * tmp_name;
+    HASH_FIND(hh, tmp_store, (char*)c->argv[1]->ptr, strlen((char*)c->argv[1]->ptr), t);
+    if (t){
+        t->vers = v->versions[v->num_versions-1];
+        t->prev_db = c->db;
+        return;
     }
-    prev_db = c->db;
+    t = malloc(sizeof(struct tmp_vers_store_hash));
+    tmp_name = malloc(strlen((char*)c->argv[1]->ptr)+1);
+    strcpy(tmp_name, (char*)c->argv[1]->ptr);
+    t->key = tmp_name;
+    t->vers = v->versions[v->num_versions-1];
+    t->prev_db = c->db;
+    HASH_ADD_KEYPTR(hh, tmp_store, t->key, strlen(t->key), t);
 }
 
 #define __GNUC__  // "re-unallow" malloc

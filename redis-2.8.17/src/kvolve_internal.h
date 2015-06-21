@@ -32,10 +32,20 @@ struct kvolve_upd_info{
 /* This structure stores the user-supplied version info */
 struct version_hash{
     char * ns; /* key */
-    char * prev_ns; /* key */
+    char * prev_ns;
     char ** versions;
     struct kvolve_upd_info ** info;
     int num_versions;
+    UT_hash_handle hh; /* makes this structure hashable */
+};
+
+/* This structure is used to temporarily store versions for keys that can't be
+ * set right away, such as multi or zadd (where the new container will be
+ * created)*/
+struct tmp_vers_store_hash{
+    char * key; /* key */
+    char * vers;
+    redisDb * prev_db;
     UT_hash_handle hh; /* makes this structure hashable */
 };
 
@@ -117,12 +127,6 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v);
 void kvolve_prevcall_check(void);
 
 /* Stores the keyname when to creating a new (z)set/list/hash */
-void kvolve_new_version(redisClient *c, int type);
-/* Sets the keyname after creating a new set */
-void kvolve_newset_version_setter(void);
-/* Sets the keyname after creating a new zset */
-void kvolve_newzset_version_setter(void);
-
-
+void kvolve_new_version(redisClient *c, struct version_hash * v);
 
 #endif
