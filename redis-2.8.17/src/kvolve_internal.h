@@ -55,8 +55,8 @@ int kvolve_check_version(char * vers_str);
  * hash table */
 void kvolve_load_update(char * upd_code);
 
-/* Update the namespace only of the keynamed @v->argv[1], based on the update
- * version info stored in @v.*/
+/* Update the namespace only of the key named @v->argv[1],
+ * based on the update version info stored in @v.*/
 void kvolve_namespace_update(redisClient * c, struct version_hash * v);
 
 /* Get the keyname from @orig_key and combine it with @old_ns.

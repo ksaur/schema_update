@@ -365,13 +365,13 @@ void kvolve_check_rename(redisClient * c, int nargs){
     for (i=1; i < nargs; i++){
         c_fake->argv[1]= c->argv[i];
         o = kvolve_get_db_val(c_fake);
+        if (!o)
+            continue;
 
         // strings stored as ints don't have vers. Check for rename manually.
-        if (o->type == REDIS_STRING && o->encoding == REDIS_ENCODING_INT 
-                 && kvolve_exists_old(c)){
+        if (o->type == REDIS_STRING && o->encoding == REDIS_ENCODING_INT){
             kvolve_namespace_update(c_fake, v);
-        } else if(o->encoding == REDIS_ENCODING_RAW &&
-                 strcmp(o->vers, v->versions[v->num_versions-1])!=0){
+        } else if(strcmp(o->vers, v->versions[v->num_versions-1])!=0){
             kvolve_namespace_update(c_fake, v);
         }
     }
@@ -556,9 +556,10 @@ void kvolve_update_all_zset(redisClient * c){
     /* return if object isn't present or is already current */
     if(!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
-    if(o->encoding == REDIS_ENCODING_ZIPLIST)
+    if(o->encoding == REDIS_ENCODING_ZIPLIST){
         DEBUG_PRINT(("Type %d not implemented for zset\n", o->encoding)); //TODO
-
+        return;
+    }
 
     unsigned char *p = ziplistIndex(o->ptr,0);
     unsigned char *vstr;
@@ -622,8 +623,11 @@ void kvolve_newset_version_setter(void){
         /* set the version for the set object */
         o->vers = v->versions[v->num_versions-1];
         /* only store the version in the set elements if the encoding supports it. */
-        if(o->encoding == REDIS_ENCODING_INTSET)
+        if(o->encoding == REDIS_ENCODING_INTSET){
+            free(kvolve_set_version_fixup);
+            kvolve_set_version_fixup = NULL;
             return;
+        }
         si = setTypeInitIterator(o);
         robj * e = setTypeNextObject(si);
         while(e){
