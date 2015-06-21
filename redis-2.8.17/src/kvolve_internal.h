@@ -70,10 +70,11 @@ int kvolve_get_flags(redisClient *c);
  * a namespace change.  Ex: if the user requested foo:bar:baz, but the key is
  * stored in the database as foo:bar due to a namespace change, this will
  * retrieve the object currently stored under the old name.*/
-robj * kvolve_get_db_val(redisClient * c);
+robj * kvolve_get_db_val(redisClient * c, struct version_hash * v);
 
 /* THIS IS THE UPDATE FUNCTION.  It's used by both strings and sets.
  *   @c : the client provided at kvolve entry
+ *   @v : the version hash already looked up
  *   @check_key : if check_key is 0, this function will not try to update the
  *       key.  This is used on repetitve calls for sets (key_not_checked,
  *       set_item1_not_checked), (key_already_checked, set_item2_not_checked), etc.
@@ -84,7 +85,7 @@ robj * kvolve_get_db_val(redisClient * c);
  *        belongs to a zset).
  *   @s : If a zset, a pointer to the score.  Else NULL
  */
-void kvolve_check_update_kv_pair(redisClient * c, int key_check, robj * o, int type, double * s);
+void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int key_check, robj * o, int type, double * s);
 
 /* Update a member of a set adding the new version (@new_val)
  * and delete the old version.  This is called by the update function. */
@@ -99,13 +100,13 @@ void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double 
  * keys stored in @c->argv to check.  The @nargs is necessary for thing such as
  * sets, where you only want to check the key once.  (Calls such as delete may
  * be calls with multiple keys, so we must check all of the keys */
-void kvolve_check_rename(redisClient * c, int nargs);
+void kvolve_check_rename(redisClient * c, struct version_hash * v, int nargs);
 
 /* Returns a robj for the key if present in outdated ns. Caller must free*/
-robj * kvolve_exists_old(redisClient * c);
+robj * kvolve_exists_old(redisClient * c, struct version_hash * v);
 
 /* check if updated needed for robjs of REDIS_ZSET */
-void kvolve_update_all_zset(redisClient * c);
+void kvolve_update_all_zset(redisClient * c, struct version_hash * v);
 
 /* Redis doesn't allow empty sets/zset/lists/hashes, so when a new one is
  * created, it's not possible to set the version string before the call happens

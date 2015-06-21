@@ -79,9 +79,8 @@ char * kvolve_construct_prev_name(char * orig_key, char *old_ns){
 }
 
 /* returns a robj for the key if present in outdated ns. Caller must free*/
-robj * kvolve_exists_old(redisClient * c){
+robj * kvolve_exists_old(redisClient * c, struct version_hash * v){
 
-    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
     robj * key, * val;
     if(v == NULL) return NULL;
@@ -306,9 +305,8 @@ struct version_hash * kvolve_version_hash_lookup(char * lookup){
 
 
 /* return the VALUE with the namespace that's currently in the db */
-robj * kvolve_get_db_val(redisClient * c){
+robj * kvolve_get_db_val(redisClient * c, struct version_hash * v){
 
-    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
     robj * key, * val;
     if(v == NULL) return NULL;
@@ -357,11 +355,10 @@ void kvolve_namespace_update(redisClient * c, struct version_hash * v) {
 
 
 /* checks if rename is necessary then performs it (for nargs args) .*/
-void kvolve_check_rename(redisClient * c, int nargs){
+void kvolve_check_rename(redisClient * c,struct version_hash * v, int nargs){
 
     int i;
     robj * o;
-    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* return immediately if there is no chance of ns change */
     if(!v || !v->prev_ns)
@@ -374,7 +371,7 @@ void kvolve_check_rename(redisClient * c, int nargs){
 
     for (i=1; i < nargs; i++){
         c_fake->argv[1]= c->argv[i];
-        o = kvolve_get_db_val(c_fake);
+        o = kvolve_get_db_val(c_fake, v);
         if (!o)
             continue;
 
@@ -390,22 +387,19 @@ void kvolve_check_rename(redisClient * c, int nargs){
 }
 
 /* THIS IS THE UPDATE FUNCTION. See header for documentation */
-void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int type, double * s){
+void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int check_key, robj * o, int type, double * s){
 
     int i, key_vers = -1, fun;
-    struct version_hash * v;
+    if(v == NULL) return;
 
     /* Make sure that we're not here because of user update code (kvolve_user_call)*/
     if (upd_fun_running == 1)
         return;
 
-    v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
-    if(v == NULL) return;
-
     /* If the object wasn't passed in (set type, not string type),
      * then look it up (as a robj with version info) */
     if (!o){
-        o = kvolve_get_db_val(c);
+        o = kvolve_get_db_val(c, v);
         if (!o) return;
     }
 
@@ -415,7 +409,7 @@ void kvolve_check_update_kv_pair(redisClient * c, int check_key, robj * o, int t
      * may not be consistent.) However, the keys could still be renamed, check for
      * this, then return. */
     if (o->type == REDIS_STRING && o->encoding == REDIS_ENCODING_INT){
-        kvolve_check_rename(c, 2);
+        kvolve_check_rename(c, v, 2);
         return;
     }
 
@@ -559,10 +553,9 @@ void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double 
     *o = new; //TODO check freeing
 }
 
-void kvolve_update_all_zset(redisClient * c){
+void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
 
-    robj * o = kvolve_get_db_val(c);
-    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
+    robj * o = kvolve_get_db_val(c, v);
     /* return if object isn't present or is already current */
     if(!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
@@ -601,7 +594,7 @@ void kvolve_update_all_zset(redisClient * c){
     }
     // now modify the zset
     for(i=0; i<zset_len; i++){
-        kvolve_check_update_kv_pair(c, first, robj_array[i], o->type, &score_array[i]);
+        kvolve_check_update_kv_pair(c, v, first, robj_array[i], o->type, &score_array[i]);
         zfree(robj_array[i]);
         first = 0;
     }
