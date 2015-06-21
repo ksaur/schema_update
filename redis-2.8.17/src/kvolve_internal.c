@@ -73,17 +73,17 @@ char * kvolve_construct_prev_name(char * orig_key, char *old_ns){
     return ret;
 }
 
-/* return 1 if key present in outdated ns. */
-int kvolve_exists_old(redisClient * c){
+/* returns a robj for the key if present in outdated ns. Caller must free*/
+robj * kvolve_exists_old(redisClient * c){
 
     struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     struct version_hash * tmp = v;
     robj * key, * val;
-    if(v == NULL) return 0;
+    if(v == NULL) return NULL;
 
     /* first check the obvious (current) */
     val = lookupKeyRead(c->db, c->argv[1]);
-    if(val) return 0;
+    if(val) return NULL;
 
     /* Iterate prev namespaces */
     while(tmp && tmp->prev_ns){
@@ -92,15 +92,14 @@ int kvolve_exists_old(redisClient * c){
         free(old);
         val = lookupKeyRead(c->db, key);
         if (val){
-            zfree(key);
-            return 1;
+            return key;
         }
         zfree(key);
         if(!tmp->prev_ns)
             break;
         tmp = kvolve_version_hash_lookup(tmp->prev_ns);
     }
-    return 0;
+    return NULL;
 }
 
 /* return 1 if OK.  else return 0. TODO don't allow connect if err */
@@ -336,13 +335,15 @@ void kvolve_namespace_update(redisClient * c, struct version_hash * v) {
     c_fake->argc = 3;
     c_fake->argv = zmalloc(sizeof(void*)*3);
     char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-    c_fake->argv[1] = createStringObject(old,strlen(old));  // do not free. added to db
+    c_fake->argv[1] = createStringObject(old,strlen(old));
     c_fake->argv[2] = c->argv[1]; 
     sds ren = sdsnew("rename");
     c_fake->cmd = lookupCommand(ren);
     c_fake->cmd->proc(c_fake);
     DEBUG_PRINT(("Updated key (namespace) from %s to %s\n", 
                  old, (char*)c_fake->argv[2]->ptr));
+
+    zfree(c_fake->argv[1]);
     zfree(c_fake->argv);
     zfree(c_fake);
     sdsfree(ren);

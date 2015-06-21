@@ -101,8 +101,8 @@ void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double 
  * be calls with multiple keys, so we must check all of the keys */
 void kvolve_check_rename(redisClient * c, int nargs);
 
-/* Return 1 if key present in outdated ns, else return 0. */
-int kvolve_exists_old(redisClient * c);
+/* Returns a robj for the key if present in outdated ns. Caller must free*/
+robj * kvolve_exists_old(redisClient * c);
 
 /* check if updated needed for robjs of REDIS_ZSET */
 void kvolve_update_all_zset(redisClient * c);

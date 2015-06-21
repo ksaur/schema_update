@@ -207,8 +207,7 @@ void kvolve_mget(redisClient * c){
 void kvolve_set(redisClient * c){
 
     int flags;
-    char * old = NULL; 
-    robj *o, * oldobj = NULL;
+    robj * oldobj = NULL;
     struct version_hash * v = NULL;
 
     v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
@@ -233,14 +232,12 @@ void kvolve_set(redisClient * c){
     /* Since there are no (nx,xx) flags, the set will occur. 
      * Check to see if it's possible that an old version exists 
      * under another namespace that should be deleted. */
-    if(v->prev_ns != NULL){ //TODO recurse multiple old ns
-        o = kvolve_get_db_val(c);  //if we're current, return
-        if ((!o) || strcmp(o->vers, v->versions[v->num_versions-1])==0)
-            return;
-        old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-        oldobj = createStringObject(old,strlen(old));
-        dbDelete(c->db,oldobj); /* will also free oldobj. */
-        free(old);
+    if(v->prev_ns != NULL){
+        oldobj = kvolve_exists_old(c);
+        if(oldobj){
+            dbDelete(c->db,oldobj);
+            zfree(oldobj);
+        }
     }
 }
 
@@ -284,7 +281,6 @@ void kvolve_smembers(redisClient * c){
 
 void kvolve_sadd(redisClient * c){
     robj * oldobj = NULL;
-    char * old = NULL; 
     int i;
     struct version_hash * v = NULL;
     v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
@@ -313,18 +309,17 @@ void kvolve_sadd(redisClient * c){
     for(i=2; i < c->argc; i++)
         c->argv[i]->vers = v->versions[v->num_versions-1];
         
-    if((v->prev_ns != NULL) && (strcmp(o->vers,
-             v->versions[v->num_versions-1])==0)){ //TODO recurse multiple old ns
-        old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-        oldobj = createStringObject(old,strlen(old));
-        dbDelete(c->db,oldobj); /* will also free oldobj. */
-        free(old);
+    if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
+        oldobj = kvolve_exists_old(c);
+        if(oldobj){
+            dbDelete(c->db,oldobj);
+            zfree(oldobj);
+        }
     }
 }
 
 void kvolve_zadd(redisClient * c){
     robj * oldobj = NULL;
-    char * old = NULL;
     struct version_hash * v = NULL;
     v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     if(v == NULL) return;
@@ -339,12 +334,12 @@ void kvolve_zadd(redisClient * c){
     /* make sure all set elements are at this current version. Else update all*/
     kvolve_update_all_zset(c);
 
-    if((v->prev_ns != NULL) && (strcmp(o->vers,
-             v->versions[v->num_versions-1])==0)){ //TODO recurse multiple old ns
-        old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-        oldobj = createStringObject(old,strlen(old));
-        dbDelete(c->db,oldobj); /* will also free oldobj. */
-        free(old);
+    if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
+        oldobj = kvolve_exists_old(c);
+        if(oldobj){
+            dbDelete(c->db,oldobj);
+            zfree(oldobj);
+        }
     }
 }
 
