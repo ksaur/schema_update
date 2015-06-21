@@ -150,14 +150,13 @@ void kvolve_setxx(redisClient * c, struct version_hash * v){
     /* we can reuse the basics which just renames if necessary*/
     kvolve_setnx(c, v);
 
-	/* If the set occurs, this will correctly bump the version.  If doesn't
+    /* If the set occurs, this will correctly bump the version.  If doesn't
      * occur, this will be ignored.*/
     c->argv[2]->vers = v->versions[v->num_versions-1];
 }
 
 /* We only have to worry about namespace changes here. We need to do the rename
- * so it will be deleted properly (and return the right value count*/
-
+ * so it will be deleted properly (and return the right value count to the client)*/
 void kvolve_del(redisClient * c, struct version_hash * v){
     kvolve_check_rename(c, v, c->argc);
 }
@@ -167,8 +166,9 @@ void kvolve_getrange(redisClient *c, struct version_hash * v){
     kvolve_get(c, v);
 }
 
-/* will just check for update, and do if necessary. Remember, we must keep all
- * set elements at same version. this will do that.*/
+/* Most of the following functions are effectively "gets". This
+ * will just check for update, and do if necessary. Remember, we must keep
+ * all set/zset/etc members at same version. this will do that. */
 void kvolve_sismember(redisClient * c, struct version_hash * v){
     kvolve_smembers(c, v);
 }
@@ -202,7 +202,7 @@ void kvolve_zrange(redisClient * c, struct version_hash * v){
 
 /* the incr command blows away any version you pass it, because it creates its
  * own object.  Since incr values can ONLY be strings that convert to ints,
- * there is no way that there can be a meaninful value change.  Therefore, we
+ * there is no way that there can be a meaningful value change.  Therefore, we
  * just need to make sure the name is current and go from there. */
 void kvolve_incr(redisClient * c, struct version_hash * v){
 
@@ -254,6 +254,7 @@ void kvolve_smembers(redisClient * c, struct version_hash * v){
         c_fake->argv[2] = e;
         kvolve_check_update_kv_pair(c, v, first, e, REDIS_SET, NULL);
         e = setTypeNextObject(si);
+        /* namespace change checked, no need to repeat */
         first = 0;
     }
 
@@ -281,10 +282,11 @@ void kvolve_sadd(redisClient * c, struct version_hash * v){
         return;
     }
 
-    /* make sure all set elements are at this current version and update them
+    /* Make sure all set elements are at this current version and update them
      * all if necessary.  Don't let different members of the same set be at different
      * versions!! (would be a confusing mess.) This will check and return if current,
-     * else update other set members to the current version */
+     * else update other set members to the current version. This will also update the
+     * namespace of the key if necessary. */
     if (strcmp(o->vers, v->versions[v->num_versions-1])!=0)
         kvolve_smembers(c ,v);
 
@@ -292,6 +294,7 @@ void kvolve_sadd(redisClient * c, struct version_hash * v){
     for(i=2; i < c->argc; i++)
         c->argv[i]->vers = v->versions[v->num_versions-1];
         
+    /* Check for an existing entry to delete in the case of namespace change*/
     if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
         oldobj = kvolve_exists_old(c, v);
         if(oldobj){
@@ -312,7 +315,7 @@ void kvolve_zadd(redisClient * c, struct version_hash * v){
         return;
     }
 
-    /* make sure all set elements are at this current version. Else update all*/
+    /* Make sure all set elements are at this current version. Else update all*/
     kvolve_update_all_zset(c, v);
 
     if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
@@ -323,6 +326,7 @@ void kvolve_zadd(redisClient * c, struct version_hash * v){
         }
     }
 }
+
 void kvolve_keys(redisClient * c, struct version_hash * v){
     dictIterator *di;
     dictEntry *de;
