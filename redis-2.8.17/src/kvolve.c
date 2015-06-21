@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <ctype.h>
 #undef __GNUC__  // allow malloc (needed for uthash)  (see redis.h ln 1403)
 #include "uthash.h"
 #include "kvolve.h"
@@ -15,11 +16,34 @@
 #include "kvolve_upd.h"
 #include "kvolve_internal.h"
 
+struct kvolve_cmd_hash_populate kvolveCommandTable[] = {
+    {"set",kvolve_set,3},
+    {"mset",kvolve_mset,3},
+    {"get",kvolve_get,2},
+    {"mget",kvolve_mget,2},
+    {"getset",kvolve_getset,3},
+    {"getrange",kvolve_getrange,4},
+    {"incr",kvolve_incr,2},
+    {"incrby",kvolve_incrby,3},
+    {"del",kvolve_del,2},
+    {"setnx",kvolve_setnx,3},
+    {"sadd",kvolve_sadd,3},
+    {"scard",kvolve_scard,3},
+    {"spop",kvolve_spop,2},
+    {"smembers",kvolve_smembers,2},
+    {"sismember",kvolve_sismember,3},
+    {"srem",kvolve_srem,3},
+    {"zadd",kvolve_zadd,4},
+    {"zcard",kvolve_zcard,3},
+    {"zscore",kvolve_zscore,3},
+    {"zrem",kvolve_zrem,3},
+    {"zrange",kvolve_zrange,4}
+};
+struct kvolve_cmd_hash * kvolve_commands = NULL;
 
 void kvolve_process_command(redisClient *c){
 
     kvolve_prevcall_check();
-  
     if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
             && (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)
             && (strncasecmp((char*)c->argv[2]->ptr, "update", 6) == 0)){
@@ -27,54 +51,20 @@ void kvolve_process_command(redisClient *c){
     } else if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0) && 
             (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)){
         kvolve_check_version((char*)c->argv[2]->ptr);
-    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "set") == 0){
-        kvolve_set(c);
-    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "mset") == 0){
-        kvolve_mset(c);
-    } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "get") == 0){
-        kvolve_get(c);
-    } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "mget") == 0){
-        kvolve_mget(c);
-    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "getset") == 0){
-        kvolve_getset(c);
-    } else if (c->argc == 4 && strcasecmp((char*)c->argv[0]->ptr, "getrange") == 0){
-        kvolve_getrange(c);
-    } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "incr") == 0){
-        kvolve_incr(c);
-    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "incrby") == 0){
-        kvolve_incrby(c);
-    } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "del") == 0){
-        kvolve_del(c);
-    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "setnx") == 0){
-        kvolve_setnx(c, NULL);
-    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "sadd") == 0){
-        kvolve_sadd(c);
-    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "scard") == 0){
-        kvolve_scard(c);
-    } else if (c->argc >= 2 && strcasecmp((char*)c->argv[0]->ptr, "spop") == 0){
-        kvolve_spop(c);
-    } else if (c->argc == 2 && strcasecmp((char*)c->argv[0]->ptr, "smembers") == 0){
-        kvolve_smembers(c);
-    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "sismember") == 0){
-        kvolve_sismember(c);
-    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "srem") == 0){
-        kvolve_srem(c);
-    } else if (c->argc >= 4 && strcasecmp((char*)c->argv[0]->ptr, "zadd") == 0){
-        kvolve_zadd(c);
-    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "zcard") == 0){
-        kvolve_zcard(c);
-    } else if (c->argc == 3 && strcasecmp((char*)c->argv[0]->ptr, "zscore") == 0){
-        kvolve_zscore(c);
-    } else if (c->argc >= 3 && strcasecmp((char*)c->argv[0]->ptr, "zrem") == 0){
-        kvolve_zrem(c);
-    } else if (c->argc >= 4 && strcasecmp((char*)c->argv[0]->ptr, "zrange") == 0){
-        kvolve_zrange(c);
+    } else {
+        kvolve_call fun = kvolve_lookup_kv_command(c);
+        if(!fun){
+            DEBUG_PRINT(("Function %s not implemented\n", (char*)c->argv[0]->ptr));
+            return;
+        }
+        fun(c);
     }
 }
 
 /* NX -- Only set the key if it does not already exist*/
-void kvolve_setnx(redisClient * c, struct version_hash * v){
+void kvolve_setnx(redisClient * c){
 
+    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
     /* Do nothing if already at current namespace, do nothing*/
     if (lookupKeyRead(c->db, c->argv[1]))
         return;
@@ -84,9 +74,6 @@ void kvolve_setnx(redisClient * c, struct version_hash * v){
     /* If doesn't exist anywhere, do nothing */
     if (present == NULL)
         return;
-
-    if(!v) /* if the user calls setnx directly instead of using flags w set*/
-       v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* But if the key DOES exist at a PRIOR namespace, then we need to
      * rename the key, so that the set doesn't erroneously occur (because
@@ -99,10 +86,12 @@ void kvolve_setnx(redisClient * c, struct version_hash * v){
 }
 
 /* XX -- Only set the key if it already exists. */
-void kvolve_setxx(redisClient * c, struct version_hash * v){
+void kvolve_setxx(redisClient * c){
+
+    struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
 
     /* we can reuse the basics which just renames if necessary*/
-    kvolve_setnx(c, v);
+    kvolve_setnx(c);
 
 	/* If the set occurs, this will correctly bump the version.  If doesn't
      * occur, this will be ignored.*/
@@ -216,11 +205,11 @@ void kvolve_set(redisClient * c){
     /* check to see if any xx/nx flags set */
     flags = kvolve_get_flags(c);
     if(flags & REDIS_SET_XX){
-        kvolve_setxx(c, v);
+        kvolve_setxx(c);
         return;
     }
     if(flags & REDIS_SET_NX){
-        kvolve_setnx(c, v);
+        kvolve_setnx(c);
         return;
     }
 
@@ -343,5 +332,42 @@ void kvolve_zadd(redisClient * c){
     }
 }
 
+void kvolve_populateCommandTable(void){
+    int j, i;
+    char * ucase;
+    int numcommands = sizeof(kvolveCommandTable)/sizeof(struct kvolve_cmd_hash_populate);
+
+    for (j = 0; j < numcommands; j++) {
+        struct kvolve_cmd_hash_populate *c = kvolveCommandTable+j;
+        struct kvolve_cmd_hash * c_h = malloc(sizeof(struct kvolve_cmd_hash));
+        struct kvolve_cmd_hash * c_hU = malloc(sizeof(struct kvolve_cmd_hash));
+        c_h->cmd = c->cmd;
+        c_h->call = c->call;
+        c_h->min_args = c->min_args;
+        HASH_ADD_KEYPTR(hh, kvolve_commands, c_h->cmd, strlen(c_h->cmd), c_h);
+        /* also add upper case */
+        ucase = calloc(strlen(c->cmd), sizeof(char));
+        c_hU->call = c->call;
+        c_hU->min_args = c->min_args;
+        for(i = 0; c->cmd[i]; i++){
+            ucase[i] = toupper(c->cmd[i]);
+        }
+        c_hU->cmd = ucase;
+        HASH_ADD_KEYPTR(hh, kvolve_commands, c_hU->cmd, strlen(c_hU->cmd), c_hU);
+    }
+}
+
+kvolve_call kvolve_lookup_kv_command(redisClient * c){
+
+    struct kvolve_cmd_hash * c_h = NULL;
+    char * lookup = (char*)c->argv[0]->ptr;
+    if(!kvolve_commands)
+        kvolve_populateCommandTable();
+    HASH_FIND(hh, kvolve_commands, lookup, strlen(lookup), c_h);
+    
+    if(!c_h || (c->argc < c_h->min_args))
+        return NULL;
+    return c_h->call;
+}
 
 #define __GNUC__  // "re-unallow" malloc

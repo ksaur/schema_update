@@ -18,13 +18,18 @@
 
 extern int processInlineBuffer(redisClient *c);
 extern double zzlGetScore(unsigned char *sptr);
+/* The hash handle for all of the namespace versions*/
 static struct version_hash * vers_list = NULL;
+/* The initial size of the version arrays in the hashtable*/
 #define KV_INIT_SZ 20
 
+/* Globals for subsequent calls */
 redisDb * prev_db = NULL;
 char * kvolve_set_version_fixup = NULL;
 char * kvolve_zset_version_fixup = NULL;
-redisClient * c_fake_user = NULL; // for the user's mu code calls
+
+/* client for the user's mu code calls (stored to free) */
+redisClient * c_fake_user = NULL; 
 
 /* this flag indicates that an update function is being processed.  (Prevents
  * recursion in case of user making calls during update function*/
