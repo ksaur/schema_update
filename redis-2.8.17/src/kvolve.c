@@ -34,7 +34,7 @@ struct kvolve_cmd_hash_populate kvolveCommandTable[] = {
     {"sismember",kvolve_sismember,3},
     {"srem",kvolve_srem,3},
     {"zadd",kvolve_zadd,4},
-    {"zcard",kvolve_zcard,3},
+    {"zcard",kvolve_zcard,2},
     {"zscore",kvolve_zscore,3},
     {"zrem",kvolve_zrem,3},
     {"zrange",kvolve_zrange,4}
