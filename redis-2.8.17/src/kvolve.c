@@ -274,6 +274,10 @@ void kvolve_smembers(redisClient * c){
         e = setTypeNextObject(si);
         first = 0;
     }
+
+    /* Update the version string in the set container to match the update we
+     * just did on the set members .*/
+    o->vers = v->versions[v->num_versions-1];
     zfree(c_fake->argv);
     zfree(c_fake);
 }
