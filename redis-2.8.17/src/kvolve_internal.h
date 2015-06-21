@@ -33,6 +33,7 @@ struct kvolve_upd_info{
 struct version_hash{
     char * ns; /* key */
     char * prev_ns;
+    char * next_ns; /* for 'keys' command */
     char ** versions;
     struct kvolve_upd_info ** info;
     int num_versions;

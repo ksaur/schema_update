@@ -26,6 +26,8 @@ void check_int(int test_num, redisReply *reply, int expected){
 
 const char * server_loc = "../../../redis-2.8.17/src/redis-server ../../../redis-2.8.17/redis.conf &";
 const char * user_call = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/misc/user_call.so";
+const char * no_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/strings/test_upd_no_ns_change.so";
+const char * w_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/strings/test_upd_with_ns_change.so";
 
 
 
@@ -103,6 +105,40 @@ void test_default_ns(void){
   sleep(2);
 }
 
+void test_keys(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@v0");
+  check(201, reply, "OK");
+
+  reply = redisCommand(c, "MSET  %s %s  %s %s  %s %s  %s %s", "order:1",  "ffff", "order:2", "f", "user:b", "9", "order:11",  "x"); 
+  check(201, reply, "OK");
+
+  reply = redisCommand(c,"client setname %s", no_ns_change); 
+  check(203, reply, "OK");
+
+  reply = redisCommand(c,"client setname %s", w_ns_change); 
+  check(204, reply, "OK");
+
+  reply = redisCommand(c,"keys %s", "foo:order:1*");
+  assert(reply->elements == 2);
+  freeReplyObject(reply);
+
+  reply = redisCommand(c,"GET %s", "foo:order:1");
+  check(205, reply, "ffffUPDATED");
+
+  reply = redisCommand(c,"GET %s", "order:1");
+  assert(reply->type == REDIS_REPLY_NIL);
+  freeReplyObject(reply);
+
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
 
 int main(void){
 
@@ -110,6 +146,7 @@ int main(void){
   sleep(2);
   test_client_call();
   test_default_ns();
+  test_keys();
   printf("All pass.\n");
   return 0;
 }

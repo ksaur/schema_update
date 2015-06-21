@@ -38,6 +38,7 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
     v->ns = malloc(strlen(ns_lookup)+1);
     strcpy(v->ns, ns_lookup); 
     v->prev_ns = NULL;
+    v->next_ns = NULL;
     if (prev_ns){
         v->prev_ns = malloc(strlen(prev_ns)+1);
         strcpy(v->prev_ns, prev_ns); 
@@ -52,6 +53,7 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
         v->versions[tmp->num_versions] = malloc(strlen(v0)+1);
         strcpy(v->versions[tmp->num_versions], v0);
         v->info[tmp->num_versions] = list;
+        tmp->next_ns = v->ns;
     } else {
         v->num_versions = 1;
         v->versions = calloc(KV_INIT_SZ,sizeof(char*));
@@ -331,6 +333,8 @@ robj * kvolve_get_db_val(redisClient * c, struct version_hash * v){
 
 void kvolve_namespace_update(redisClient * c, struct version_hash * v) {
 
+    if(lookupKeyRead(c->db, c->argv[1]))
+        return;
     redisClient * c_fake = createClient(-1);
     c_fake->argc = 3;
     c_fake->argv = zmalloc(sizeof(void*)*3);

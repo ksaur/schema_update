@@ -37,7 +37,8 @@ struct kvolve_cmd_hash_populate kvolveCommandTable[] = {
     {"zcard",kvolve_zcard,2},
     {"zscore",kvolve_zscore,3},
     {"zrem",kvolve_zrem,3},
-    {"zrange",kvolve_zrange,4}
+    {"zrange",kvolve_zrange,4},
+    {"keys",kvolve_keys,2}
 };
 struct kvolve_cmd_hash * kvolve_commands = NULL;
 
@@ -320,6 +321,40 @@ void kvolve_zadd(redisClient * c, struct version_hash * v){
             zfree(oldobj);
         }
     }
+}
+void kvolve_keys(redisClient * c, struct version_hash * v){
+    dictIterator *di;
+    dictEntry *de;
+    char * new;
+    sds pattern = c->argv[1]->ptr, tmp;
+    int plen = sdslen(pattern);
+    /* escape hatch, if caller requests 'keys kvolve', this doesn't update */
+    if(strcmp("kvolve", pattern) == 0){
+        sdsfree(pattern);
+        c->argv[1]->ptr = sdsnew("*");
+        return;
+    }
+    di = dictGetSafeIterator(c->db->dict);
+    while((de = dictNext(di)) != NULL) {
+        sds key = dictGetKey(de);
+        v = kvolve_version_hash_lookup((char*)key);
+        if(v && v->next_ns){
+            new = kvolve_construct_prev_name(key, v->next_ns);
+            tmp = sdsnew(new); 
+            if(stringmatchlen(pattern,plen,tmp,sdslen(tmp),0)){
+                c->argv[1]->ptr = tmp;
+                v = kvolve_version_hash_lookup((char*)new);
+                /* This will only update the namespace.  The value will be
+                 * updated if the key is queried (version is not bumped) */
+                kvolve_namespace_update(c, v);
+            }
+            free(new);
+            sdsfree(tmp);
+        }
+    }
+    dictReleaseIterator(di);
+    /* restore */
+    c->argv[1]->ptr = pattern;
 }
 
 void kvolve_populateCommandTable(void){
