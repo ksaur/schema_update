@@ -31,8 +31,9 @@ redisClient * c_fake_user = NULL;
 /* this flag indicates that an update function is being processed.  (Prevents
  * recursion in case of user making calls during update function*/
 int upd_fun_running = 0;
+uint64_t loading_id = 0;
 
-struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list){
+struct version_hash * kvolve_create_ns(redisClient *c, char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list){
     struct version_hash *tmp, * v = (struct version_hash*)malloc(sizeof(struct version_hash));
     int i;
     v->ns = malloc(strlen(ns_lookup)+1);
@@ -62,6 +63,13 @@ struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0
         v->info[0] = NULL;
         strcpy(v->versions[0], v0);
     }
+    v->is = intsetNew();
+    if(c)
+        v->is = intsetAdd(v->is,c->id,NULL);
+    else if (loading_id)
+        v->is = intsetAdd(v->is,loading_id,NULL);
+    else
+        DEBUG_PRINT(("No connecting ID set for %s", v->ns));
     HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);
     return v;
 }
@@ -126,7 +134,7 @@ void kvolve_check_version(redisClient *c){
   
         HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), v);
         if (v==NULL){
-            kvolve_create_ns(ns_lookup, NULL, vers, NULL);
+            v = kvolve_create_ns(c, ns_lookup, NULL, vers, NULL);
         } else if (strcmp(v->versions[v->num_versions-1], vers) != 0){
             printf("ERROR, INVALID VERSION (%s). System is at \'%s\' for ns \'%s\'\n", 
                    vers, v->versions[v->num_versions-1], v->ns);
@@ -134,7 +142,9 @@ void kvolve_check_version(redisClient *c){
             /* This will close the connection */
             c->argv[0]->ptr = sdsnew("quit");
             return;
-        } 
+        } else { 
+            v->is = intsetAdd(v->is,c->id,NULL);
+        }
         if (&vers[pos] == &cpy[toprocess])
             return;
     }
@@ -159,17 +169,19 @@ int kvolve_get_flags(redisClient *c){
     return flags;
 }
 
-void kvolve_load_update(char * upd_code){
+void kvolve_load_update(redisClient *c, char * upd_code){
 
     void *handle;
     char *errstr;
     int err;
     struct stat s;
+    loading_id = c->id;
   
     DEBUG_PRINT(("Updating with %s\n", upd_code));
     err = stat(upd_code, &s);
     if(-1 == err) {
         printf("ERROR, update file %s does not exist.\n", upd_code);
+        loading_id = 0;
         return;
     }
 
@@ -179,9 +191,11 @@ void kvolve_load_update(char * upd_code){
     handle = dlopen(upd_code, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
     if (handle == NULL){
         errstr = dlerror();
+        loading_id = 0;
         printf ("A dynamic linking error occurred: (%s)\n", errstr);
         return;
     }
+    loading_id = 0;
 }
 
 /* This API function allows the update-writer to call into redis from the
@@ -216,6 +230,9 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_ve
     struct version_hash * v;
     struct kvolve_upd_info * info;
     va_list arguments;
+    uint64_t k;
+    char * kill = "client kill id ";  //TODO rewrite this section
+    char q[24];
 
     /* Initializing arguments to store all values after num */
     va_start(arguments, n_funs);
@@ -262,7 +279,19 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_ve
     }
     /* If v is null, we need a new namespace */
     if (!v)
-        v = kvolve_create_ns(to_ns, from_ns, to_vers, info);
+        v = kvolve_create_ns(NULL, to_ns, from_ns, to_vers, info);
+    else{
+        while(v->is->length > 1){ /* 1 because we don't kill caller */
+            k = intsetRandom(v->is);
+            if(k == loading_id) /* don't kill caller */
+                continue;
+            v->is = intsetRemove(v->is, k, NULL);
+            DEBUG_PRINT(("KILLING CLIENT WITH ID %ld\n", k));
+            sprintf(q,"%s%ld\r\n", kill, k);
+            kvolve_upd_redis_call(q);
+        }
+        v->is = intsetAdd(v->is, loading_id, NULL);
+    }
     if (v->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
         /* TODO, dynamically resize array */
         printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS.\n");

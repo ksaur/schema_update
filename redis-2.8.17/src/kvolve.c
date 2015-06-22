@@ -49,7 +49,7 @@ void kvolve_process_command(redisClient *c){
     if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
             && (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)
             && (strncasecmp((char*)c->argv[2]->ptr, "update", 6) == 0)){
-        kvolve_load_update((char*)(c->argv[2]->ptr)+6);
+        kvolve_load_update(c, (char*)(c->argv[2]->ptr)+6);
     } else if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0) && 
             (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)){
         kvolve_check_version(c);

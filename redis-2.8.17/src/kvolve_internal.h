@@ -37,7 +37,7 @@ struct version_hash{
     char ** versions;
     struct kvolve_upd_info ** info;
     int num_versions;
-    unsigned int * ids; /* the client ids connected to this version */
+    intset *is;  /* the client ids connected to this version */
     UT_hash_handle hh; /* makes this structure hashable */
 };
 
@@ -55,7 +55,7 @@ struct tmp_vers_store_hash{
 struct version_hash * kvolve_version_hash_lookup(char * lookup);
 
 /* Create a new namespace and insert it into the hash table */
-struct version_hash * kvolve_create_ns(char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list);
+struct version_hash * kvolve_create_ns(redisClient *c, char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list);
 
 /* Used on client connect, validates the requested namespaces.  If valid,
  * continues, else kills the connection. */
@@ -65,7 +65,7 @@ void kvolve_check_version(redisClient *c);
  * auto calling of the user-supplied function kvolve_declare_update() (because
  * of __attribute__((constructor))),  which will load the user code into the
  * hash table */
-void kvolve_load_update(char * upd_code);
+void kvolve_load_update(redisClient *c, char * upd_code);
 
 /* Update the namespace only of the key named @v->argv[1],
  * based on the update version info stored in @v.*/
