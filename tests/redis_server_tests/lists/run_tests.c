@@ -132,7 +132,7 @@ void test_llen(void){
 
 }
 
-void test_lset(void){
+void test_lset_pop(void){
   redisReply *reply;
   system(server_loc);
   sleep(2);
@@ -144,14 +144,20 @@ void test_lset(void){
   reply = redisCommand(c,"RPUSH %s %s %s", "order:111", "ffff", "wwww");
   check_int(402, reply, 2);
 
+  reply = redisCommand(c,"LPUSH %s %s %s", "order:222", "ffff", "wwww");
+  check_int(403, reply, 2);
+
+  reply = redisCommand(c,"RPUSH %s %s %s", "order:333", "ffff", "wwww");
+  check_int(404, reply, 2);
+
 
   reply = redisCommand(c,"client setname %s", no_ns_change); 
-  check(403, reply, "OK");
+  check(405, reply, "OK");
   reply = redisCommand(c,"client setname %s", w_ns_change); 
-  check(404, reply, "OK");
+  check(406, reply, "OK");
 
   reply = redisCommand(c,"LSET %s %s %s", "foo:order:111", "0", "ppppUPDATED");
-  check(404, reply, "OK");
+  check(407, reply, "OK");
 
   reply = redisCommand(c,"LRANGE %s %s %s", "foo:order:111", "0", "-1");
   assert(strcmp(reply->element[0]->str, "ppppUPDATED") == 0);
@@ -159,10 +165,18 @@ void test_lset(void){
   freeReplyObject(reply);
 
   reply = redisCommand(c,"LLEN %s", "foo:order:111");
-  check_int(405, reply, 2);
+  check_int(408, reply, 2);
+
+  reply = redisCommand(c,"LPOP %s", "foo:order:222");
+  assert(strcmp(reply->str, "wwwwUPDATED") == 0 );
+  freeReplyObject(reply);
+
+  reply = redisCommand(c,"RPOP %s", "foo:order:333");
+  assert(strcmp(reply->str, "wwwwUPDATED") == 0 );
+  freeReplyObject(reply);
 
   reply = redisCommand(c,"keys %s", "*");
-  assert(reply->elements == 1);
+  assert(reply->elements == 3);
   freeReplyObject(reply);
 
   printf("Redis shutdown:\n");
@@ -178,7 +192,7 @@ int main(void){
   test_sets_nschange();
   test_sets_valchange();
   test_llen();
-  test_lset();
+  test_lset_pop();
   printf("All pass.\n");
   return 0;
 }

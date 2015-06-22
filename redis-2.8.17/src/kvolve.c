@@ -28,9 +28,11 @@ struct kvolve_cmd_hash_populate kvolveCommandTable[] = {
     {"del",kvolve_del,2},
     {"lrange",kvolve_lrange,4},
     {"lpush",kvolve_lpush,3},
+    {"lpop",kvolve_lpop,2},
     {"llen",kvolve_llen,2},
     {"lset",kvolve_lset,2},
-    {"rpush",kvolve_lpush,3},
+    {"rpush",kvolve_rpush,3},
+    {"rpop",kvolve_rpop,2},
     {"setnx",kvolve_setnx,3},
     {"sadd",kvolve_sadd,3},
     {"scard",kvolve_scard,3},
@@ -208,6 +210,12 @@ void kvolve_zrange(redisClient * c, struct version_hash * v){
     kvolve_update_all_zset(c, v);
 }
 void kvolve_lrange(redisClient * c, struct version_hash * v){
+    kvolve_update_all_list(c, v);
+}
+void kvolve_lpop(redisClient * c, struct version_hash * v){
+    kvolve_update_all_list(c, v);
+}
+void kvolve_rpop(redisClient * c, struct version_hash * v){
     kvolve_update_all_list(c, v);
 }
 void kvolve_rpush(redisClient * c, struct version_hash * v){
