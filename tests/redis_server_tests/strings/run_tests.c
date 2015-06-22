@@ -41,7 +41,7 @@ void test_update_separate(void){
   printf("Inside test_update_separate\n");
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v0,user@u0");
+  reply = redisCommand(c, "client setname %s", "order@5,user@5");
   check(1, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
@@ -92,7 +92,7 @@ void test_update_consecu(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v0,user@u0");
+  reply = redisCommand(c, "client setname %s", "order@5,user@5");
   check(101, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
@@ -124,7 +124,7 @@ void test_nx(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(201, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
@@ -171,7 +171,7 @@ void test_setnx(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(301, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
@@ -217,7 +217,7 @@ void test_xx(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(206, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s", "order:111", "ffff");
@@ -260,7 +260,7 @@ void test_mset_mget(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(301, reply, "OK");
 
   reply = redisCommand(c,"MSET %s %s %s %s", "order:111", "ffff", "order:222", "wwww");
@@ -305,7 +305,7 @@ void test_getrange(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(401, reply, "OK");
 
   reply = redisCommand(c,"SET %s %s", "order:111", "this is a string");
@@ -328,7 +328,7 @@ void test_del(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(501, reply, "OK");
 
   reply = redisCommand(c,"MSET %s %s %s %s %s %s %s %s", "order:111", "this is a string", "order:222", "wwww", "order:333", "ppp", "order:444", "ooo");
@@ -366,7 +366,7 @@ void test_incr(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(601, reply, "OK");
 
   reply = redisCommand(c, "INCR %s ", "order:111");
@@ -411,7 +411,7 @@ void test_getset(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(701, reply, "OK");
 
   /* next 3 calls verbatim from getset manual entry. Make sure the weird incr works 
@@ -452,7 +452,7 @@ void test_int_encoding(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(801, reply, "OK");
 
   reply = redisCommand(c, "SET %s  %s", "order:111", "4");

@@ -177,9 +177,9 @@ redis_alive()
         if (_g_debug)
             fprintf(stderr, "Reconnected to redis server on [%s:%d]\n",
                     _g_redis_host, _g_redis_port);
-         reply = redisCommand(_g_redis, "client setname %s", "skx:DIR@v6,skx:INODE@v6,skx:PATH@v5,skx:GLOBAL@v5");
+         reply = redisCommand(_g_redis, "client setname %s", "skx:DIR@6,skx:INODE@6,skx:PATH@5,skx:GLOBAL@5");
          if(strcmp(reply->str, "OK")!=0){
-             fprintf(stderr, "Failed to connect to redis kvolve v6.\n");
+             fprintf(stderr, "Failed to connect to redis kvolve.\n");
              exit(1);
          }
          freeReplyObject(reply);

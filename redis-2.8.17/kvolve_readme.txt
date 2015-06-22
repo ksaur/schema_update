@@ -5,7 +5,7 @@ networking.c  (2 changes)
 <             kvolve_process_command(c);
 
 redis.h  (1 change)
-<    char *vers;
+<    int vers;
 
 object.c (1 change)
-<     o->vers = NULL;
+<     o->vers = -1;

@@ -6,9 +6,9 @@ For redisfs:
          if (_g_debug)
              fprintf(stderr, "Reconnected to redis server on [%s:%d]\n",
                      _g_redis_host, _g_redis_port);
-+        reply = redisCommand(_g_redis, "client setname %s", "skx@v5,skx:INODE@v5,skx:PATH@v5,skx:GLOBAL@v5");
++        reply = redisCommand(_g_redis, "client setname %s", "skx@5,skx:INODE@5,skx:PATH@5,skx:GLOBAL@5");
 +        if(strcmp(reply->str, "OK")!=0){
-+            fprintf(stderr, "Failed to connect to redis kvolve v5.\n");
++            fprintf(stderr, "Failed to connect to redis kvolve.\n");
 +            exit(1);
 +        }
 +        freeReplyObject(reply);
@@ -17,7 +17,7 @@ For redisfs:
 For amico:  (4 LoC)  
 lib/amico/relationships.rb (3):
 +    def setns()
-+      Amico.redis.client.call(["client", "setname", "amico:followers@v1.2,amico:following@v1.2,amico:blocked@v1.2,amico:reciprocated@v1.2,amico:pending@v1.2"])
++      Amico.redis.client.call(["client", "setname", "amico:followers@12,amico:following@12,amico:blocked@12,amico:reciprocated@12,amico:pending@12"])
 +    end
 
 to the program startup (1):

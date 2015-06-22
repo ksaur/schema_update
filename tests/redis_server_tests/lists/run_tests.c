@@ -35,7 +35,7 @@ void test_sets_nschange(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v1");
+  reply = redisCommand(c, "client setname %s", "order@6");
   check(101, reply, "OK");
 
   reply = redisCommand(c,"LPUSH %s %s %s", "order:111", "ffff", "wwww");
@@ -70,7 +70,7 @@ void test_sets_valchange(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v0,user@u0");
+  reply = redisCommand(c, "client setname %s", "order@5,user@5");
   check(201, reply, "OK");
 
   reply = redisCommand(c,"LPUSH %s %s %s", "order:111", "ffff", "wwww");
@@ -102,7 +102,7 @@ void test_llen(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v0,user@u0");
+  reply = redisCommand(c, "client setname %s", "order@5,user@5");
   check(301, reply, "OK");
 
   reply = redisCommand(c,"RPUSH %s %s %s", "order:111", "ffff", "wwww");
@@ -138,7 +138,7 @@ void test_lset_pop(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v0,user@u0");
+  reply = redisCommand(c, "client setname %s", "order@5,user@5");
   check(401, reply, "OK");
 
   reply = redisCommand(c,"RPUSH %s %s %s", "order:111", "ffff", "wwww");

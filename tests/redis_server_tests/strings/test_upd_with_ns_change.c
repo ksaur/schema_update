@@ -11,6 +11,6 @@ void test_fun_ns_change(char ** key, void ** value, size_t * val_len){
 }
 
 void kvolve_declare_update(){
-    kvolve_upd_spec("order", "foo:order", "v1", "fv2", 1, test_fun_ns_change);
+    kvolve_upd_spec("order", "foo:order", 6, 70, 1, test_fun_ns_change);
 }
 

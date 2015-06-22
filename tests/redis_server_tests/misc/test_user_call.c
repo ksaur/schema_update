@@ -10,6 +10,6 @@ void test_fun_1(char ** key, void ** value, size_t * val_len){
 }
 
 void kvolve_declare_update(){
-    kvolve_upd_spec("order", "order", "v0", "v1", 1, test_fun_1);
+    kvolve_upd_spec("order", "order", 5, 6, 1, test_fun_1);
 }
 

@@ -37,7 +37,7 @@ void test_client_call(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v0");
+  reply = redisCommand(c, "client setname %s", "order@5");
   check(1, reply, "OK");
 
   reply = redisCommand(c, "SET %s  %s", "order:111", "oooo");
@@ -111,7 +111,7 @@ void test_keys(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@v0");
+  reply = redisCommand(c, "client setname %s", "order@5");
   check(201, reply, "OK");
 
   reply = redisCommand(c, "MSET  %s %s  %s %s  %s %s  %s %s", "order:1",  "ffff", "order:2", "f", "user:b", "9", "order:11",  "x"); 

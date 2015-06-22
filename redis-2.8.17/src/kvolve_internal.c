@@ -33,7 +33,7 @@ redisClient * c_fake_user = NULL;
 int upd_fun_running = 0;
 uint64_t loading_id = 0;
 
-struct version_hash * kvolve_create_ns(redisClient *c, char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list){
+struct version_hash * kvolve_create_ns(redisClient *c, char *ns_lookup, char *prev_ns, int v0, struct kvolve_upd_info * list){
     struct version_hash *tmp, * v = (struct version_hash*)malloc(sizeof(struct version_hash));
     int i;
     v->ns = malloc(strlen(ns_lookup)+1);
@@ -45,23 +45,21 @@ struct version_hash * kvolve_create_ns(redisClient *c, char *ns_lookup, char *pr
         strcpy(v->prev_ns, prev_ns); 
         HASH_FIND(hh, vers_list, prev_ns, strlen(prev_ns), tmp);
         v->num_versions = 1+ tmp->num_versions;
-        v->versions = calloc(KV_INIT_SZ,sizeof(char*)); //TODO check resize
+        v->versions = calloc(KV_INIT_SZ,sizeof(int)); //TODO check resize
         v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info*));
         for(i = 0; i< tmp->num_versions; i++){
             v->versions[i] = tmp->versions[i];
             v->info[i] = tmp->info[i];
         }
-        v->versions[tmp->num_versions] = malloc(strlen(v0)+1);
-        strcpy(v->versions[tmp->num_versions], v0);
+        v->versions[tmp->num_versions] = v0;
         v->info[tmp->num_versions] = list;
         tmp->next_ns = v->ns;
     } else {
         v->num_versions = 1;
-        v->versions = calloc(KV_INIT_SZ,sizeof(char*));
-        v->versions[0] = malloc(strlen(v0)+1);
+        v->versions = calloc(KV_INIT_SZ,sizeof(int));
+        v->versions[0] = v0;
         v->info = calloc(KV_INIT_SZ,sizeof(struct kvolve_upd_info*));
         v->info[0] = NULL;
-        strcpy(v->versions[0], v0);
     }
     v->is = intsetNew();
     if(c)
@@ -123,21 +121,23 @@ void kvolve_check_version(redisClient *c){
     while(1) {
         char * ns_lookup; 
         char * vers;
+        int vers_i;
         if (strcmp(cpy, vers_str) == 0)
             ns_lookup = strtok(cpy, "@");
         else
             ns_lookup = strtok(NULL, "@"); /* We've already started processing */
         vers = strtok(NULL, ",");
+        vers_i = atoi(vers);
         int pos = strlen(vers);
   
         struct version_hash *v = NULL;
   
         HASH_FIND(hh, vers_list, ns_lookup, strlen(ns_lookup), v);
         if (v==NULL){
-            v = kvolve_create_ns(c, ns_lookup, NULL, vers, NULL);
-        } else if (strcmp(v->versions[v->num_versions-1], vers) != 0){
-            printf("ERROR, INVALID VERSION (%s). System is at \'%s\' for ns \'%s\'\n", 
-                   vers, v->versions[v->num_versions-1], v->ns);
+            v = kvolve_create_ns(c, ns_lookup, NULL, vers_i, NULL);
+        } else if (v->versions[v->num_versions-1] != vers_i){
+            printf("ERROR, INVALID VERSION (%d). System is at \'%d\' for ns \'%s\'\n", 
+                   vers_i, v->versions[v->num_versions-1], v->ns);
             sdsfree(c->argv[0]->ptr);
             /* This will close the connection */
             c->argv[0]->ptr = sdsnew("quit");
@@ -224,7 +224,7 @@ char * kvolve_upd_redis_call(char* userinput){
 }
 
 /* This is the API function that the update-writer calls to load the updates */
-void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_vers, int n_funs, ...){
+void kvolve_upd_spec(char *from_ns, char * to_ns, int from_vers, int to_vers, int n_funs, ...){
 
     int i;
     struct version_hash * v;
@@ -253,15 +253,15 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_ve
     } else {
         /* make sure update was not already loaded */
         for (i = 0; i < v->num_versions; i++){
-            if (strcmp(v->versions[i], to_ns) == 0){
+            if (v->versions[i] == to_vers){
                 printf("ERROR, previous version %s already loaded...\n", to_ns);
                 return;
             }
         }
     }
     /* If not a new ns, make sure the previous version exists */
-    if (v && v->prev_ns == NULL && strcmp(v->versions[v->num_versions-1], from_vers) != 0){
-        printf("No such version (%s) to upgrade for ns (%s).\n",
+    if (v && v->prev_ns == NULL && (v->versions[v->num_versions-1] != from_vers)){
+        printf("No such version (%d) to upgrade for ns (%s).\n",
                from_vers, from_ns);
         return;
     }
@@ -297,8 +297,7 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_ve
         printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS.\n");
         return;
     }
-    v->versions[v->num_versions] = malloc(strlen(to_vers)+1);
-    strcpy(v->versions[v->num_versions], to_vers);
+    v->versions[v->num_versions] = to_vers;
     v->info[v->num_versions] = info;
     v->num_versions++;
  
@@ -409,7 +408,7 @@ void kvolve_check_rename(redisClient * c,struct version_hash * v, int nargs){
         // strings stored as ints don't have vers. Check for rename manually.
         if (o->type == REDIS_STRING && o->encoding == REDIS_ENCODING_INT){
             kvolve_namespace_update(c_fake, v);
-        } else if(strcmp(o->vers, v->versions[v->num_versions-1])!=0){
+        } else if(o->vers != v->versions[v->num_versions-1]){
             kvolve_namespace_update(c_fake, v);
         }
     }
@@ -445,13 +444,13 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
     }
 
     /* Check to see if the version is current, if so, return. */
-    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (o->vers == v->versions[v->num_versions-1])
         return;
 
     /* Key is present at an older version. Time to update, get version. */
     upd_fun_running = 1;
     for (i = 0; i < v->num_versions; i++){
-        if (strcmp(v->versions[i], o->vers) == 0){
+        if (o->vers == v->versions[i]){
             key_vers = i;
             break;
         }
@@ -467,7 +466,7 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
     for ( ; key_vers < v->num_versions-1; key_vers++){
         /* in some cases, there may be multiple updates */
         if (!v->info[key_vers+1]){
-            printf("Warning: no update functions for %s:%s\n", 
+            printf("Warning: no update functions for %s:%d\n", 
                    v->ns, v->versions[key_vers+1]); 
             o->vers = v->versions[key_vers+1];
             continue;
@@ -636,7 +635,7 @@ void kvolve_update_all_set(redisClient * c, struct version_hash * v){
         return;
     }
     /* return if object is already current */
-    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (o->vers == v->versions[v->num_versions-1])
         return;
 
     redisClient * c_fake = createClient(-1);
@@ -672,7 +671,7 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
         return;
     }
     /* return if object is already current */
-    if(strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if(o->vers == v->versions[v->num_versions-1])
         return;
     if(o->encoding != REDIS_ENCODING_ZIPLIST){
         DEBUG_PRINT(("Type %d not implemented for zset\n", o->encoding)); //TODO
@@ -731,7 +730,7 @@ void kvolve_update_all_list(redisClient * c, struct version_hash * v){
     }
     listTypeEntry entry;
     /* return if object is already current */
-    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (o->vers == v->versions[v->num_versions-1])
         return;
     int list_len = listTypeLength(o);
     robj ** robj_array = calloc(list_len, sizeof(robj*));

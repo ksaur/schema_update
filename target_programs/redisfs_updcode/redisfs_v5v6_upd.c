@@ -46,7 +46,7 @@ void upd_fun_add_compression(char ** key, void ** value, size_t * val_len){
 
 /* This is the update structure for redisfs.5 to redisfs.6 */
 void kvolve_declare_update(){
-    kvolve_upd_spec("skx", "skx:DIR", "v5", "v6", 0);
-    kvolve_upd_spec("skx:INODE", "skx:INODE", "v5", "v6", 1, upd_fun_add_compression);
+    kvolve_upd_spec("skx", "skx:DIR", 5, 6, 0);
+    kvolve_upd_spec("skx:INODE", "skx:INODE", 5, 6, 1, upd_fun_add_compression);
 }
 

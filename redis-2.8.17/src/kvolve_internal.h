@@ -23,8 +23,8 @@
 struct kvolve_upd_info{
   char * from_ns;
   char * to_ns;
-  char * from_vers;
-  char * to_vers;
+  int from_vers;
+  int to_vers;
   kvolve_upd_fun * funs;
   int num_funs;
 };
@@ -34,7 +34,7 @@ struct version_hash{
     char * ns; /* key */
     char * prev_ns;
     char * next_ns; /* for 'keys' command */
-    char ** versions;
+    int * versions;
     struct kvolve_upd_info ** info;
     int num_versions;
     intset *is;  /* the client ids connected to this version */
@@ -46,7 +46,7 @@ struct version_hash{
  * created)*/
 struct tmp_vers_store_hash{
     char * key; /* key */
-    char * vers;
+    int vers;
     redisDb * prev_db;
     UT_hash_handle hh; /* makes this structure hashable */
 };
@@ -55,7 +55,7 @@ struct tmp_vers_store_hash{
 struct version_hash * kvolve_version_hash_lookup(char * lookup);
 
 /* Create a new namespace and insert it into the hash table */
-struct version_hash * kvolve_create_ns(redisClient *c, char *ns_lookup, char *prev_ns, char * v0, struct kvolve_upd_info * list);
+struct version_hash * kvolve_create_ns(redisClient *c, char *ns_lookup, char *prev_ns, int v0, struct kvolve_upd_info * list);
 
 /* Used on client connect, validates the requested namespaces.  If valid,
  * continues, else kills the connection. */

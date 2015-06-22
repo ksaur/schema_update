@@ -25,7 +25,7 @@ void test_fun_2(char ** key, void ** value, size_t * val_len){
 }
 
 void kvolve_declare_update(){
-    kvolve_upd_spec("order", "order", "v0", "v1", 2, test_fun_1, test_fun_2_updval);
-    kvolve_upd_spec("user", "user", "u0", "u0", 1, test_fun_2);
+    kvolve_upd_spec("order", "order", 5, 6, 2, test_fun_1, test_fun_2_updval);
+    kvolve_upd_spec("user", "user", 5, 6, 1, test_fun_2);
 }
 

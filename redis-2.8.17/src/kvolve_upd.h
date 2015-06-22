@@ -32,7 +32,7 @@
       }
 
       void kvolve_declare_update(){  // Place your update calls here
-          kvolve_upd_spec("order", "order", "v0", "v1", 1, test_fun_updval);  // This describes the update
+          kvolve_upd_spec("order", "order", 0, 1, 1, test_fun_updval);  // This describes the update
       }
       -------------------------------------------------------------------
 *****************************************************/
@@ -61,8 +61,8 @@ typedef void (*kvolve_upd_fun)(char ** key, void ** value, size_t * val_len);
 
 
 /* This function specifies an update.  There must be 1 more calls to this function per update.
- *    Ex: kvolve_upd_spec("order", "order", "v0", "v1", 1, upd_fun_name);
- *        kvolve_upd_spec("user", "user:region", "v0", "v1", 0);
+ *    Ex: kvolve_upd_spec("order", "order", 0, 1, 1, upd_fun_name);
+ *        kvolve_upd_spec("user", "user:region", 0, 1, 0);
  *
  *    @from_ns : The namespace we're updating from. This must have already been
  *           declared by a connecting program.
@@ -74,7 +74,7 @@ typedef void (*kvolve_upd_fun)(char ** key, void ** value, size_t * val_len);
  *    @n_funs : The number of functions of type kvolve_upd_fun for this update
  *    @... : Zero or more function pointers to type kvolve_upd_fun.
  */
-void kvolve_upd_spec(char *from_ns, char * to_ns, char * from_vers, char * to_vers, int n_funs, ...);
+void kvolve_upd_spec(char *from_ns, char * to_ns, int from_vers, int to_vers, int n_funs, ...);
 
 
 /* This is the function where to place the calls to kvolve_upd_spec.  This will
