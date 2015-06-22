@@ -12,12 +12,14 @@ void test_fun_1(char ** key, void ** value, size_t * val_len){
 }
 
 void test_fun_2_updval(char ** key, void ** value, size_t * val_len){
-    size_t s = strlen("UPDATED")+strlen((char*)*value)+1;
+    double newscore = 23;
+    struct zset_scoreval * sv = (struct zset_scoreval*)value;
+    size_t s = strlen("UPDATED")+strlen(sv->setelem)+1;
     char * cons = calloc(s,sizeof(char));
-    strcat(cons, *value);
+    strcat(cons, sv->setelem);
     strcat(cons, "UPDATED");
-    *value = cons;
-    *val_len = s;
+    sv->setelem = cons;
+    sv->score = &newscore;
 }
 
 void test_fun_2(char ** key, void ** value, size_t * val_len){

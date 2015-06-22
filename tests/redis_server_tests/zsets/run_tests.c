@@ -65,7 +65,7 @@ void test_sets_nschange(void){
   reply = redisCommand(c,"ZSCORE %s %s", "foo:order:222", "xxxx");
   check(108, reply, "2");
 
-  /* test that calling sismember triggers an update */
+  /* test that calling triggers an update */
   reply = redisCommand(c,"ZSCORE %s %s", "foo:order:333", "eeee");
   check(109, reply, "1");
 
@@ -102,6 +102,9 @@ void test_sets_valchange(void){
   reply = redisCommand(c,"ZADD %s %s %s %s %s", "order:444", "2", "aaaa", "1", "nnnn");
   check_int(205, reply, 2);
 
+  reply = redisCommand(c,"ZADD %s %s %s %s %s", "user:bbb", "2", "aaaa", "1", "tttt");
+  check_int(205, reply, 2);
+
   reply = redisCommand(c,"client setname %s", no_ns_change); 
   check(206, reply, "OK");
 
@@ -115,11 +118,13 @@ void test_sets_valchange(void){
 
   /* test that modifying any member of the set (above) applies the update to all members */
   reply = redisCommand(c,"ZSCORE %s %s", "order:222", "xxxxUPDATED");
-  check(208, reply, "2");
+  check(208, reply, "23");
 
   /* test that calling sismember triggers an update */
   reply = redisCommand(c,"ZSCORE %s %s", "order:333", "qqqqUPDATED");
-  check(209, reply, "2");
+  check(209, reply, "23");
+  reply = redisCommand(c,"ZSCORE %s %s", "user:bbb", "tttt");
+  check(209, reply, "1");
 
   /* test that calling srem correctly deletes after update*/
   reply = redisCommand(c,"ZREM %s %s", "order:444", "aaaaUPDATED");

@@ -422,6 +422,8 @@ void kvolve_check_rename(redisClient * c,struct version_hash * v, int nargs){
 void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int check_key, robj * o, int type, double * s){
 
     int i, key_vers = -1, fun;
+    //struct hash_subkeyval hsk;
+    struct zset_scoreval zsv;
     if(v == NULL) return;
 
     /* Make sure that we're not here because of user update code (kvolve_user_call)*/
@@ -477,9 +479,19 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
             char * key = (char*)c->argv[1]->ptr;
             char * val = (char*)o->ptr;
             size_t val_len = sdslen((sds)o->ptr);
-            /* next line calls the update func (mods key/val as specified): */
-            v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
-
+            /* next lines calls the update func (mods key/val as specified): */
+            if(type == REDIS_ZSET){
+                zsv.setelem = val;
+                zsv.score = s;
+                v->info[key_vers+1]->funs[fun](&key, (void*)&zsv, &val_len);
+            } else if(type == REDIS_HASH){
+                //hsk; //TODO IMPLEMENT
+                v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
+            } else {
+                v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
+            }
+            /* Now check to see what,if anything, was modified by the user code*/
+            /* keys */
             if (check_key && (key != (char*)c->argv[1]->ptr)){
                 /* The key will automatically be renamed if a namespace change
                  * is specified in 'struct version_hash'.  However, this gives the user a
@@ -492,27 +504,26 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
                 /* This will write the user-modified key to disk */
                 kvolve_namespace_update(c, v);
             }
-            if (val != (char*)o->ptr){
-                DEBUG_PRINT(("Updated value from %s to %s\n", (char*)o->ptr, val));
-                if (type == REDIS_STRING){
-                    sdsfree(o->ptr);
-                    o->ptr = sdsnewlen(val, val_len);
-                    free(val);
-                    /* This will notify any client watching key (normally called 
-                     * automatically, but we bypassed by changing val directly */
-                    signalModifiedKey(c->db,o);
-                    server.dirty++;
-                } else if (type == REDIS_SET){
-                    kvolve_update_set_elem(c, val, &o);
-                } else if (type == REDIS_ZSET){
-                    kvolve_update_zset_elem(c, val, &o, *s);
-                } else if (type == REDIS_LIST){
-                    kvolve_update_list_elem(c, val, &o);
-                } else {
-                    printf("UPDATE NOT IMPLEMENTED FOR TYPE %d\n", type);
-                    assert(0); //TODO impl.
-                }
-            }
+            /* vals */
+            if (type == REDIS_STRING && val != (char*)o->ptr){
+                DEBUG_PRINT(("Updated str value from %s to %s\n", (char*)o->ptr, val));
+                sdsfree(o->ptr);
+                o->ptr = sdsnewlen(val, val_len);
+                free(val);
+                /* This will notify any client watching key (normally called 
+                 * automatically, but we bypassed by changing val directly */
+                signalModifiedKey(c->db,o);
+                server.dirty++;
+            } else if (type == REDIS_SET && val != (char*)o->ptr){
+                DEBUG_PRINT(("Updated set value from %s to %s\n", (char*)o->ptr, val));
+                kvolve_update_set_elem(c, val, &o);
+            } else if (type == REDIS_ZSET && (zsv.setelem != (char*)o->ptr || zsv.score != s)){
+                DEBUG_PRINT(("Updated zset value from %s to %s\n", (char*)o->ptr, val));
+                kvolve_update_zset_elem(c, zsv.setelem, &o, *zsv.score);
+            } else if (type == REDIS_LIST && val != (char*)o->ptr){
+                DEBUG_PRINT(("Updated list value from %s to %s\n", (char*)o->ptr, val));
+                kvolve_update_list_elem(c, val, &o);
+            } //TODO hashes
         }
         /* Update the version string in the key to match the update we just did.*/
         o->vers = v->versions[key_vers+1];

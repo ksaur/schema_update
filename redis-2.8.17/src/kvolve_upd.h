@@ -91,6 +91,16 @@ void kvolve_declare_update() __attribute__((constructor));
 char * kvolve_upd_redis_call(char * userinput);
 
 
+/* Structures for the **value parameter for type REDIS_HASH and type REDIS_ZSET */
+struct hash_subkeyval{
+    char * hashkey; 
+    char * hashval;
+};
+struct zset_scoreval{
+    char * setelem;
+    double * score;
+};
+
 
 /*****************************************************
  Compiling the Update Module:
