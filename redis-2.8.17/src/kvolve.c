@@ -256,6 +256,8 @@ void kvolve_mget(redisClient * c, struct version_hash * v){
 
 void kvolve_sadd(redisClient * c, struct version_hash * v){
     int i;
+    if(v == NULL)
+        return;
     kvolve_update_all_set(c, v);
 
     /* Set the version for the new element(s) that is not yet a member */
@@ -274,6 +276,8 @@ void kvolve_zadd(redisClient * c, struct version_hash * v){
 
 void kvolve_lpush(redisClient * c, struct version_hash * v){
     int i;
+    if(v == NULL)
+        return;
     kvolve_update_all_list(c, v);
 
     /* Set the version for the new element(s) that is not yet a member */
