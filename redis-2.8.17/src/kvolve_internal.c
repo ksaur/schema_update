@@ -314,8 +314,10 @@ struct version_hash * kvolve_version_hash_lookup(char * lookup){
     /* Split out the namespace from the key, if a namespace exists. */
     char * split = strrchr(lookup, ':');
     if (split == NULL){
-        DEBUG_PRINT(("WARNING: No namespace declared for key %s\n", lookup));
-        return NULL;
+        HASH_FIND(hh, vers_list, "*", 1, v);/* check for global default namespace */
+        if (!v)
+            DEBUG_PRINT(("WARNING: No namespace declared for key %s\n", lookup));
+        return v;
     }
     len = split - lookup + 1;
     ns = malloc(len);

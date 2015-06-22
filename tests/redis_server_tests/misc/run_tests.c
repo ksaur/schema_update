@@ -26,6 +26,7 @@ void check_int(int test_num, redisReply *reply, int expected){
 
 const char * server_loc = "../../../redis-2.8.17/src/redis-server ../../../redis-2.8.17/redis.conf &";
 const char * user_call = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/misc/user_call.so";
+const char * global_ns = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/misc/global_ns.so";
 const char * no_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/strings/test_upd_no_ns_change.so";
 const char * w_ns_change = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/strings/test_upd_with_ns_change.so";
 
@@ -140,6 +141,32 @@ void test_keys(void){
   sleep(2);
 }
 
+void test_globalns(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "*@2");
+  check(301, reply, "OK");
+
+  reply = redisCommand(c, "MSET  %s %s  %s %s  %s %s  %s %s", "foo1",  "ffff", "foo2", "f", "userb", "piano", "foo11",  "x"); 
+  check(302, reply, "OK");
+
+  reply = redisCommand(c,"client setname %s", global_ns); 
+  check(303, reply, "OK");
+
+  reply = redisCommand(c,"GET %s", "foo1");
+  check(304, reply, "ffffUPDATED");
+
+  reply = redisCommand(c,"GET %s", "userb");
+  check(305, reply, "pianoUPDATED");
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
+}
+
 int main(void){
 
   system("killall redis-server");
@@ -147,6 +174,7 @@ int main(void){
   test_client_call();
   test_default_ns();
   test_keys();
+  test_globalns();
   printf("All pass.\n");
   return 0;
 }
