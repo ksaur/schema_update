@@ -26,6 +26,11 @@ struct kvolve_cmd_hash_populate kvolveCommandTable[] = {
     {"incr",kvolve_incr,2},
     {"incrby",kvolve_incrby,3},
     {"del",kvolve_del,2},
+    {"lrange",kvolve_lrange,4},
+    {"lpush",kvolve_lpush,3},
+    {"llen",kvolve_llen,2},
+    {"lset",kvolve_lset,2},
+    {"rpush",kvolve_lpush,3},
     {"setnx",kvolve_setnx,3},
     {"sadd",kvolve_sadd,3},
     {"scard",kvolve_scard,3},
@@ -188,16 +193,28 @@ void kvolve_getset(redisClient * c, struct version_hash * v){
     kvolve_get(c, v);
 }
 void kvolve_zcard(redisClient * c, struct version_hash * v){
-    kvolve_update_all_zset(c, v);
+    kvolve_zadd(c, v);
 }
 void kvolve_zrem(redisClient * c, struct version_hash * v){
-    kvolve_zcard(c, v);
+    kvolve_zadd(c, v);
 }
 void kvolve_zscore(redisClient * c, struct version_hash * v){
-    kvolve_zcard(c, v);
+    kvolve_zadd(c, v);
 }
 void kvolve_zrange(redisClient * c, struct version_hash * v){
-    kvolve_zcard(c, v);
+    kvolve_zadd(c, v);
+}
+void kvolve_lrange(redisClient * c, struct version_hash * v){
+    kvolve_lpush(c, v);
+}
+void kvolve_rpush(redisClient * c, struct version_hash * v){
+    kvolve_lpush(c, v);
+}
+void kvolve_llen(redisClient * c, struct version_hash * v){
+    kvolve_lpush(c, v);
+}
+void kvolve_lset(redisClient * c, struct version_hash * v){
+    kvolve_lpush(c, v);
 }
 
 /* the incr command blows away any version you pass it, because it creates its
@@ -265,6 +282,7 @@ void kvolve_smembers(redisClient * c, struct version_hash * v){
     zfree(c_fake);
 }
 
+
 void kvolve_sadd(redisClient * c, struct version_hash * v){
     robj * oldobj = NULL;
     int i;
@@ -304,6 +322,7 @@ void kvolve_sadd(redisClient * c, struct version_hash * v){
     }
 }
 
+/* similar to sadd but for sorted sets */
 void kvolve_zadd(redisClient * c, struct version_hash * v){
     robj * oldobj = NULL;
     if(v == NULL) return;
@@ -318,6 +337,36 @@ void kvolve_zadd(redisClient * c, struct version_hash * v){
     /* Make sure all set elements are at this current version. Else update all*/
     kvolve_update_all_zset(c, v);
 
+    if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
+        oldobj = kvolve_exists_old(c, v);
+        if(oldobj){
+            dbDelete(c->db,oldobj);
+            zfree(oldobj);
+        }
+    }
+}
+
+
+void kvolve_lpush(redisClient * c, struct version_hash * v){
+    robj * oldobj = NULL;
+    int i;
+    if(v == NULL) return;
+
+    robj * o = kvolve_get_db_val(c, v);
+    if (o == NULL) {
+        kvolve_new_version(c, v);
+        return;
+    }
+
+    /* Make sure all set elements are at this current version. Else update all*/
+    if (strcmp(o->vers, v->versions[v->num_versions-1])!=0)
+        kvolve_update_all_list(c, v);
+
+    /* Set the version for the new element(s) that is not yet a member */
+    for(i=2; i < c->argc; i++)
+        c->argv[i]->vers = v->versions[v->num_versions-1];
+   
+    /* Check for an existing entry to delete in the case of namespace change*/
     if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
         oldobj = kvolve_exists_old(c, v);
         if(oldobj){

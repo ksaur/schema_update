@@ -11,5 +11,8 @@ make clean; rm core; make ;./run_tests
 cd ../strings
 echo "STRINGS"
 make clean; rm core; make ;./run_tests
+cd ../lists
+echo "LISTS"
+make clean; rm core; make ;./run_tests
 cd ..
 echo "DONE"

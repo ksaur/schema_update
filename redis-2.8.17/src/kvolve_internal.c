@@ -505,6 +505,8 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
                     kvolve_update_set_elem(c, val, &o);
                 } else if (type == REDIS_ZSET){
                     kvolve_update_zset_elem(c, val, &o, *s);
+                } else if (type == REDIS_LIST){
+                    kvolve_update_list_elem(c, val, &o);
                 } else {
                     printf("UPDATE NOT IMPLEMENTED FOR TYPE %d\n", type);
                     assert(0); //TODO impl.
@@ -537,6 +539,41 @@ void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
     /* delete old */
     c_fake->argv[2] = *o;
     cmd = sdsnew("srem");
+    c_fake->cmd = lookupCommand(cmd);
+    sdsfree(cmd);
+    c_fake->cmd->proc(c_fake);
+
+    zfree(c_fake->argv);
+    zfree(c_fake);
+    *o = new;
+}
+
+void kvolve_update_list_elem(redisClient * c, char * new_val, robj ** o){
+
+    sds cmd = NULL;
+    robj * new;
+    /* add new */
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 5;
+    c_fake->argv = zmalloc(sizeof(void*)*5);
+    c_fake->argv[1] = c->argv[1];
+    new = createStringObject(new_val,strlen(new_val));
+    c_fake->argv[2] = createStringObject("BEFORE",strlen("BEFORE"));
+    c_fake->argv[3] = *o;
+    c_fake->argv[4] = new;
+    cmd = sdsnew("linsert");
+    c_fake->cmd = lookupCommand(cmd);
+    sdsfree(cmd);
+    c_fake->cmd->proc(c_fake);
+    zfree(c_fake->argv[2]);
+
+    /* delete old */
+
+    c_fake->argc = 4;
+    c_fake->argv[2] = createStringObjectFromLongLong(1);
+    c_fake->argv[3] = *o;
+    cmd = sdsnew("lrem");
     c_fake->cmd = lookupCommand(cmd);
     sdsfree(cmd);
     c_fake->cmd->proc(c_fake);
@@ -606,7 +643,7 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     double * score_array = calloc(zset_len, sizeof(double));
     robj ** robj_array = calloc(zset_len, sizeof(robj*));
 
-    // iterate over the zset and get the objects/scores
+    /* iterate over the zset and get the objects/scores */
     while(p) { //db.c:515
         ziplistGet(p,&vstr,&vlen,&vll);
         //TODO impl score update?
@@ -623,7 +660,7 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
         }
         p = ziplistNext(o->ptr,p);
     }
-    // now modify the zset
+    /* now modify the zset */
     for(i=0; i<zset_len; i++){
         kvolve_check_update_kv_pair(c, v, first, robj_array[i], o->type, &score_array[i]);
         zfree(robj_array[i]);
@@ -635,6 +672,54 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     o->vers = v->versions[v->num_versions-1];
 }
 
+void kvolve_update_all_list(redisClient * c, struct version_hash * v){
+    int first = 1, exists = 0, i=0;
+    if(v == NULL)
+        return;
+    robj *e, * o = kvolve_get_db_val(c, v);
+    listTypeEntry entry;
+    /* return if object isn't present or is already current */
+    if (!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
+        return;
+    int list_len = listTypeLength(o);
+    robj ** robj_array = calloc(list_len, sizeof(robj*));
+    redisClient * c_fake = createClient(-1);
+
+
+    /* iterate over the list and get the items (don't modify yet) */
+    listTypeIterator *li = listTypeInitIterator(o, 0, REDIS_TAIL);
+    exists = listTypeNext(li, &entry);
+    while(exists){
+        e = listTypeGet(&entry);
+        exists = listTypeNext(li, &entry);
+        robj_array[i] = e;
+        i++;
+        /* namespace change checked, no need to repeat */
+    }
+
+    c_fake->db = c->db;
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    c_fake->argv[1] = c->argv[1];
+
+    /* now modify the list */
+    for(i=0; i < list_len; i++){
+        e = robj_array[i];
+        e->vers = o->vers;
+        c_fake->argv[2] = e;
+        kvolve_check_update_kv_pair(c, v, first, e, REDIS_LIST, NULL);
+        zfree(robj_array[i]);
+        first = 0;
+    }
+    free(robj_array);
+
+    /* Update the version string in the set container to match the update we
+     * just did on the set members .*/
+    o->vers = v->versions[v->num_versions-1];
+    zfree(c_fake->argv);
+    zfree(c_fake);
+
+}
 
 void kvolve_prevcall_check(void){
 

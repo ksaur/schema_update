@@ -40,6 +40,14 @@ void kvolve_zrem(redisClient * c, struct version_hash * v);
 void kvolve_zscore(redisClient * c, struct version_hash * v);
 void kvolve_zrange(redisClient * c, struct version_hash * v);
 
+/******* Lists ********/
+void kvolve_lpush(redisClient * c, struct version_hash * v);
+void kvolve_rpush(redisClient * c, struct version_hash * v);
+void kvolve_lrange(redisClient * c, struct version_hash * v);
+void kvolve_llen(redisClient * c, struct version_hash * v);
+void kvolve_lset(redisClient * c, struct version_hash * v);
+
+
 /******* Other *******/
 void kvolve_keys(redisClient * c, struct version_hash * v);
 
