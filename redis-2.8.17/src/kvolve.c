@@ -175,16 +175,19 @@ void kvolve_getrange(redisClient *c, struct version_hash * v){
  * will just check for update, and do if necessary. Remember, we must keep
  * all set/zset/etc members at same version. this will do that. */
 void kvolve_sismember(redisClient * c, struct version_hash * v){
-    kvolve_smembers(c, v);
+    kvolve_update_all_set(c, v);
 }
 void kvolve_srem(redisClient * c, struct version_hash * v){
-    kvolve_smembers(c, v);
+    kvolve_update_all_set(c, v);
 }
 void kvolve_scard(redisClient * c, struct version_hash * v){
-    kvolve_smembers(c, v);
+    kvolve_update_all_set(c, v);
 }
 void kvolve_spop(redisClient * c, struct version_hash * v){
-    kvolve_smembers(c, v);
+    kvolve_update_all_set(c, v);
+}
+void kvolve_smembers(redisClient * c, struct version_hash * v){
+    kvolve_update_all_set(c, v);
 }
 void kvolve_incrby(redisClient * c, struct version_hash * v){
     kvolve_incr(c, v);
@@ -193,28 +196,28 @@ void kvolve_getset(redisClient * c, struct version_hash * v){
     kvolve_get(c, v);
 }
 void kvolve_zcard(redisClient * c, struct version_hash * v){
-    kvolve_zadd(c, v);
+    kvolve_update_all_zset(c, v);
 }
 void kvolve_zrem(redisClient * c, struct version_hash * v){
-    kvolve_zadd(c, v);
+    kvolve_update_all_zset(c, v);
 }
 void kvolve_zscore(redisClient * c, struct version_hash * v){
-    kvolve_zadd(c, v);
+    kvolve_update_all_zset(c, v);
 }
 void kvolve_zrange(redisClient * c, struct version_hash * v){
-    kvolve_zadd(c, v);
+    kvolve_update_all_zset(c, v);
 }
 void kvolve_lrange(redisClient * c, struct version_hash * v){
-    kvolve_lpush(c, v);
+    kvolve_update_all_list(c, v);
 }
 void kvolve_rpush(redisClient * c, struct version_hash * v){
     kvolve_lpush(c, v);
 }
 void kvolve_llen(redisClient * c, struct version_hash * v){
-    kvolve_lpush(c, v);
+    kvolve_update_all_list(c, v);
 }
 void kvolve_lset(redisClient * c, struct version_hash * v){
-    kvolve_lpush(c, v);
+    kvolve_update_all_list(c, v);
 }
 
 /* the incr command blows away any version you pass it, because it creates its
@@ -249,131 +252,33 @@ void kvolve_mget(redisClient * c, struct version_hash * v){
     zfree(c_fake);
 }
 
-void kvolve_smembers(redisClient * c, struct version_hash * v){
-
-    int first = 1;
-    if(v == NULL) 
-        return;
-    robj * o = kvolve_get_db_val(c, v);
-    /* return if object isn't present or is already current */
-    if (!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
-        return;
-
-    redisClient * c_fake = createClient(-1);
-    c_fake->db = c->db;
-    c_fake->argc = 3;
-    c_fake->argv = zmalloc(sizeof(void*)*3);
-    c_fake->argv[1] = c->argv[1];
-    setTypeIterator *si = setTypeInitIterator(o);
-    robj * e = setTypeNextObject(si);
-    /* call update on each of the set elements */
-    while(e){
-        c_fake->argv[2] = e;
-        kvolve_check_update_kv_pair(c, v, first, e, REDIS_SET, NULL);
-        e = setTypeNextObject(si);
-        /* namespace change checked, no need to repeat */
-        first = 0;
-    }
-
-    /* Update the version string in the set container to match the update we
-     * just did on the set members .*/
-    o->vers = v->versions[v->num_versions-1];
-    zfree(c_fake->argv);
-    zfree(c_fake);
-}
 
 
 void kvolve_sadd(redisClient * c, struct version_hash * v){
-    robj * oldobj = NULL;
     int i;
-    if(v == NULL) return;
-
-    /* Check if the set exists or if we're creating a new set.  If we're
-     * creating a new set, redis will create it during the call.  (We can't create
-     * it ahead of time because redis doesn't allow empty sets. And we can't add
-     * the element because it will throw off the return response.)  Therefore,
-     * notify networking.c to patchup the set version after the call where the set
-     * is created. */
-    robj * o = kvolve_get_db_val(c, v);
-    if (o == NULL) {
-        kvolve_new_version(c, v);
-        return;
-    }
-
-    /* Make sure all set elements are at this current version and update them
-     * all if necessary.  Don't let different members of the same set be at different
-     * versions!! (would be a confusing mess.) This will check and return if current,
-     * else update other set members to the current version. This will also update the
-     * namespace of the key if necessary. */
-    if (strcmp(o->vers, v->versions[v->num_versions-1])!=0)
-        kvolve_smembers(c ,v);
+    kvolve_update_all_set(c, v);
 
     /* Set the version for the new element(s) that is not yet a member */
     for(i=2; i < c->argc; i++)
         c->argv[i]->vers = v->versions[v->num_versions-1];
-        
-    /* Check for an existing entry to delete in the case of namespace change*/
-    if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
-        oldobj = kvolve_exists_old(c, v);
-        if(oldobj){
-            dbDelete(c->db,oldobj);
-            zfree(oldobj);
-        }
-    }
 }
 
 /* similar to sadd but for sorted sets */
 void kvolve_zadd(redisClient * c, struct version_hash * v){
-    robj * oldobj = NULL;
-    if(v == NULL) return;
-
-    /* Check if the zset exists or if we're creating a new set.*/
-    robj * o = kvolve_get_db_val(c, v);
-    if (o == NULL) {
-        kvolve_new_version(c, v);
-        return;
-    }
-
     /* Make sure all set elements are at this current version. Else update all*/
     kvolve_update_all_zset(c, v);
 
-    if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
-        oldobj = kvolve_exists_old(c, v);
-        if(oldobj){
-            dbDelete(c->db,oldobj);
-            zfree(oldobj);
-        }
-    }
+    /* sorted sets don't store the versions in the individual members (just in
+     * the parent zset), so we're done here*/
 }
 
-
 void kvolve_lpush(redisClient * c, struct version_hash * v){
-    robj * oldobj = NULL;
     int i;
-    if(v == NULL) return;
-
-    robj * o = kvolve_get_db_val(c, v);
-    if (o == NULL) {
-        kvolve_new_version(c, v);
-        return;
-    }
-
-    /* Make sure all set elements are at this current version. Else update all*/
-    if (strcmp(o->vers, v->versions[v->num_versions-1])!=0)
-        kvolve_update_all_list(c, v);
+    kvolve_update_all_list(c, v);
 
     /* Set the version for the new element(s) that is not yet a member */
     for(i=2; i < c->argc; i++)
         c->argv[i]->vers = v->versions[v->num_versions-1];
-   
-    /* Check for an existing entry to delete in the case of namespace change*/
-    if((v->prev_ns != NULL) && (strcmp(o->vers, v->versions[v->num_versions-1])==0)){
-        oldobj = kvolve_exists_old(c, v);
-        if(oldobj){
-            dbDelete(c->db,oldobj);
-            zfree(oldobj);
-        }
-    }
 }
 
 void kvolve_keys(redisClient * c, struct version_hash * v){

@@ -621,11 +621,58 @@ void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double 
     *o = new; //TODO check freeing
 }
 
+/* Make sure all set elements are at this current version and update them
+ * all if necessary.  Don't let different members of the same set be at different
+ * versions!! (would be a confusing mess.) This will check and return if current,
+ * else update other set members to the current version. This will also update the
+ * namespace of the key if necessary. */
+void kvolve_update_all_set(redisClient * c, struct version_hash * v){
+    int first = 1;
+    if(v == NULL)
+        return;
+    robj * o = kvolve_get_db_val(c, v);
+    if (o == NULL) {
+        kvolve_new_version(c, v);
+        return;
+    }
+    /* return if object is already current */
+    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
+        return;
+
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 3;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    c_fake->argv[1] = c->argv[1];
+    setTypeIterator *si = setTypeInitIterator(o);
+    robj * e = setTypeNextObject(si);
+    /* call update on each of the set elements */
+    while(e){
+        c_fake->argv[2] = e;
+        kvolve_check_update_kv_pair(c, v, first, e, REDIS_SET, NULL);
+        e = setTypeNextObject(si);
+        /* namespace change checked, no need to repeat */
+        first = 0;
+    }
+
+    /* Update the version string in the set container to match the update we
+     * just did on the set members .*/
+    o->vers = v->versions[v->num_versions-1];
+    zfree(c_fake->argv);
+    zfree(c_fake);
+
+}
+
 void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
 
+    if(v == NULL) return;
     robj * o = kvolve_get_db_val(c, v);
-    /* return if object isn't present or is already current */
-    if(!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    if (o == NULL) {
+        kvolve_new_version(c, v);
+        return;
+    }
+    /* return if object is already current */
+    if(strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
     if(o->encoding != REDIS_ENCODING_ZIPLIST){
         DEBUG_PRINT(("Type %d not implemented for zset\n", o->encoding)); //TODO
@@ -672,14 +719,19 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     o->vers = v->versions[v->num_versions-1];
 }
 
+/* Check if update is necessary for a list and if so do it. */
 void kvolve_update_all_list(redisClient * c, struct version_hash * v){
-    int first = 1, exists = 0, i=0;
     if(v == NULL)
         return;
+    int first = 1, exists = 0, i=0;
     robj *e, * o = kvolve_get_db_val(c, v);
+    if (o == NULL) {
+        kvolve_new_version(c, v);
+        return;
+    }
     listTypeEntry entry;
-    /* return if object isn't present or is already current */
-    if (!o || strcmp(o->vers, v->versions[v->num_versions-1])==0)
+    /* return if object is already current */
+    if (strcmp(o->vers, v->versions[v->num_versions-1])==0)
         return;
     int list_len = listTypeLength(o);
     robj ** robj_array = calloc(list_len, sizeof(robj*));
@@ -709,7 +761,7 @@ void kvolve_update_all_list(redisClient * c, struct version_hash * v){
         c_fake->argv[2] = e;
         kvolve_check_update_kv_pair(c, v, first, e, REDIS_LIST, NULL);
         zfree(robj_array[i]);
-        first = 0;
+        first = 0; /* only check for key namespace change once */
     }
     free(robj_array);
 

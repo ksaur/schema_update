@@ -119,11 +119,17 @@ void kvolve_check_rename(redisClient * c, struct version_hash * v, int nargs);
 /* Returns a robj for the key if present in outdated ns. Caller must free*/
 robj * kvolve_exists_old(redisClient * c, struct version_hash * v);
 
-/* check if updated needed for robjs of REDIS_ZSET */
+/* check if updated needed for robjs of REDIS_ZSET, if so do the upd. Also
+ * checks namespace/key update. */
 void kvolve_update_all_zset(redisClient * c, struct version_hash * v);
 
-/* check if updated needed for robjs of REDIS_LIST */
+/* check if updated needed for robjs of REDIS_LIST, if so do the upd. Also
+ * checks namespace/key update. */
 void kvolve_update_all_list(redisClient * c, struct version_hash * v);
+
+/* check if updated needed for robjs of REDIS_SET, if so do the upd. Also
+ * checks namespace/key update. */
+void kvolve_update_all_set(redisClient * c, struct version_hash * v);
 
 /* Redis doesn't allow empty sets/zset/lists/hashes, so when a new one is
  * created, it's not possible to set the version string before the call happens
