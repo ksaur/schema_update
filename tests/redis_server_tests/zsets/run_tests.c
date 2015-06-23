@@ -87,7 +87,7 @@ void test_sets_valchange(void){
   sleep(2);
 
   redisContext * c = redisConnect("127.0.0.1", 6379);
-  reply = redisCommand(c, "client setname %s", "order@5,user@5");
+  reply = redisCommand(c, "client setname %s", "order@5,user@5,region@5");
   check(201, reply, "OK");
 
   reply = redisCommand(c,"ZADD %s %s %s %s %s", "order:111", "2", "ffff", "1", "wwww");
@@ -168,13 +168,40 @@ void test_int_sets(void){
 
 }
 
+void test_sets_valchange2(void){
+  redisReply *reply;
+  system(server_loc);
+  sleep(2);
+
+  redisContext * c = redisConnect("127.0.0.1", 6379);
+  reply = redisCommand(c, "client setname %s", "order@5,user@5,region@5");
+  check(501, reply, "OK");
+
+  reply = redisCommand(c,"ZADD %s %s %s %s %s", "order:111", "2", "ffff", "1", "wwww");
+  check_int(502, reply, 2);                                     
+  reply = redisCommand(c,"ZADD %s %s %s %s %s", "region:111", "2", "ffff", "1", "wwww");
+  check_int(503, reply, 2);                                     
+  reply = redisCommand(c,"ZADD %s %s %s %s %s", "user:111", "2", "ffff", "1", "wwww");
+  check_int(504, reply, 2);                                     
+  reply = redisCommand(c,"client setname %s", no_ns_change); 
+  check(505, reply, "OK");
+  reply = redisCommand(c,"ZSCORE %s %s", "order:111", "ffffUPDATED");
+  check(506, reply, "2");
+  reply = redisCommand(c,"ZSCORE %s %s", "region:111", "ffff");
+  check(507, reply, "23");
+  reply = redisCommand(c,"ZSCORE %s %s", "user:111", "ffffUPDATED");
+  check(508, reply, "23");
+}
+
 int main(void){
 
   system("killall redis-server");
   sleep(2);
-  test_sets_nschange();
-  test_sets_valchange();
-  test_int_sets();
+//  test_sets_nschange();
+//  test_sets_valchange();
+//  test_int_sets();
+  test_sets_valchange2();
   printf("All pass.\n");
   return 0;
 }
+

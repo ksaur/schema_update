@@ -519,7 +519,6 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
                 DEBUG_PRINT(("Updated set value from %s to %s\n", (char*)o->ptr, val));
                 kvolve_update_set_elem(c, val, &o);
             } else if (type == REDIS_ZSET && (zsv.setelem != o->ptr || zsv.score != s)){
-                DEBUG_PRINT(("Updated zset value from %s to %s\n", (char*)o->ptr, zsv.setelem));
                 kvolve_update_zset_elem(c, zsv.setelem, &o, *zsv.score);
             } else if (type == REDIS_HASH && (hsk.hashkey != o->ptr || hsk.hashval != fval->ptr)){
                 kvolve_update_hash_elem(c, hsk.hashkey, hsk.hashval, &o);
@@ -657,16 +656,19 @@ void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double 
     c_fake->cmd = lookupCommand(ren);
     sdsfree(ren);
     c_fake->cmd->proc(c_fake);
+    DEBUG_PRINT(("Updated zset value %s to have score %f\n", new_val, s));
 
-    //TODO !!! Only do a delete if value changed in addition to the score.
-    /* delete old */
-    c_fake->argv[2] = *o;
-    c_fake->argc = 3;
-    (*o)->encoding = REDIS_ENCODING_RAW;
-    ren = sdsnew("zrem");
-    c_fake->cmd = lookupCommand(ren);
-    sdsfree(ren);
-    c_fake->cmd->proc(c_fake);
+    /* delete old if necesary */
+    if(strcmp((char*)(*o)->ptr, new_val) != 0 ){
+        DEBUG_PRINT(("Updated zset value element from %s to %s\n", (char*)(*o)->ptr, new_val));
+        c_fake->argv[2] = *o;
+        c_fake->argc = 3;
+        (*o)->encoding = REDIS_ENCODING_RAW;
+        ren = sdsnew("zrem");
+        c_fake->cmd = lookupCommand(ren);
+        sdsfree(ren);
+        c_fake->cmd->proc(c_fake);
+    }
 
     zfree(c_fake->argv);
     zfree(c_fake);
