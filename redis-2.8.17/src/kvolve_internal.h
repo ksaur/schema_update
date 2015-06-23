@@ -96,6 +96,7 @@ robj * kvolve_get_db_val(redisClient * c, struct version_hash * v);
  *   @type : The container type of the to-be-updated element (Ex: REDIS_ZSET if @o
  *        belongs to a zset).
  *   @s : If a zset, a pointer to the score.  Else NULL
+ *   @fval : If a hash, a pointer to the field value
  */
 void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int key_check, robj * o, int type, double * s, robj * fval);
 

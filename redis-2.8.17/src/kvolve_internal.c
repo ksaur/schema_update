@@ -710,6 +710,7 @@ void kvolve_update_all_set(redisClient * c, struct version_hash * v){
 
     /* call update (modify) on each of the set elements */
     for(i=0; i<set_len; i++){
+        robj_array[i]->vers = o->vers;
         kvolve_check_update_kv_pair(c, v, first, robj_array[i], REDIS_SET, NULL, NULL);
         /* namespace change checked, no need to repeat */
         first = 0;
