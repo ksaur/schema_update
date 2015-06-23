@@ -191,6 +191,10 @@ void test_sets_valchange2(void){
   check(507, reply, "23");
   reply = redisCommand(c,"ZSCORE %s %s", "user:111", "ffffUPDATED");
   check(508, reply, "23");
+
+  printf("Redis shutdown:\n");
+  system("killall redis-server");
+  sleep(2);
 }
 
 int main(void){

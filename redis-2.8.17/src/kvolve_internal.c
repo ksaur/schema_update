@@ -682,7 +682,9 @@ void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double 
  * else update other set members to the current version. This will also update the
  * namespace of the key if necessary. */
 void kvolve_update_all_set(redisClient * c, struct version_hash * v){
-    int first = 1;
+    int first = 1, set_len, i=0;
+    robj ** robj_array;
+    
     if(v == NULL)
         return;
     robj * o = kvolve_get_db_val(c, v);
@@ -694,34 +696,49 @@ void kvolve_update_all_set(redisClient * c, struct version_hash * v){
     if (o->vers == v->versions[v->num_versions-1])
         return;
 
-    redisClient * c_fake = createClient(-1);
-    c_fake->db = c->db;
-    c_fake->argc = 3;
-    c_fake->argv = zmalloc(sizeof(void*)*3);
-    c_fake->argv[1] = c->argv[1];
     setTypeIterator *si = setTypeInitIterator(o);
     robj * e = setTypeNextObject(si);
-    /* call update on each of the set elements */
+    set_len = setTypeSize(o);
+    robj_array = calloc(set_len, sizeof(robj*));
+
+    /* get the set elements w/o modifying the set */
     while(e){
-        c_fake->argv[2] = e;
-        kvolve_check_update_kv_pair(c, v, first, e, REDIS_SET, NULL, NULL);
+        robj_array[i] = e;
+        i++;
         e = setTypeNextObject(si);
+    }
+
+    /* call update (modify) on each of the set elements */
+    for(i=0; i<set_len; i++){
+        kvolve_check_update_kv_pair(c, v, first, robj_array[i], REDIS_SET, NULL, NULL);
         /* namespace change checked, no need to repeat */
         first = 0;
     }
+    setTypeReleaseIterator(si);
+    free(robj_array);
 
     /* Update the version string in the set container to match the update we
      * just did on the set members .*/
     o->vers = v->versions[v->num_versions-1];
-    zfree(c_fake->argv);
-    zfree(c_fake);
 
 }
 
 void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
 
+    unsigned char *vstr;
+    unsigned int vlen;
+    long long vll;
+    robj * elem;
+    int first = 1;
+    int i = 0;
+    int zset_len;
+    double * score_array;
+    robj ** robj_array;
+    unsigned char *p;
+    robj * o;
+
     if(v == NULL) return;
-    robj * o = kvolve_get_db_val(c, v);
+    o = kvolve_get_db_val(c, v);
     if (o == NULL) {
         kvolve_new_version(c, v);
         return;
@@ -734,16 +751,11 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
         return;
     }
 
-    unsigned char *p = ziplistIndex(o->ptr,0);
-    unsigned char *vstr;
-    unsigned int vlen;
-    long long vll;
-    robj * elem;
-    int first = 1;
-    int i = 0;
-    int zset_len = zsetLength(o);
-    double * score_array = calloc(zset_len, sizeof(double));
-    robj ** robj_array = calloc(zset_len, sizeof(robj*));
+    zset_len = zsetLength(o);
+    score_array = calloc(zset_len, sizeof(double));
+    robj_array = calloc(zset_len, sizeof(robj*));
+    p = ziplistIndex(o->ptr,0);
+
 
     /* iterate over the zset and get the objects/scores */
     while(p) { //db.c:515
@@ -787,11 +799,6 @@ void kvolve_update_all_hash(redisClient * c, struct version_hash * v){
         return;
     length = hashTypeLength(o) * 2;
 
-    redisClient * c_fake = createClient(-1);
-    c_fake->db = c->db;
-    c_fake->argc = 4;
-    c_fake->argv = zmalloc(sizeof(void*)*3);
-    c_fake->argv[1] = c->argv[1];
     robj ** robj_array = calloc(length, sizeof(robj*));
     hashTypeIterator *hi = hashTypeInitIterator(o);
     /* gather the (hashsubkey, hashfieldval) elements */
@@ -814,8 +821,8 @@ void kvolve_update_all_hash(redisClient * c, struct version_hash * v){
     /* Update the version string in the set container to match the update we
      * just did on the set members .*/
     o->vers = v->versions[v->num_versions-1];
-    zfree(c_fake->argv);
-    zfree(c_fake);
+    free(robj_array);
+    hashTypeReleaseIterator(hi);
 
 }
 
@@ -835,7 +842,6 @@ void kvolve_update_all_list(redisClient * c, struct version_hash * v){
         return;
     int list_len = listTypeLength(o);
     robj ** robj_array = calloc(list_len, sizeof(robj*));
-    redisClient * c_fake = createClient(-1);
 
 
     /* iterate over the list and get the items (don't modify yet) */
@@ -849,27 +855,20 @@ void kvolve_update_all_list(redisClient * c, struct version_hash * v){
         /* namespace change checked, no need to repeat */
     }
 
-    c_fake->db = c->db;
-    c_fake->argc = 3;
-    c_fake->argv = zmalloc(sizeof(void*)*3);
-    c_fake->argv[1] = c->argv[1];
-
     /* now modify the list */
     for(i=0; i < list_len; i++){
         e = robj_array[i];
         e->vers = o->vers;
-        c_fake->argv[2] = e;
         kvolve_check_update_kv_pair(c, v, first, e, REDIS_LIST, NULL, NULL);
         zfree(robj_array[i]);
         first = 0; /* only check for key namespace change once */
     }
     free(robj_array);
+    listTypeReleaseIterator(li);
 
     /* Update the version string in the set container to match the update we
      * just did on the set members .*/
     o->vers = v->versions[v->num_versions-1];
-    zfree(c_fake->argv);
-    zfree(c_fake);
 
 }
 
@@ -890,15 +889,6 @@ void kvolve_prevcall_check(void){
             continue;
         }
         o->vers = current_fix->vers;
-        /* only store the version in the set elements if the encoding supports it. */
-        if(o->encoding == REDIS_ENCODING_HT && o->type == REDIS_SET){
-            setTypeIterator *si = setTypeInitIterator(o);
-            robj * e = setTypeNextObject(si);
-            while(e){
-                e->vers = current_fix->vers;
-                e = setTypeNextObject(si);
-            }
-        }
 
         HASH_DEL(tmp_store,current_fix);
         free(current_fix->key);
