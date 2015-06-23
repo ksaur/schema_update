@@ -422,7 +422,7 @@ void kvolve_check_rename(redisClient * c,struct version_hash * v, int nargs){
 void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int check_key, robj * o, int type, double * s){
 
     int i, key_vers = -1, fun;
-    //struct hash_subkeyval hsk;
+    struct hash_subkeyval hsk;
     struct zset_scoreval zsv;
     if(v == NULL) return;
 
@@ -430,7 +430,7 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
     if (upd_fun_running == 1)
         return;
 
-    /* If the object wasn't passed in (set type, not string type),
+    /* If the object wasn't passed in (string type),
      * then look it up (as a robj with version info) */
     if (!o){
         o = kvolve_get_db_val(c, v);
@@ -485,7 +485,8 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
                 zsv.score = s;
                 v->info[key_vers+1]->funs[fun](&key, (void*)&zsv, &val_len);
             } else if(type == REDIS_HASH){
-                //hsk; //TODO IMPLEMENT
+                hsk.hashkey = val;
+                hsk.hashval = NULL;  //TODO
                 v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
             } else {
                 v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
@@ -558,6 +559,10 @@ void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
     zfree(c_fake->argv);
     zfree(c_fake);
     *o = new;
+}
+
+void kvolve_update_hash_elem(redisClient * c, char * new_skval, char * new_val, robj ** o){
+    //TODO IMPLEMENT ME
 }
 
 void kvolve_update_list_elem(redisClient * c, char * new_val, robj ** o){
@@ -686,8 +691,8 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     /* return if object is already current */
     if(o->vers == v->versions[v->num_versions-1])
         return;
-    if(o->encoding != REDIS_ENCODING_ZIPLIST){
-        DEBUG_PRINT(("Type %d not implemented for zset\n", o->encoding)); //TODO
+    if(o->encoding != REDIS_ENCODING_ZIPLIST){ //TODO REDIS_ENCODING_SKIPLIST
+        DEBUG_PRINT(("Type %d not implemented for zset\n", o->encoding));
         return;
     }
 
@@ -729,6 +734,48 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     free(robj_array);
 
     o->vers = v->versions[v->num_versions-1];
+}
+
+void kvolve_update_all_hash(redisClient * c, struct version_hash * v){
+    int first = 1;
+    if(v == NULL)
+        return;
+    robj * o = kvolve_get_db_val(c, v);
+    if (o == NULL) {
+        kvolve_new_version(c, v);
+        return;
+    }
+    /* return if object is already current */
+    if (o->vers == v->versions[v->num_versions-1])
+        return;
+
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 4;
+    c_fake->argv = zmalloc(sizeof(void*)*3);
+    c_fake->argv[1] = c->argv[1];
+    hashTypeIterator *hi = hashTypeInitIterator(o);
+    /* call update on each of the set elements */
+    while(hashTypeNext(hi) == REDIS_OK){
+        robj *field, *value;
+        field = hashTypeCurrentObject(hi, REDIS_HASH_KEY);
+        value = hashTypeCurrentObject(hi, REDIS_HASH_VALUE);
+        //c_fake->argv[2] = field;
+        //c_fake->argv[3] = value;
+        //printf("%p %p\n", field, value );
+        printf("%s %s\n", (char*)field->ptr, (char*)value->ptr);
+      
+        kvolve_check_update_kv_pair(c, v, first, o, REDIS_HASH, NULL);
+        /* namespace change checked, no need to repeat */
+        first = 0;
+    }
+
+    /* Update the version string in the set container to match the update we
+     * just did on the set members .*/
+    o->vers = v->versions[v->num_versions-1];
+    zfree(c_fake->argv);
+    zfree(c_fake);
+
 }
 
 /* Check if update is necessary for a list and if so do it. */

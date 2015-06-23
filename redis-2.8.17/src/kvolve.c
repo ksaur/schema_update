@@ -26,6 +26,8 @@ struct kvolve_cmd_hash_populate kvolveCommandTable[] = {
     {"incr",kvolve_incr,2},
     {"incrby",kvolve_incrby,3},
     {"del",kvolve_del,2},
+    {"hget",kvolve_hget,3},
+    {"hset",kvolve_hset,4},
     {"lrange",kvolve_lrange,4},
     {"lpush",kvolve_lpush,3},
     {"lpop",kvolve_lpop,2},
@@ -292,6 +294,20 @@ void kvolve_lpush(redisClient * c, struct version_hash * v){
     for(i=2; i < c->argc; i++)
         c->argv[i]->vers = v->versions[v->num_versions-1];
 }
+void kvolve_hset(redisClient * c, struct version_hash * v){
+    int i;
+    if(v == NULL)
+        return;
+    kvolve_update_all_hash(c, v);
+
+    /* Set the version for the new element(s) that is not yet a member */
+    for(i=2; i < c->argc; i++)
+        c->argv[i]->vers = v->versions[v->num_versions-1];
+} 
+
+void kvolve_hget(redisClient * c, struct version_hash * v){
+ //TODO
+} 
 
 void kvolve_keys(redisClient * c, struct version_hash * v){
     dictIterator *di;

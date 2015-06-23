@@ -99,15 +99,22 @@ robj * kvolve_get_db_val(redisClient * c, struct version_hash * v);
  */
 void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int key_check, robj * o, int type, double * s);
 
-/* Update a member of a set/list adding the new version (@new_val)
- * and delete the old version.  These are called by the update function. */
+/* Check if updated needed for robjs of set/list/zset/hsah, if so do the
+ * upd. Also checks namespace/key update. These four functions are
+ * basicaly container iterators that call kvolve_check_update_kv_pair */
+void kvolve_update_all_zset(redisClient * c, struct version_hash * v);
+void kvolve_update_all_list(redisClient * c, struct version_hash * v);
+void kvolve_update_all_set(redisClient * c, struct version_hash * v);
+void kvolve_update_all_hash(redisClient * c, struct version_hash * v);
+
+/* Update a _member_ of a set/list/zset/hash adding the new version
+ * (@new_val) and delete the old version.  These are called from withint
+ * kvolve_check_update_kv_pair if a change is neceesary for the element
+ * currently being iterated.. */
 void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o);
 void kvolve_update_list_elem(redisClient * c, char * new_val, robj ** o);
-
-/* Update a member of a zset adding the new version (@new_val)
- * and delete the old version.  This is called by the update function.
- * //TODO support score updates */
 void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double s);
+void kvolve_update_hash_elem(redisClient * c, char * new_skval, char * new_val, robj ** o);
 
 
 /* Check if a rename is necessary, and if so, rename.  @nargs is the number of
@@ -119,17 +126,6 @@ void kvolve_check_rename(redisClient * c, struct version_hash * v, int nargs);
 /* Returns a robj for the key if present in outdated ns. Caller must free*/
 robj * kvolve_exists_old(redisClient * c, struct version_hash * v);
 
-/* check if updated needed for robjs of REDIS_ZSET, if so do the upd. Also
- * checks namespace/key update. */
-void kvolve_update_all_zset(redisClient * c, struct version_hash * v);
-
-/* check if updated needed for robjs of REDIS_LIST, if so do the upd. Also
- * checks namespace/key update. */
-void kvolve_update_all_list(redisClient * c, struct version_hash * v);
-
-/* check if updated needed for robjs of REDIS_SET, if so do the upd. Also
- * checks namespace/key update. */
-void kvolve_update_all_set(redisClient * c, struct version_hash * v);
 
 /* Redis doesn't allow empty sets/zset/lists/hashes, so when a new one is
  * created, it's not possible to set the version string before the call happens
