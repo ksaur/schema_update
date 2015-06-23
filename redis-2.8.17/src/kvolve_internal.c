@@ -419,7 +419,7 @@ void kvolve_check_rename(redisClient * c,struct version_hash * v, int nargs){
 }
 
 /* THIS IS THE UPDATE FUNCTION. See header for documentation */
-void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int check_key, robj * o, int type, double * s){
+void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int check_key, robj * o, int type, double * s, robj * fval){
 
     int i, key_vers = -1, fun;
     struct hash_subkeyval hsk;
@@ -485,9 +485,9 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
                 zsv.score = s;
                 v->info[key_vers+1]->funs[fun](&key, (void*)&zsv, &val_len);
             } else if(type == REDIS_HASH){
-                hsk.hashkey = val;
-                hsk.hashval = NULL;  //TODO
-                v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
+                hsk.hashkey = o->ptr;
+                hsk.hashval = fval->ptr;
+                v->info[key_vers+1]->funs[fun](&key, (void*)&hsk, &val_len);
             } else {
                 v->info[key_vers+1]->funs[fun](&key, (void*)&val, &val_len);
             }
@@ -518,13 +518,15 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
             } else if (type == REDIS_SET && val != (char*)o->ptr){
                 DEBUG_PRINT(("Updated set value from %s to %s\n", (char*)o->ptr, val));
                 kvolve_update_set_elem(c, val, &o);
-            } else if (type == REDIS_ZSET && (zsv.setelem != (char*)o->ptr || zsv.score != s)){
-                DEBUG_PRINT(("Updated zset value from %s to %s\n", (char*)o->ptr, val));
+            } else if (type == REDIS_ZSET && (zsv.setelem != o->ptr || zsv.score != s)){
+                DEBUG_PRINT(("Updated zset value from %s to %s\n", (char*)o->ptr, zsv.setelem));
                 kvolve_update_zset_elem(c, zsv.setelem, &o, *zsv.score);
+            } else if (type == REDIS_HASH && (hsk.hashkey != o->ptr || hsk.hashval != fval->ptr)){
+                kvolve_update_hash_elem(c, hsk.hashkey, hsk.hashval, &o);
             } else if (type == REDIS_LIST && val != (char*)o->ptr){
                 DEBUG_PRINT(("Updated list value from %s to %s\n", (char*)o->ptr, val));
                 kvolve_update_list_elem(c, val, &o);
-            } //TODO hashes
+            }
         }
         /* Update the version string in the key to match the update we just did.*/
         o->vers = v->versions[key_vers+1];
@@ -561,8 +563,41 @@ void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o){
     *o = new;
 }
 
-void kvolve_update_hash_elem(redisClient * c, char * new_skval, char * new_val, robj ** o){
-    //TODO IMPLEMENT ME
+void kvolve_update_hash_elem(redisClient * c, char * new_skval, char * new_fval, robj ** o){
+    sds cmd = NULL;
+    robj * new_skval_o, *new_fval_o;
+
+
+    /* add new */
+    redisClient * c_fake = createClient(-1);
+    c_fake->db = c->db;
+    c_fake->argc = 4;
+    c_fake->argv = zmalloc(sizeof(void*)*4);
+    c_fake->argv[1] = c->argv[1];
+    new_skval_o = createStringObject(new_skval,strlen(new_skval));
+    c_fake->argv[2] = new_skval_o;
+    new_fval_o = createStringObject(new_fval,strlen(new_fval));
+    c_fake->argv[3] = new_fval_o;
+    cmd = sdsnew("hset");
+    c_fake->cmd = lookupCommand(cmd);
+    sdsfree(cmd);
+    c_fake->cmd->proc(c_fake);
+    DEBUG_PRINT(("Updated hash subkey %s to have value %s\n", (char*)new_skval, new_fval));
+
+    /* delete old */
+    if(strcmp((char*)(*o)->ptr, (char*)new_skval_o->ptr)!=0){
+        c_fake->argc = 3;
+        c_fake->argv[2] = *o;
+        cmd = sdsnew("hdel");
+        c_fake->cmd = lookupCommand(cmd);
+        sdsfree(cmd);
+        c_fake->cmd->proc(c_fake);
+        DEBUG_PRINT(("Updated hash subkey NAME from %s to %s\n", (char*)(*o)->ptr, new_skval));
+    }
+
+    zfree(c_fake->argv);
+    zfree(c_fake);
+    *o = new_skval_o;
 }
 
 void kvolve_update_list_elem(redisClient * c, char * new_val, robj ** o){
@@ -623,6 +658,7 @@ void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double 
     sdsfree(ren);
     c_fake->cmd->proc(c_fake);
 
+    //TODO !!! Only do a delete if value changed in addition to the score.
     /* delete old */
     c_fake->argv[2] = *o;
     c_fake->argc = 3;
@@ -666,7 +702,7 @@ void kvolve_update_all_set(redisClient * c, struct version_hash * v){
     /* call update on each of the set elements */
     while(e){
         c_fake->argv[2] = e;
-        kvolve_check_update_kv_pair(c, v, first, e, REDIS_SET, NULL);
+        kvolve_check_update_kv_pair(c, v, first, e, REDIS_SET, NULL, NULL);
         e = setTypeNextObject(si);
         /* namespace change checked, no need to repeat */
         first = 0;
@@ -710,7 +746,6 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     /* iterate over the zset and get the objects/scores */
     while(p) { //db.c:515
         ziplistGet(p,&vstr,&vlen,&vll);
-        //TODO impl score update?
         if(vstr){
             elem = createStringObject((char*)vstr,vlen);
             elem->vers = o->vers;
@@ -726,7 +761,7 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     }
     /* now modify the zset */
     for(i=0; i<zset_len; i++){
-        kvolve_check_update_kv_pair(c, v, first, robj_array[i], o->type, &score_array[i]);
+        kvolve_check_update_kv_pair(c, v, first, robj_array[i], o->type, &score_array[i], NULL);
         zfree(robj_array[i]);
         first = 0;
     }
@@ -737,7 +772,7 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
 }
 
 void kvolve_update_all_hash(redisClient * c, struct version_hash * v){
-    int first = 1;
+    int first = 1, length, i=0;
     if(v == NULL)
         return;
     robj * o = kvolve_get_db_val(c, v);
@@ -748,24 +783,28 @@ void kvolve_update_all_hash(redisClient * c, struct version_hash * v){
     /* return if object is already current */
     if (o->vers == v->versions[v->num_versions-1])
         return;
+    length = hashTypeLength(o) * 2;
 
     redisClient * c_fake = createClient(-1);
     c_fake->db = c->db;
     c_fake->argc = 4;
     c_fake->argv = zmalloc(sizeof(void*)*3);
     c_fake->argv[1] = c->argv[1];
+    robj ** robj_array = calloc(length, sizeof(robj*));
     hashTypeIterator *hi = hashTypeInitIterator(o);
-    /* call update on each of the set elements */
+    /* gather the (hashsubkey, hashfieldval) elements */
     while(hashTypeNext(hi) == REDIS_OK){
-        robj *field, *value;
-        field = hashTypeCurrentObject(hi, REDIS_HASH_KEY);
-        value = hashTypeCurrentObject(hi, REDIS_HASH_VALUE);
-        //c_fake->argv[2] = field;
-        //c_fake->argv[3] = value;
-        //printf("%p %p\n", field, value );
-        printf("%s %s\n", (char*)field->ptr, (char*)value->ptr);
-      
-        kvolve_check_update_kv_pair(c, v, first, o, REDIS_HASH, NULL);
+        robj_array[i] = hashTypeCurrentObject(hi, REDIS_HASH_KEY);
+        robj_array[i+1] = hashTypeCurrentObject(hi, REDIS_HASH_VALUE);
+        i=i+2;
+    }
+
+    /* now call update on each pair */
+    for(i=0; i<length; i=i+2){
+        robj_array[i]->vers = o->vers;
+        kvolve_check_update_kv_pair(c, v, first, robj_array[i], REDIS_HASH, NULL, robj_array[i+1]);
+        zfree(robj_array[i]);
+        zfree(robj_array[i+1]);
         /* namespace change checked, no need to repeat */
         first = 0;
     }
@@ -818,7 +857,7 @@ void kvolve_update_all_list(redisClient * c, struct version_hash * v){
         e = robj_array[i];
         e->vers = o->vers;
         c_fake->argv[2] = e;
-        kvolve_check_update_kv_pair(c, v, first, e, REDIS_LIST, NULL);
+        kvolve_check_update_kv_pair(c, v, first, e, REDIS_LIST, NULL, NULL);
         zfree(robj_array[i]);
         first = 0; /* only check for key namespace change once */
     }

@@ -97,7 +97,7 @@ robj * kvolve_get_db_val(redisClient * c, struct version_hash * v);
  *        belongs to a zset).
  *   @s : If a zset, a pointer to the score.  Else NULL
  */
-void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int key_check, robj * o, int type, double * s);
+void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int key_check, robj * o, int type, double * s, robj * fval);
 
 /* Check if updated needed for robjs of set/list/zset/hsah, if so do the
  * upd. Also checks namespace/key update. These four functions are
@@ -114,7 +114,7 @@ void kvolve_update_all_hash(redisClient * c, struct version_hash * v);
 void kvolve_update_set_elem(redisClient * c, char * new_val, robj ** o);
 void kvolve_update_list_elem(redisClient * c, char * new_val, robj ** o);
 void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double s);
-void kvolve_update_hash_elem(redisClient * c, char * new_skval, char * new_val, robj ** o);
+void kvolve_update_hash_elem(redisClient * c, char * new_skval, char * new_fval, robj ** o);
 
 
 /* Check if a rename is necessary, and if so, rename.  @nargs is the number of

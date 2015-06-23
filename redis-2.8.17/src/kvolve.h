@@ -51,7 +51,11 @@ void kvolve_lset(redisClient * c, struct version_hash * v);
 
 /******* Hashes *******/
 void kvolve_hset(redisClient * c, struct version_hash * v);
+void kvolve_hmset(redisClient * c, struct version_hash * v);
 void kvolve_hget(redisClient * c, struct version_hash * v);
+void kvolve_hmget(redisClient * c, struct version_hash * v);
+void kvolve_hgetall(redisClient * c, struct version_hash * v);
+void kvolve_hdel(redisClient * c, struct version_hash * v);
 
 /******* Other *******/
 void kvolve_keys(redisClient * c, struct version_hash * v);

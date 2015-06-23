@@ -26,8 +26,12 @@ struct kvolve_cmd_hash_populate kvolveCommandTable[] = {
     {"incr",kvolve_incr,2},
     {"incrby",kvolve_incrby,3},
     {"del",kvolve_del,2},
+    {"hdel",kvolve_hdel,3},
     {"hget",kvolve_hget,3},
+    {"hgetall",kvolve_hgetall,2},
     {"hset",kvolve_hset,4},
+    {"hmset",kvolve_hmset,4},
+    {"hmget",kvolve_hmget,3},
     {"lrange",kvolve_lrange,4},
     {"lpush",kvolve_lpush,3},
     {"lpop",kvolve_lpop,2},
@@ -127,7 +131,7 @@ void kvolve_mset(redisClient * c, struct version_hash * v){
 }
 
 void kvolve_get(redisClient * c, struct version_hash * v){
-    kvolve_check_update_kv_pair(c, v, 1, NULL, REDIS_STRING, NULL);
+    kvolve_check_update_kv_pair(c, v, 1, NULL, REDIS_STRING, NULL, NULL);
 }
 
 /* NX -- Only set the key if it does not already exist*/
@@ -262,6 +266,10 @@ void kvolve_mget(redisClient * c, struct version_hash * v){
     zfree(c_fake);
 }
 
+void kvolve_hmget(redisClient * c, struct version_hash * v){
+    kvolve_update_all_hash(c, v);
+}
+
 
 
 void kvolve_sadd(redisClient * c, struct version_hash * v){
@@ -294,7 +302,8 @@ void kvolve_lpush(redisClient * c, struct version_hash * v){
     for(i=2; i < c->argc; i++)
         c->argv[i]->vers = v->versions[v->num_versions-1];
 }
-void kvolve_hset(redisClient * c, struct version_hash * v){
+
+void kvolve_hmset(redisClient * c, struct version_hash * v){
     int i;
     if(v == NULL)
         return;
@@ -303,10 +312,22 @@ void kvolve_hset(redisClient * c, struct version_hash * v){
     /* Set the version for the new element(s) that is not yet a member */
     for(i=2; i < c->argc; i++)
         c->argv[i]->vers = v->versions[v->num_versions-1];
+
+}
+void kvolve_hset(redisClient * c, struct version_hash * v){
+    kvolve_hmset(c, v);
 } 
 
 void kvolve_hget(redisClient * c, struct version_hash * v){
- //TODO
+    kvolve_update_all_hash(c, v);
+}
+
+void kvolve_hdel(redisClient * c, struct version_hash * v){
+    kvolve_update_all_hash(c, v);
+}
+
+void kvolve_hgetall(redisClient * c, struct version_hash * v){
+    kvolve_update_all_hash(c, v);
 } 
 
 void kvolve_keys(redisClient * c, struct version_hash * v){
