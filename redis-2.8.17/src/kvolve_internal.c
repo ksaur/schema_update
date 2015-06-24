@@ -86,27 +86,29 @@ char * kvolve_construct_prev_name(char * orig_key, char *old_ns){
 
 void kvolve_checkdel_old(redisClient * c, struct version_hash * v){
 
+    struct version_hash * tmp = v;
+    robj * key, * val;
     if(v == NULL) return;
 
     /* first check the obvious (current) */
-    if(dictFind(c->db->dict,c->argv[1]->ptr)) return;
+    val = lookupKey(c->db, c->argv[1]);
+    if(val) return;
 
     /* Iterate prev namespaces */
-    while(v && v->prev_ns){
-        char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-        sds olds= sdsnew(old);
+    while(tmp && tmp->prev_ns){
+        char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
+        DEBUG_PRINT(("creating with old = %s\n", old));
+        key = createStringObject(old,strlen(old));
         free(old);
-        if (dictFind(c->db->dict,olds)){
-            /* db.c line 162 for explanation */
-            if (dictSize(c->db->expires) > 0) 
-               dictDelete(c->db->expires,olds);
-            dictDelete(c->db->dict,olds);
-        }
-        sdsfree(olds);
-        if(!v->prev_ns)
+        val = lookupKey(c->db, key);
+        zfree(key);
+        if (val) return;
+        if(!tmp->prev_ns)
             break;
-        v = kvolve_version_hash_lookup(v->prev_ns);
+        tmp = kvolve_version_hash_lookup(tmp->prev_ns);
     }
+    if(val)
+        dbDelete(c->db, val);
 }
 
 void kvolve_check_version(redisClient *c){
