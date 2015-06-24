@@ -332,7 +332,6 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, int from_vers, int to_vers, in
  * exists, else returns null.  */
 struct version_hash * kvolve_version_hash_lookup(char * lookup){
     struct version_hash *v = NULL;
-    char * ns;
     size_t len;
 
     if (!vers_list) return NULL;
@@ -346,16 +345,17 @@ struct version_hash * kvolve_version_hash_lookup(char * lookup){
         return v;
     }
     len = split - lookup + 1;
-    ns = malloc(len);
-    snprintf(ns, len, "%s", lookup);
 
     /* Get the current version for the namespace, if it exists */
-    HASH_FIND(hh, vers_list, ns, len-1, v);
+    HASH_FIND(hh, vers_list, lookup, len-1, v);
 
     /* If not found, recurse search for next longest prefix */
-    if(!v && strrchr(ns, ':'))
-        v = kvolve_version_hash_lookup(ns);
-    free(ns);
+    if(!v){
+        lookup[len-1] = '\0';
+        if(strrchr(lookup, ':'))
+            v = kvolve_version_hash_lookup(lookup);
+        lookup[len-1]=':';
+    }
     return v;
 }
 
