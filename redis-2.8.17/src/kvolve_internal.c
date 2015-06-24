@@ -93,13 +93,15 @@ void kvolve_checkdel_old(redisClient * c, struct version_hash * v){
     /* Iterate prev namespaces */
     while(v && v->prev_ns){
         char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
-        if (dictFind(c->db->dict,old)){
+        sds olds= sdsnew(old);
+        free(old);
+        if (dictFind(c->db->dict,olds)){
             /* db.c line 162 for explanation */
             if (dictSize(c->db->expires) > 0) 
-               dictDelete(c->db->expires,old);
-            dictDelete(c->db->dict,old);
+               dictDelete(c->db->expires,olds);
+            dictDelete(c->db->dict,olds);
         }
-        free(old);
+        sdsfree(olds);
         if(!v->prev_ns)
             break;
         v = kvolve_version_hash_lookup(v->prev_ns);
