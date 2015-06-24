@@ -66,8 +66,9 @@ struct version_hash * kvolve_create_ns(redisClient *c, char *ns_lookup, char *pr
         v->is = intsetAdd(v->is,c->id,NULL);
     else if (loading_id)
         v->is = intsetAdd(v->is,loading_id,NULL);
-    else
+    else{
         DEBUG_PRINT(("No connecting ID set for %s", v->ns));
+    }
     HASH_ADD_KEYPTR(hh, vers_list, v->ns, strlen(v->ns), v);
     return v;
 }
@@ -323,12 +324,14 @@ struct version_hash * kvolve_version_hash_lookup(char * lookup){
     char * ns;
     size_t len;
 
+    if (!vers_list) return NULL;
     /* Split out the namespace from the key, if a namespace exists. */
     char * split = strrchr(lookup, ':');
     if (split == NULL){
         HASH_FIND(hh, vers_list, "*", 1, v);/* check for global default namespace */
-        if (!v)
+        if (!v){
             DEBUG_PRINT(("WARNING: No namespace declared for key %s\n", lookup));
+        }
         return v;
     }
     len = split - lookup + 1;
@@ -482,8 +485,8 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
     for ( ; key_vers < v->num_versions-1; key_vers++){
         /* in some cases, there may be multiple updates */
         if (!v->info[key_vers+1]){
-            printf("Warning: no update functions for %s:%d\n", 
-                   v->ns, v->versions[key_vers+1]); 
+            DEBUG_PRINT(("Warning: no update functions for %s:%d\n", 
+                   v->ns, v->versions[key_vers+1]));
             o->vers = v->versions[key_vers+1];
             continue;
         }
