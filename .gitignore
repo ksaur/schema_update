@@ -42,3 +42,4 @@ gen_*
 *egg-info*
 tags
 core
+*rdb

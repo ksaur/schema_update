@@ -89,7 +89,7 @@ void kvolve_checkdel_old(redisClient * c, struct version_hash * v){
     if(v == NULL) return;
 
     /* first check the obvious (current) */
-    if(lookupKeyRead(c->db, c->argv[1])) return;
+    if(dictFind(c->db->dict,c->argv[1]->ptr)) return;
 
     /* Iterate prev namespaces */
     while(v && v->prev_ns){
@@ -231,7 +231,7 @@ char * kvolve_upd_redis_call(char* userinput){
 /* This is the API function that the update-writer calls to load the updates */
 void kvolve_upd_spec(char *from_ns, char * to_ns, int from_vers, int to_vers, int n_funs, ...){
 
-    int i;
+    int i, created = 0;
     struct version_hash * v, *tmp, *tmp2;
     struct kvolve_upd_info * info;
     va_list arguments;
@@ -283,9 +283,13 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, int from_vers, int to_vers, in
         info->funs[i] = va_arg(arguments, kvolve_upd_fun);
     }
     /* If v is null, we need a new namespace */
-    if (!v)
+    if (!v){
         v = kvolve_create_ns(NULL, to_ns, from_ns, to_vers, info);
-    
+        created = 1;
+    }
+     
+    /* This loop will kill off deprecated clients (including ones from the old namespace if 
+     * we just created a new one)*/
     tmp = v;
     while(tmp){
        while(tmp->is->length > 1){ /* 1 because we don't kill caller */
@@ -304,6 +308,9 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, int from_vers, int to_vers, in
        else
            break;
     }
+    if(created == 1) /* the below will already be set. */
+        return;
+
     v->is = intsetAdd(v->is, loading_id, NULL);
     if (v->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
         /* TODO, dynamically resize array */
