@@ -111,9 +111,12 @@ void kvolve_checkdel_old(redisClient * c, struct version_hash * v){
 void kvolve_check_version(redisClient *c){
 
     char *  vers_str = (char*)c->argv[2]->ptr;
+    if(!strrchr(vers_str, '@')) return;
     int toprocess =  strlen(vers_str);
     char * cpy = malloc(strlen(vers_str)+1);
     strcpy(cpy, vers_str);
+
+    
 
     while(1) {
         char * ns_lookup; 
