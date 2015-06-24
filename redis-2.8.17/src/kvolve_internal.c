@@ -101,14 +101,16 @@ void kvolve_checkdel_old(redisClient * c, struct version_hash * v){
         key = createStringObject(old,strlen(old));
         free(old);
         val = lookupKey(c->db, key);
-        zfree(key);
-        if (val) return;
-        if(!tmp->prev_ns)
+        if (val || !tmp->prev_ns)
             break;
+        zfree(key);
+        key = NULL;
         tmp = kvolve_version_hash_lookup(tmp->prev_ns);
     }
-    if(val)
-        dbDelete(c->db, val);
+    if(key){
+        dbDelete(c->db, key);
+        zfree(key);
+    }
 }
 
 void kvolve_check_version(redisClient *c){
