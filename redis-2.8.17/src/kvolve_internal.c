@@ -83,32 +83,27 @@ char * kvolve_construct_prev_name(char * orig_key, char *old_ns){
     return ret;
 }
 
-/* returns a robj for the key if present in outdated ns. Caller must free*/
-robj * kvolve_exists_old(redisClient * c, struct version_hash * v){
+void kvolve_checkdel_old(redisClient * c, struct version_hash * v){
 
-    struct version_hash * tmp = v;
-    robj * key, * val;
-    if(v == NULL) return NULL;
+    if(v == NULL) return;
 
     /* first check the obvious (current) */
-    val = lookupKeyRead(c->db, c->argv[1]);
-    if(val) return NULL;
+    if(lookupKeyRead(c->db, c->argv[1])) return;
 
     /* Iterate prev namespaces */
-    while(tmp && tmp->prev_ns){
-        char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
-        key = createStringObject(old,strlen(old));
-        free(old);
-        val = lookupKeyRead(c->db, key);
-        if (val){
-            return key;
+    while(v && v->prev_ns){
+        char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, v->prev_ns);
+        if (dictFind(c->db->dict,old)){
+            /* db.c line 162 for explanation */
+            if (dictSize(c->db->expires) > 0) 
+               dictDelete(c->db->expires,old);
+            dictDelete(c->db->dict,old);
         }
-        zfree(key);
-        if(!tmp->prev_ns)
+        free(old);
+        if(!v->prev_ns)
             break;
-        tmp = kvolve_version_hash_lookup(tmp->prev_ns);
+        v = kvolve_version_hash_lookup(v->prev_ns);
     }
-    return NULL;
 }
 
 void kvolve_check_version(redisClient *c){
@@ -140,6 +135,10 @@ void kvolve_check_version(redisClient *c){
                    vers_i, v->versions[v->num_versions-1], v->ns);
             sdsfree(c->argv[0]->ptr);
             /* This will close the connection */
+            c->argv[0]->ptr = sdsnew("quit");
+            return;
+        } else if (v->next_ns){
+            printf("ERROR, NAMESPACE (%s) DEPRECATED TO (%s).\n", v->ns, v->next_ns);
             c->argv[0]->ptr = sdsnew("quit");
             return;
         } else { 
@@ -227,7 +226,7 @@ char * kvolve_upd_redis_call(char* userinput){
 void kvolve_upd_spec(char *from_ns, char * to_ns, int from_vers, int to_vers, int n_funs, ...){
 
     int i;
-    struct version_hash * v;
+    struct version_hash * v, *tmp, *tmp2;
     struct kvolve_upd_info * info;
     va_list arguments;
     uint64_t k;
@@ -280,18 +279,26 @@ void kvolve_upd_spec(char *from_ns, char * to_ns, int from_vers, int to_vers, in
     /* If v is null, we need a new namespace */
     if (!v)
         v = kvolve_create_ns(NULL, to_ns, from_ns, to_vers, info);
-    else{
-        while(v->is->length > 1){ /* 1 because we don't kill caller */
-            k = intsetRandom(v->is);
-            if(k == loading_id) /* don't kill caller */
-                continue;
-            v->is = intsetRemove(v->is, k, NULL);
-            DEBUG_PRINT(("KILLING CLIENT WITH ID %ld\n", k));
-            sprintf(q,"%s%ld\r\n", kill, k);
-            kvolve_upd_redis_call(q);
-        }
-        v->is = intsetAdd(v->is, loading_id, NULL);
+    
+    tmp = v;
+    while(tmp){
+       while(tmp->is->length > 1){ /* 1 because we don't kill caller */
+           k = intsetRandom(tmp->is);
+           if(k == loading_id) /* don't kill caller */
+               continue;
+           tmp->is = intsetRemove(tmp->is, k, NULL);
+           DEBUG_PRINT(("KILLING CLIENT WITH ID %ld\n", k));
+           sprintf(q,"%s%ld\r\n", kill, k);
+           kvolve_upd_redis_call(q);
+       }
+       if (tmp->prev_ns){
+           HASH_FIND(hh, vers_list, tmp->prev_ns, strlen(tmp->prev_ns), tmp2);
+           tmp = tmp2;
+       }
+       else
+           break;
     }
+    v->is = intsetAdd(v->is, loading_id, NULL);
     if (v->num_versions > KV_INIT_SZ){ /*TODO change this when resize impl'ed */
         /* TODO, dynamically resize array */
         printf("CANNOT APPEND, REALLOC NOT IMPLEMENTED, TOO MANY VERSIONS.\n");

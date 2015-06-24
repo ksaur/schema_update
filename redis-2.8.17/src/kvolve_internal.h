@@ -6,7 +6,7 @@
 #include "kvolve_upd.h"
 
 
-#define DEBUG
+///#define DEBUG
 #ifdef DEBUG
 # define DEBUG_PRINT(x) printf x
 #else
@@ -124,8 +124,8 @@ void kvolve_update_hash_elem(redisClient * c, char * new_skval, char * new_fval,
  * be calls with multiple keys, so we must check all of the keys */
 void kvolve_check_rename(redisClient * c, struct version_hash * v, int nargs);
 
-/* Returns a robj for the key if present in outdated ns. Caller must free*/
-robj * kvolve_exists_old(redisClient * c, struct version_hash * v);
+/* Checks for existence of and deletes an old key in case of ns change*/
+void kvolve_checkdel_old(redisClient * c, struct version_hash * v);
 
 
 /* Redis doesn't allow empty sets/zset/lists/hashes, so when a new one is

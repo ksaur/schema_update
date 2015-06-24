@@ -67,7 +67,11 @@ void kvolve_process_command(redisClient *c){
             (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)){
         kvolve_check_version(c);
     } else if(c->argc > 1) {
+        /* if no namespace on key, lookup will return version '*' if global ns
+         * requested by client, else NULL*/
         struct version_hash * v = kvolve_version_hash_lookup((char*)c->argv[1]->ptr);
+        if(!v) 
+            return;
         kvolve_call fun = kvolve_lookup_kv_command(c);
         if(!fun){
             DEBUG_PRINT(("Function %s not implemented\n", (char*)c->argv[0]->ptr));
@@ -80,7 +84,6 @@ void kvolve_process_command(redisClient *c){
 void kvolve_set(redisClient * c, struct version_hash * v){
 
     int flags;
-    robj * oldobj = NULL;
 
     if(v == NULL) return;
 
@@ -104,11 +107,7 @@ void kvolve_set(redisClient * c, struct version_hash * v){
      * Check to see if it's possible that an old version exists
      * under another namespace that should be deleted. */
     if(v->prev_ns != NULL){
-        oldobj = kvolve_exists_old(c, v);
-        if(oldobj){
-            dbDelete(c->db,oldobj);
-            zfree(oldobj);
-        }
+        kvolve_checkdel_old(c, v);
     }
 }
 
