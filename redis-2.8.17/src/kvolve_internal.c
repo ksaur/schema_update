@@ -364,7 +364,7 @@ robj * kvolve_get_db_val(redisClient * c, struct version_hash * v){
     if(v == NULL) return NULL;
 
     /* first check the obvious (current) */
-    val = lookupKeyRead(c->db, c->argv[1]);
+    val = lookupKey(c->db, c->argv[1]);
     if(val) return val;
 
     /* Iterate prev namespaces */
@@ -373,7 +373,7 @@ robj * kvolve_get_db_val(redisClient * c, struct version_hash * v){
         DEBUG_PRINT(("creating with old = %s\n", old));
         key = createStringObject(old,strlen(old));
         free(old);
-        val = lookupKeyRead(c->db, key);
+        val = lookupKey(c->db, key);
         zfree(key);
         if (val) return val;
         if(!tmp->prev_ns)
@@ -386,7 +386,7 @@ robj * kvolve_get_db_val(redisClient * c, struct version_hash * v){
 
 void kvolve_namespace_update(redisClient * c, struct version_hash * v) {
 
-    if(lookupKeyRead(c->db, c->argv[1]))
+    if(lookupKey(c->db, c->argv[1]))
         return;
     redisClient * c_fake = createClient(-1);
     c_fake->argc = 3;
@@ -905,7 +905,7 @@ void kvolve_prevcall_check(void){
 
     HASH_ITER(hh, tmp_store, current_fix, tmp) {
         key = createStringObject(current_fix->key, strlen(current_fix->key));
-        o = lookupKeyRead(current_fix->prev_db, key);
+        o = lookupKey(current_fix->prev_db, key);
         zfree(key);
         if(!o){ /* happens if multi block */
             remains = 1;
