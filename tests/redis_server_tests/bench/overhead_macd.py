@@ -3,9 +3,12 @@ import subprocess
 from subprocess import Popen
 from time import sleep
 
-redis_loc = "/home/ksaur/redis-2.8.17/src/"
-kvolve_loc = "/home/ksaur/AY1415/schema_update/redis-2.8.17/src/"
-upd_loc = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/bench/prev_ns.so"
+#redis_loc = "/home/ksaur/redis-2.8.17/src/"
+redis_loc = "/fs/macdonald/ksaur/redis-2.8.17/src/"
+#kvolve_loc = "/home/ksaur/AY1415/schema_update/redis-2.8.17/src/"
+kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
+#upd_loc = "update/home/ksaur/AY1415/schema_update/tests/redis_server_tests/bench/prev_ns.so"
+upd_loc = "update/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/prev_ns.so"
 trials = 1
 num_clients = "50" # default
 num_ops = "2000000"
@@ -18,7 +21,7 @@ def popen(args):
 def unmod(cmd):
   print("______________"+cmd+"_____________")
   for i in range (trials):
-    redis_server = popen(redis_loc +"redis-server " + redis_loc +"../redis.conf")
+    redis_server = popen(redis_loc +"redis-server " + kvolve_loc +"../redis.conf")
     sleep(1)
     r = redis.StrictRedis()
     r.client_setname("placebo")
