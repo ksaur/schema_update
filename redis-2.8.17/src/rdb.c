@@ -619,8 +619,9 @@ int rdbSaveKeyValuePair(rio *rdb, robj *key, robj *val,
         if (rdbSaveMillisecondTime(rdb,expiretime) == -1) return -1;
     }
 
-    /* Save type, key, value */
+    /* Save type, vers, key, value */
     if (rdbSaveObjectType(rdb,val) == -1) return -1;
+    if (rdbSaveType(rdb,val->vers) == -1) return -1;
     if (rdbSaveStringObject(rdb,key) == -1) return -1;
     if (rdbSaveObject(rdb,val) == -1) return -1;
     return 1;
@@ -1112,6 +1113,7 @@ int rdbLoad(char *filename) {
     startLoading(fp);
     while(1) {
         robj *key, *val;
+        int vers;
         expiretime = -1;
 
         /* Read type. */
@@ -1145,6 +1147,8 @@ int rdbLoad(char *filename) {
             db = server.db+dbid;
             continue;
         }
+        /* Read Version */
+        if ((vers = rdbLoadType(&rdb)) == -1) goto eoferr;
         /* Read key */
         if ((key = rdbLoadStringObject(&rdb)) == NULL) goto eoferr;
         /* Read value */
@@ -1159,6 +1163,7 @@ int rdbLoad(char *filename) {
             decrRefCount(val);
             continue;
         }
+        val->vers = vers;
         /* Add the new object in the hash table */
         dbAdd(db,key,val);
 
