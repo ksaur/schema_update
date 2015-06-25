@@ -66,6 +66,8 @@ void kvolve_process_command(redisClient *c){
     } else if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0) && 
             (strcasecmp((char*)c->argv[1]->ptr, "setname") == 0)){
         kvolve_check_version(c);
+    } else if (c->argc == 2 && (strcasecmp((char*)c->argv[0]->ptr, "keys") == 0)){
+        kvolve_keys(c, NULL);
     } else if(c->argc > 1) {
         /* if no namespace on key, lookup will return version '*' if global ns
          * requested by client, else NULL*/
