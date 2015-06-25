@@ -106,7 +106,7 @@ void kvolve_set(redisClient * c, struct version_hash * v){
     /* Since there are no (nx,xx) flags, the set will occur.
      * Check to see if it's possible that an old version exists
      * under another namespace that should be deleted. */
-    if(v->prev_ns != NULL){
+    if(v->prev_ns != NULL && !dictFind(c->db->dict,c->argv[1]->ptr)){
         kvolve_checkdel_old(c, v);
     }
 }

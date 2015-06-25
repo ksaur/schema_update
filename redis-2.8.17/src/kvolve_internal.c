@@ -90,10 +90,6 @@ void kvolve_checkdel_old(redisClient * c, struct version_hash * v){
     robj * key, * val;
     if(v == NULL) return;
 
-    /* first check the obvious (current) */
-    val = lookupKey(c->db, c->argv[1]);
-    if(val) return;
-
     /* Iterate prev namespaces */
     while(tmp && tmp->prev_ns){
         char * old = kvolve_construct_prev_name((char*)c->argv[1]->ptr, tmp->prev_ns);
