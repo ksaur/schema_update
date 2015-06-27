@@ -7,7 +7,7 @@ import time
 redis_loc = "/fs/macdonald/ksaur/redis-2.8.17/src/"
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 upd_loc = "update/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/prev_ns.so"
-trials = 21
+trials = 11
 num_clients = "50" # default
 num_ops = "5000000"
 keyspace = "1000000"
