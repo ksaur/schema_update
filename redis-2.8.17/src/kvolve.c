@@ -57,6 +57,11 @@ struct kvolve_cmd_hash * kvolve_commands = NULL;
 
 void kvolve_process_command(redisClient *c){
 
+    /* preserve these */
+    long long n = server.stat_numcommands;
+    long long h = server.stat_keyspace_hits;
+    long long m = server.stat_keyspace_misses;
+
     kvolve_prevcall_check();
 
     if (c->argc == 3 && (strcasecmp((char*)c->argv[0]->ptr, "client") == 0)
@@ -81,6 +86,10 @@ void kvolve_process_command(redisClient *c){
         }
         fun(c, v);
     }
+    /* restore */
+    server.stat_numcommands = n;
+    server.stat_keyspace_hits = h;
+    server.stat_keyspace_misses = m;
 }
 
 void kvolve_set(redisClient * c, struct version_hash * v){
@@ -139,7 +148,7 @@ void kvolve_get(redisClient * c, struct version_hash * v){
 void kvolve_setnx(redisClient * c, struct version_hash * v){
 
     /* Do nothing if already at current namespace, do nothing*/
-    if (lookupKeyRead(c->db, c->argv[1]))
+    if (lookupKey(c->db, c->argv[1]))
         return;
 
     robj * present = kvolve_get_db_val(c, v);
@@ -244,7 +253,7 @@ void kvolve_incr(redisClient * c, struct version_hash * v){
     if(!v || !v->prev_ns) return;
 
     /* check if current at correct ns, or doesn't exist at all*/
-    if(lookupKeyRead(c->db, c->argv[1]) || (kvolve_get_db_val(c, v)==NULL))
+    if(dictFind(c->db, c->argv[1]) || (kvolve_get_db_val(c, v)==NULL))
         return;
 
     /* at this point, we must update the namespace */
