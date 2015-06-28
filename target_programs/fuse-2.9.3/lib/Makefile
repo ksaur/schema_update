@@ -96,7 +96,7 @@ am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
 libfuse_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(libfuse_la_LDFLAGS) $(LDFLAGS) -o $@ -static
+	$(libfuse_la_LDFLAGS) $(LDFLAGS) -o $@
 libulockmgr_la_LIBADD =
 am_libulockmgr_la_OBJECTS = ulockmgr.lo
 libulockmgr_la_OBJECTS = $(am_libulockmgr_la_OBJECTS)
@@ -123,7 +123,7 @@ am__v_at_0 = @
 CCLD = $(CC)
 LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(AM_LDFLAGS) $(LDFLAGS) -o $@ -static
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_CCLD = $(am__v_CCLD_$(V))
 am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
 am__v_CCLD_0 = @echo "  CCLD  " $@;
@@ -290,7 +290,7 @@ libfuse_la_SOURCES = \
 	$(mount_source)
 
 libfuse_la_LDFLAGS = -pthread -lrt -ldl   -version-number 2:9:3 \
-	-Wl,--version-script,$(srcdir)/fuse_versionscript -lkitsune
+	-Wl,--version-script,$(srcdir)/fuse_versionscript
 
 #libfuse_la_LIBADD = -lperfuse -lpuffs
 libulockmgr_la_SOURCES = ulockmgr.c

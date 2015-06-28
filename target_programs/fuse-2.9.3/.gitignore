@@ -1,2 +1,6 @@
 autom4te.cache/*
 example/*
+config.log
+lib/.deps/*
+lib/.libs/*
+
