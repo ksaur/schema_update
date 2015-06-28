@@ -21,6 +21,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <sys/param.h>
+#include <kitsune.h>
 
 enum  {
 	KEY_HELP,
@@ -346,8 +347,13 @@ static int fuse_main_common(int argc, char *argv[],
 	int multithreaded;
 	int res;
 
-	fuse = fuse_setup_common(argc, argv, op, op_size, &mountpoint,
+    if(!kitsune_is_updating()){
+	    fuse = fuse_setup_common(argc, argv, op, op_size, &mountpoint,
 				 &multithreaded, NULL, user_data, compat);
+    } else {
+	    fuse = fuse_setup_common(argc, argv, op, op_size, &mountpoint,
+				 &multithreaded, NULL, user_data, compat);
+    }
 	if (fuse == NULL)
 		return 1;
 

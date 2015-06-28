@@ -59,7 +59,17 @@ helper.lo: helper.c ../include/config.h fuse_i.h ../include/fuse.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/x86_64-linux-gnu/sys/param.h /usr/include/linux/param.h \
  /usr/include/x86_64-linux-gnu/asm/param.h \
- /usr/include/asm-generic/param.h ../include/fuse_compat.h \
+ /usr/include/asm-generic/param.h /usr/local/include/kitsune.h \
+ /usr/local/include/stackvars.h /usr/local/include/registervars.h \
+ /usr/local/include/ktlog.h /usr/local/include/kitsunemisc.h \
+ /usr/include/signal.h /usr/include/x86_64-linux-gnu/bits/signum.h \
+ /usr/include/x86_64-linux-gnu/bits/siginfo.h \
+ /usr/include/x86_64-linux-gnu/bits/sigaction.h \
+ /usr/include/x86_64-linux-gnu/bits/sigcontext.h \
+ /usr/include/x86_64-linux-gnu/bits/sigstack.h \
+ /usr/include/x86_64-linux-gnu/sys/ucontext.h \
+ /usr/include/x86_64-linux-gnu/bits/sigthread.h \
+ /usr/local/include/transform.h ../include/fuse_compat.h \
  /usr/include/x86_64-linux-gnu/sys/statfs.h \
  /usr/include/x86_64-linux-gnu/bits/statfs.h
 
@@ -240,6 +250,34 @@ fuse_misc.h:
 /usr/include/x86_64-linux-gnu/asm/param.h:
 
 /usr/include/asm-generic/param.h:
+
+/usr/local/include/kitsune.h:
+
+/usr/local/include/stackvars.h:
+
+/usr/local/include/registervars.h:
+
+/usr/local/include/ktlog.h:
+
+/usr/local/include/kitsunemisc.h:
+
+/usr/include/signal.h:
+
+/usr/include/x86_64-linux-gnu/bits/signum.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigaction.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigcontext.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigstack.h:
+
+/usr/include/x86_64-linux-gnu/sys/ucontext.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigthread.h:
+
+/usr/local/include/transform.h:
 
 ../include/fuse_compat.h:
 
