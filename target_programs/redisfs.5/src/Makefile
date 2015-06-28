@@ -70,6 +70,6 @@ link:
 	ln -sf ../hiredis/net.h .
 	ln -sf ../hiredis/util.h .
 	@echo "TODO READ THIS *********************************************"
-	@echo "TODOFIXME, Makefile bug:\nchange flag order to to fix the\nundefined reference to \`fuse_get_context' bug that you're about to see.\n\n' cc  redisfs.o pathutil.o hiredis.o sds.o net.o   -o redisfs -L../../fuse-2.9.3/lib/.libs/ -lfuse -pthread -lrt -ldl -lz -lkitsune'  \n\nFor now just 'cd src', copy/paste/execute the line above after the error, and it will work.\n"
+	@echo "TODOFIXME, Makefile bug (not mine, from redisfs repo):\nchange flag order to to fix the\nundefined reference to \`fuse_get_context' bug that you're about to see.\n\n'cc  redisfs.o pathutil.o hiredis.o sds.o net.o   -o redisfs ../../fuse-2.9.3/lib/.libs/libfuse.a -pthread -lrt -ldl -lz -lkitsune'  \n\nFor now just 'cd src', copy/paste/execute the line above after the error, and it will work.\n"
 	@echo "*********************************************"
 

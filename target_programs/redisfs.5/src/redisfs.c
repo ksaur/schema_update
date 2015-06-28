@@ -76,6 +76,7 @@
 #include "pathutil.h"
 
 
+extern void *fuse_setup_common(int argc, char *argv[], const void *op, size_t op_size, char **mountpoint, int *multithreaded, int *fd, void *user_data, int compat);
 
 
 /**
@@ -1966,5 +1967,9 @@ main(int argc, char *argv[])
     /**
      * Launch fuse.
      */
-    return (fuse_main(args_c, args, &redisfs_operations, NULL));
+    char *mountpoint;
+    int multithreaded = 1, fd = 0;
+    void * f = fuse_setup_common(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, &fd,0,0);
+    return fuse_loop_mt(f);
+    //return (fuse_main(args_c, args, &redisfs_operations, NULL));
 }
