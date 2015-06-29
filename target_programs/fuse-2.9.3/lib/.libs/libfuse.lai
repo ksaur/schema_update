@@ -5,10 +5,10 @@
 # It is necessary for linking the library.
 
 # The name that we can dlopen(3).
-dlname=''
+dlname='libfuse.so.2'
 
 # Names of this library.
-library_names=''
+library_names='libfuse.so.2.9.3 libfuse.so.2 libfuse.so'
 
 # The name of the static archive.
 old_library='libfuse.a'
@@ -17,7 +17,7 @@ old_library='libfuse.a'
 inherited_linker_flags=' -pthread'
 
 # Libraries that this one depends upon.
-dependency_libs=' -lrt -ldl -lkitsune'
+dependency_libs=' -lrt -ldl -L. -lkitsune'
 
 # Names of additional weak libraries provided by this library
 weak_library_names=''

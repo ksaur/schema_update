@@ -907,9 +907,9 @@ S["STRIP"]="strip"
 S["install_sh"]="${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.3/install-sh"
 S["MAKEINFO"]="${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.3/missing --run makeinfo"
 S["AUTOHEADER"]="${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.3/missing --run autoheader"
-S["AUTOMAKE"]="${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.3/missing --run automake-1.11"
+S["AUTOMAKE"]="${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.3/missing --run automake-1.12"
 S["AUTOCONF"]="${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.3/missing --run autoconf"
-S["ACLOCAL"]="${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.3/missing --run aclocal-1.11"
+S["ACLOCAL"]="${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.3/missing --run aclocal-1.12"
 S["VERSION"]="2.9.3"
 S["PACKAGE"]="fuse"
 S["CYGPATH_W"]="echo"
@@ -1375,7 +1375,7 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
     # Strip MF so we end up with the name of the file.
     mf=`echo "$mf" | sed -e 's/:.*$//'`
     # Check whether this is an Automake generated Makefile or not.
-    # We used to match only the files named `Makefile.in', but
+    # We used to match only the files named 'Makefile.in', but
     # some people rename them; so instead we look at the file content.
     # Grep'ing the first line is not enough: some people post-process
     # each Makefile.in and add a new line on top of each file to say so.
@@ -1409,21 +1409,19 @@ $as_echo X"$mf" |
       continue
     fi
     # Extract the definition of DEPDIR, am__include, and am__quote
-    # from the Makefile without running `make'.
+    # from the Makefile without running 'make'.
     DEPDIR=`sed -n 's/^DEPDIR = //p' < "$mf"`
     test -z "$DEPDIR" && continue
     am__include=`sed -n 's/^am__include = //p' < "$mf"`
     test -z "am__include" && continue
     am__quote=`sed -n 's/^am__quote = //p' < "$mf"`
-    # When using ansi2knr, U may be empty or an underscore; expand it
-    U=`sed -n 's/^U = //p' < "$mf"`
     # Find all dependency output files, they are included files with
     # $(DEPDIR) in their names.  We invoke sed twice because it is the
     # simplest approach to changing $(DEPDIR) to its actual value in the
     # expansion.
     for file in `sed -n "
       s/^$am__include $am__quote\(.*(DEPDIR).*\)$am__quote"'$/\1/p' <"$mf" | \
-	 sed -e 's/\$(DEPDIR)/'"$DEPDIR"'/g' -e 's/\$U/'"$U"'/g'`; do
+	 sed -e 's/\$(DEPDIR)/'"$DEPDIR"'/g'`; do
       # Make sure the directory exists.
       test -f "$dirpart/$file" && continue
       fdir=`$as_dirname -- "$file" ||
