@@ -277,14 +277,13 @@ struct fuse *fuse_setup_common(int argc, char *argv[],
 	int foreground;
 	int res;
 
+	res = fuse_parse_cmdline(&args, mountpoint, multithreaded, &foreground);
+	if (res == -1)
+		return NULL;
 
 	if(*fd){
 		ch = fuse_kern_chan_new(*fd);
-		foreground = 1;
 	} else {
-	    res = fuse_parse_cmdline(&args, mountpoint, multithreaded, &foreground);
-	    if (res == -1)
-	    	return NULL;
 		ch = fuse_mount_common(*mountpoint, &args);
 	}
 	if (!ch) {

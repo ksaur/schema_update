@@ -60,7 +60,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <kitsune.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -78,7 +77,6 @@
 
 
 extern void *fuse_setup_common(int argc, char *argv[], const void *op, size_t op_size, char **mountpoint, int *multithreaded, int *fd, void *user_data, int compat);
-int fuse_fd;
 
 
 /**
@@ -1969,19 +1967,9 @@ main(int argc, char *argv[])
     /**
      * Launch fuse.
      */
-    redis_alive();
     char *mountpoint;
-    int multithreaded = 1;
-    void * f;
-    redisReply *reply = NULL;
-    if(kitsune_is_updating()){
-       reply = redisCommand(_g_redis, "GET %s", "REDIS_FS_MOUNT_ID");
-       fuse_fd = atoi(reply->str);
-       f = fuse_setup_common(1, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, &fuse_fd,0,0);
-    } else {
-       f = fuse_setup_common(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, &fuse_fd,0,0);
-       reply = redisCommand(_g_redis, "SET %s %d", "REDIS_FS_MOUNT_ID", fuse_fd);
-    }
-    free(reply);
+    int multithreaded = 1, fd = 0;
+    void * f = fuse_setup_common(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, &fd,0,0);
     return fuse_loop_mt(f);
+    //return (fuse_main(args_c, args, &redisfs_operations, NULL));
 }
