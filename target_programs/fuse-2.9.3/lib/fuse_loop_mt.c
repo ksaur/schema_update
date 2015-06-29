@@ -17,10 +17,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <semaphore.h>
-#include <time.h>
 #include <errno.h>
 #include <sys/time.h>
-#include <kitsune.h>
 
 /* Environment var controlling the thread stack size */
 #define ENVNAME_THREAD_STACK "FUSE_THREAD_STACK"
@@ -218,14 +216,11 @@ static void fuse_join_worker(struct fuse_mt *mt, struct fuse_worker *w)
 	free(w);
 }
 
-
-extern volatile sig_atomic_t update_requested;
 int fuse_session_loop_mt(struct fuse_session *se)
 {
 	int err;
 	struct fuse_mt mt;
 	struct fuse_worker *w;
-	struct timespec ts;
 
 	memset(&mt, 0, sizeof(struct fuse_mt));
 	mt.se = se;
@@ -241,20 +236,11 @@ int fuse_session_loop_mt(struct fuse_session *se)
 	pthread_mutex_lock(&mt.lock);
 	err = fuse_loop_start_thread(&mt);
 	pthread_mutex_unlock(&mt.lock);
-	kitsune_update("session_loop");
 	if (!err) {
 		/* sem_wait() is interruptible */
-		while (!fuse_session_exited(se)) {
-			if (clock_gettime(CLOCK_REALTIME, &ts) == -1){
-				perror("clock_gettime");
-				return -1;
-			}
-			ts.tv_nsec += 20000000;
-			sem_timedwait(&mt.finish, &ts);	
-			//sem_wait(&mt.finish);
-		    if(update_requested) break;
-		}
-        printf("KILLLING OTHER THREADS\n");
+		while (!fuse_session_exited(se))
+			sem_wait(&mt.finish);
+
 		pthread_mutex_lock(&mt.lock);
 		for (w = mt.main.next; w != &mt.main; w = w->next)
 			pthread_cancel(w->thread_id);
@@ -265,8 +251,6 @@ int fuse_session_loop_mt(struct fuse_session *se)
 			fuse_join_worker(&mt, mt.main.next);
 
 		err = mt.error;
-        printf("CALLING UPDATE POINT\n");
-	    kitsune_update("session_loop");
 	}
 
 	pthread_mutex_destroy(&mt.lock);

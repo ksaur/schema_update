@@ -77,14 +77,14 @@
 #include "pathutil.h"
 
 
-int fuse_fd = 0;
+int fuse_fd;
 
 
 /**
  * The mount-point of the filesystem.
  *
  */
-char _g_mount[200] = { "/mnt/redis3" };
+char _g_mount[200] = { "/mnt/redis" };
 
 
 /**
@@ -1973,16 +1973,13 @@ main(int argc, char *argv[])
     int multithreaded = 1;
     void * f;
     redisReply *reply = NULL;
-    printf("ABOUT TO CHECK THIS SHIT OUT\n");
     if(kitsune_is_updating()){
        reply = redisCommand(_g_redis, "GET %s", "REDIS_FS_MOUNT_ID");
        fuse_fd = atoi(reply->str);
-       printf("GOT SOME %d\n", fuse_fd);
        f = fuse_setup(1, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, &fuse_fd);
     } else {
-       f = fuse_setup(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, NULL);
-       reply = redisCommand(_g_redis, "SET %s %d", "REDIS_FS_MOUNT_ID", args[0][0]);
-       printf("SET SOME %d\n", fuse_fd);
+       f = fuse_setup(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, 0);
+       reply = redisCommand(_g_redis, "SET %s %d", "REDIS_FS_MOUNT_ID", fuse_fd);
     }
     free(reply);
     return fuse_loop_mt(f);
