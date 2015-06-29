@@ -253,7 +253,7 @@ void kvolve_incr(redisClient * c, struct version_hash * v){
     if(!v || !v->prev_ns) return;
 
     /* check if current at correct ns, or doesn't exist at all*/
-    if(dictFind(c->db, c->argv[1]) || (kvolve_get_db_val(c, v)==NULL))
+    if(dictFind(c->db->dict, c->argv[1]) || (kvolve_get_db_val(c, v)==NULL))
         return;
 
     /* at this point, we must update the namespace */
