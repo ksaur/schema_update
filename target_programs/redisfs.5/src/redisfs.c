@@ -1982,7 +1982,7 @@ main(int argc, char *argv[])
     } else {
        f = fuse_setup(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, NULL);
        reply = redisCommand(_g_redis, "SET %s %d", "REDIS_FS_MOUNT_ID", args[0][0]);
-       printf("SET SOME %d\n", fuse_fd);
+       printf("SET SOME %d\n", args[0][0]);
     }
     free(reply);
     return fuse_loop_mt(f);
