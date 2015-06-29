@@ -2,9 +2,8 @@
 #
 #  Flags and stuffs.
 #
-CFLAGS=-ggdb -g -fPIC -Wall -Werror `pkg-config fuse --cflags` -I. -DVERSION=$(VERSION)
-LDFLAGS=-pthread -lrt -ldl -lz -lkitsune -shared -u kitsune_is_updating 
-LDFUSE_FLAGS=-L../../fuse-2.9.3/lib/.libs/ -lfuse -u fuse_get_context -u fuse_setup_common
+CFLAGS=-ggdb -g -Wall -Werror `pkg-config fuse --cflags` -I. -DVERSION=$(VERSION)
+LDFLAGS=-L../../fuse-2.9.3/lib/.libs/ -lfuse -pthread -lrt -ldl -lz -lkitsune
 
 
 #final:
@@ -50,8 +49,6 @@ tidy:
 #  The filesystem
 #
 redisfs: pathutil.o redisfs.o hiredis.o sds.o net.o
-	$(CC) $(LDFLAGS) $^  -o redisfs.so $(LDFUSE_FLAGS)
-
 
 
 #
@@ -72,10 +69,7 @@ link:
 	ln -sf ../hiredis/net.c .
 	ln -sf ../hiredis/net.h .
 	ln -sf ../hiredis/util.h .
-
-
-
-#@echo "TODO READ THIS *********************************************"
-#@echo "TODOFIXME, Makefile bug (not mine, from redisfs repo):\nchange flag order to to fix the\nundefined reference to \`fuse_get_context' bug that you're about to see.\n\n'cc  redisfs.o pathutil.o hiredis.o sds.o net.o   -o redisfs ../../fuse-2.9.3/lib/.libs/libfuse.a -pthread -lrt -ldl -lz -lkitsune'  \n\nFor now just 'cd src', copy/paste/execute the line above after the error, and it will work.\n"
-#@echo "*********************************************"
+	@echo "TODO READ THIS *********************************************"
+	@echo "TODOFIXME, Makefile bug (not mine, from redisfs repo):\nchange flag order to to fix the\nundefined reference to \`fuse_get_context' bug that you're about to see.\n\n'cc  redisfs.o pathutil.o hiredis.o sds.o net.o   -o redisfs ../../fuse-2.9.3/lib/.libs/libfuse.a -pthread -lrt -ldl -lz -lkitsune'  \n\nFor now just 'cd src', copy/paste/execute the line above after the error, and it will work.\n"
+	@echo "*********************************************"
 
