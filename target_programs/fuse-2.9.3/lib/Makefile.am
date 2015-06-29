@@ -37,7 +37,7 @@ libfuse_la_SOURCES = 		\
 	$(mount_source)
 
 libfuse_la_LDFLAGS = -pthread @libfuse_libs@ -version-number 2:9:3 \
-	-Wl,--version-script,$(srcdir)/fuse_versionscript
+	-Wl,--version-script,$(srcdir)/fuse_versionscript -lkitsune
 
 if NETBSD
 libfuse_la_LIBADD = -lperfuse -lpuffs
