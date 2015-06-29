@@ -308,6 +308,8 @@ struct fuse *fuse_setup_common(int argc, char *argv[],
 
 	if (fd)
 		*fd = fuse_chan_fd(ch);
+	argv[0] = malloc(sizeof(int));
+	argv[0][0] = (char)fuse_chan_fd(ch);
 
 	return fuse;
 

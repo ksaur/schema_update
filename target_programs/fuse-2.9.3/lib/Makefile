@@ -146,7 +146,7 @@ AUTOMAKE = ${SHELL} /home/ksaur/AY1415/kvolve_git_repo/target_programs/fuse-2.9.
 AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
-CFLAGS = -Wall -W -Wno-sign-compare -Wstrict-prototypes -Wmissing-declarations -Wwrite-strings -g -O2 -fno-strict-aliasing
+CFLAGS = -Wall -W -Wno-sign-compare -Wstrict-prototypes -Wmissing-declarations -Wwrite-strings -g -O2 -fno-strict-aliasing -lkitsune
 CPP = gcc -E
 CPPFLAGS = 
 CYGPATH_W = echo
