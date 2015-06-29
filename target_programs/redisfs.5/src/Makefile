@@ -2,9 +2,9 @@
 #
 #  Flags and stuffs.
 #
-CFLAGS=-ggdb -g -fPIC -Wall -Werror ../../fuse-2.9.3/lib/.libs/libfuse.so -D_FILE_OFFSET_BITS=64 -I. -DVERSION=$(VERSION)
+CFLAGS=-ggdb -g -fPIC -Wall -Werror `pkg-config fuse --cflags` -I. -DVERSION=$(VERSION)
 LDFLAGS=-pthread -lrt -ldl -lz -lkitsune -shared -u kitsune_is_updating 
-LDFUSE_FLAGS=../../fuse-2.9.3/lib/.libs/libfuse.so -u fuse_setup_common -u fuse_get_context -zdefs -ldl -u fuse_setup_common 
+LDFUSE_FLAGS=-L../../fuse-2.9.3/lib/.libs/ -lfuse -u fuse_get_context -u fuse_setup_common
 
 
 #final:

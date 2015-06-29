@@ -77,6 +77,7 @@
 #include "pathutil.h"
 
 
+extern void *fuse_setup_common(int argc, char *argv[], const void *op, size_t op_size, char **mountpoint, int *multithreaded, int *fd, void *user_data, int compat);
 int fuse_fd;
 
 
@@ -1976,9 +1977,9 @@ main(int argc, char *argv[])
     if(kitsune_is_updating()){
        reply = redisCommand(_g_redis, "GET %s", "REDIS_FS_MOUNT_ID");
        fuse_fd = atoi(reply->str);
-       f = fuse_setup(1, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, &fuse_fd);
+       f = fuse_setup_common(1, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, &fuse_fd,0,0);
     } else {
-       f = fuse_setup(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, 0);
+       f = fuse_setup_common(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, &fuse_fd,0,0);
        reply = redisCommand(_g_redis, "SET %s %d", "REDIS_FS_MOUNT_ID", fuse_fd);
     }
     free(reply);

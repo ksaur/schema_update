@@ -278,9 +278,8 @@ struct fuse *fuse_setup_common(int argc, char *argv[],
 	int res;
 
 
-	if(user_data){
-		int * fde = (int*)user_data;
-		ch = fuse_kern_chan_new(*fde);
+	if(*fd){
+		ch = fuse_kern_chan_new(*fd);
 		foreground = 1;
 	} else {
 	    res = fuse_parse_cmdline(&args, mountpoint, multithreaded, &foreground);
