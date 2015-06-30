@@ -898,19 +898,22 @@ void kvolve_update_all_list(redisClient * c, struct version_hash * v){
 void kvolve_prevcall_check(void){
 
     struct tmp_vers_store_hash *current_fix, *tmp;
-    robj * o, *key;
+    robj * o;
+    dictEntry *de;
+    sds key;
     int remains = 0;
 
     if(!tmp_store) return;
 
     HASH_ITER(hh, tmp_store, current_fix, tmp) {
-        key = createStringObject(current_fix->key, strlen(current_fix->key));
-        o = lookupKey(current_fix->prev_db, key);
-        zfree(key);
-        if(!o){ /* happens if multi block */
+        key = sdsnew(current_fix->key);
+        de = dictFind(current_fix->prev_db->dict,key);
+        sdsfree(key);
+        if(!de){ /* happens if multi block */
             remains = 1;
             continue;
         }
+        o = dictGetVal(de);
         o->vers = current_fix->vers;
 
         HASH_DEL(tmp_store,current_fix);
