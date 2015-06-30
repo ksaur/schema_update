@@ -8,7 +8,7 @@ kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 impres_loc = "/fs/macdonald/ksaur/impressions-v1/impressions"
 impres_spec_loc = "/fs/macdonald/ksaur/impressions-v1/inputfile"
 redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src/redisfs"
-trials = 2
+trials = 11
 
 def popen(args):
   print "$ %s" % args
