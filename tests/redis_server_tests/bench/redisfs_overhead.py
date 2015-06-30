@@ -6,7 +6,7 @@ from time import sleep
 redis_loc = "/fs/macdonald/ksaur/redis-2.8.17/src/"
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 impres_loc = "/fs/macdonald/ksaur/impressions-v1/impressions"
-impres_spec_loc = "/fs/macdonald/ksaur/impressions-v1/inputfile"
+impres_spec_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/inputfile"
 redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src/redisfs"
 trials = 11
 
