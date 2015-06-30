@@ -33,6 +33,7 @@
 *.swp
 *.bak
 *~
+*.swo
 
 
 # Generated
@@ -43,3 +44,4 @@ gen_*
 tags
 core
 *rdb
+typescript
