@@ -3,7 +3,7 @@
 #  Flags and stuffs.
 #
 CFLAGS=-ggdb -Wall -Werror `pkg-config fuse --cflags` -I. -DVERSION=$(VERSION)
-LDFLAGS=`pkg-config fuse --libs`
+LDFLAGS=`pkg-config fuse --libs` -lz
 
 
 #
