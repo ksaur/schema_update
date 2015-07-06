@@ -102,7 +102,7 @@ pthread_mutex_t _g_lock = PTHREAD_MUTEX_INITIALIZER;
 /**
  * Handle to the redis server.
  */
-redisContext *_g_redis = NULL;
+redisContext  *E_OPAQUE _g_redis = NULL;
 
 
 /**
@@ -900,8 +900,8 @@ fs_write(const char *path,
 
         }
 
-        fprintf(stderr, "COMPRESSED %d bytes to %d\n", (int)size,
-                (int)compressed_len);
+//        fprintf(stderr, "COMPRESSED %d bytes to %d\n", (int)size,
+//                (int)compressed_len);
 
       /**
        *  set the size & mtime.
@@ -1015,8 +1015,8 @@ fs_write(const char *path,
             compress2((void *)compressed, &compressed_len, (void *)nw, new_sz,
                       Z_BEST_SPEED);
 
-        fprintf(stderr, "COMPRESSED %d bytes to %d\n", (int)new_sz,
-                (int)compressed_len);
+//        fprintf(stderr, "COMPRESSED %d bytes to %d\n", (int)new_sz,
+//                (int)compressed_len);
 
         if (ret != Z_OK)
         {

@@ -2,11 +2,15 @@ import redis
 import signal
 import time
 import os
+import threading
+from threading import Thread
 import multiprocessing
 from multiprocessing import Process
 import subprocess
 from subprocess import Popen
 from time import sleep
+
+
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 impres_loc = "/fs/macdonald/ksaur/impressions-v1/impressions"
@@ -15,7 +19,7 @@ redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs"
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so"
 trials = 11
-migrating = 0
+migrating = False
 
 def popen(args):
   print "$ %s" % args
@@ -25,8 +29,8 @@ def do_stats(r):
   f = open('redisfs_upd_stats.txt', 'a')
   f.write("Time\t#Queries\n")
   i = 0
-  while True:
-    if migrating == 0:
+  while i<230:
+    if migrating == False:
       queries = r.info()["instantaneous_ops_per_sec"]
     else:
       queries = 1
@@ -37,17 +41,16 @@ def do_stats(r):
       f.flush()
 
 def kv():
+  global migrating
   print("______________KV_____________")
   for i in range (trials):
-    global migrating
     redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
     sleep(1)
     r = redis.StrictRedis()
     r.client_setname("skx@5,skx:INODE@5,skx:PATH@5,skx:GLOBAL@5")
     redisfs5 = popen(redisfs_5_loc)
     sleep(2)
-    # This thread prints the "queries per second"
-    stats = Process(target=do_stats, args=(r,))
+    stats = Thread(target=do_stats, args=(r,))
     stats.start()
     bench = subprocess.Popen([impres_loc, impres_spec_loc])
     sleep(100)
@@ -56,8 +59,9 @@ def kv():
     redisfs5.send_signal(signal.SIGINT)
     redisfs5.wait()
     r.client_setname("update/"+upd_code)
-    print "Migrating schema offline"
-    migrating = 1
+    print "Migrating schema offline starting"
+    print time.time()
+    migrating = True
     allkeys = r.keys('*')
     for k in allkeys:
       typ = r.type(k)
@@ -66,12 +70,13 @@ def kv():
       elif(typ == 'set'):
         r.smembers(k)
     print "RESUMING at v7"
-    migrating = 0
+    print time.time()
+    migrating = False
     redisfs7 = popen(redisfs_7_loc)
     os.kill(bench.pid, signal.SIGCONT)
     bench.wait()
     redisfs7.terminate()
-    stats.terminate()
+    stats.join()
     print r.info()
     redis_server.terminate() 
     sleep(1)
