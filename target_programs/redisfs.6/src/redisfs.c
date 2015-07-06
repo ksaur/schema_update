@@ -178,12 +178,23 @@ redis_alive()
         if (_g_debug)
             fprintf(stderr, "Reconnected to redis server on [%s:%d]\n",
                     _g_redis_host, _g_redis_port);
-         reply = redisCommand(_g_redis, "client setname %s", "skx:DIR@6,skx:INODE@6,skx:PATH@5,skx:GLOBAL@5");
-         if(strcmp(reply->str, "OK")!=0){
-             fprintf(stderr, "Failed to connect to redis kvolve.\n");
-             exit(1);
+         if(!kitsune_is_updating()){
+             reply = redisCommand(_g_redis, "client setname %s", "skx:DIR@6,skx:INODE@6,skx:PATH@5,skx:GLOBAL@5");
+             if(strcmp(reply->str, "OK")!=0){
+                 fprintf(stderr, "Failed to connect to redis kvolve.\n");
+                 exit(1);
+             }
+             freeReplyObject(reply);
+         } else{ //Update the schema here
+             reply = redisCommand(_g_redis, "client setname %s", "skx@5,skx:INODE@5,skx:PATH@5,skx:GLOBAL@5");
+             freeReplyObject(reply);
+             reply = redisCommand(_g_redis, "client setname %s", "update/home/ksaur/AY1415/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so");
+             if(strcmp(reply->str, "OK")!=0){
+                 fprintf(stderr, "Failed to connect to redis kvolve.\n");
+                 exit(1);
+             }
+             freeReplyObject(reply);
          }
-         freeReplyObject(reply);
     }
 }
 
@@ -2143,6 +2154,7 @@ main(int argc, char *argv[])
 	if(kitsune_is_updating()){
 		_kitsune_transform_f();
         _kitsune_transform_mountpoint();
+        redis_alive();
         kitsune_clear_request();
     }
 	else
