@@ -193,7 +193,7 @@ redis_alive()
          } else{ //Update the schema here
              reply = redisCommand(_g_redis, "client setname %s", "skx@5,skx:INODE@5,skx:PATH@5,skx:GLOBAL@5");
              freeReplyObject(reply);
-             reply = redisCommand(_g_redis, "client setname %s", "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so");
+             reply = redisCommand(_g_redis, "client setname %s", "update/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so");
              if(strcmp(reply->str, "OK")!=0){
                  fprintf(stderr, "Failed to connect to redis kvolve.\n");
                  exit(1);
@@ -963,9 +963,11 @@ fs_write(const char *path,
 
         if (ret != Z_OK)
         {
+            char buf[4096];
+            snprintf(buf, reply->len, "%s", reply->str);
             fprintf(stderr,
-                    "uncompress() failed - aborting offset-write - return code was :%d\n",
-                    ret);
+                    "uncompress() failed - aborting offset-write - return code was :%d, data was %s, key was GET %s:INODE:%d:DATA\n",
+                    ret, buf, _g_prefix, inode);
             free(decompressed);
             pthread_mutex_unlock(&_g_lock);
             return -ENOENT;
