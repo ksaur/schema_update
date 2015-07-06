@@ -45,7 +45,7 @@ def kv():
     stats = Process(target=do_stats, args=(r,))
     stats.start()
     bench = subprocess.Popen([impres_loc, impres_spec_loc])
-    sleep(200)
+    sleep(100)
     print "KILLING 5"
     os.kill(bench.pid, signal.SIGSTOP)
     redisfs5.send_signal(signal.SIGINT)
