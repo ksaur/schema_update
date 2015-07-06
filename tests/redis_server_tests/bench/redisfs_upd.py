@@ -10,10 +10,9 @@ from time import sleep
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 impres_loc = "/fs/macdonald/ksaur/impressions-v1/impressions"
-impres_spec_loc = "/fs/macdonald/ksaur/impressions-v1/inputfile"
-redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src/redisfs"
-redisfs_6_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.6/src/redisfs"
-upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so"
+impres_spec_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/inputfile"
+redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src/redisfs.so"
+kitsune_bin = "/fs/macdonald/ksaur/kitsune-core/bin/bin/"
 trials = 11
 
 def popen(args):
@@ -39,21 +38,18 @@ def kv():
     sleep(1)
     r = redis.StrictRedis()
     r.client_setname("skx@5,skx:INODE@5,skx:PATH@5,skx:GLOBAL@5")
-    redisfs5 = popen(redisfs_5_loc)
+    redisfs5 = subprocess.Popen([kitsune_bin+"driver", redisfs_5_loc])
     sleep(2)
     # This thread prints the "queries per second"
     stats = Process(target=do_stats, args=(r,))
     stats.start()
     bench = subprocess.Popen([impres_loc, impres_spec_loc])
-    sleep(200)
-    print "KILLING 5"
-    os.kill(bench.pid, signal.SIGSTOP)
-    redisfs5.send_signal(signal.SIGINT)
-    redisfs5.wait()
-    r.client_setname("update/"+upd_code)
-    print "RESUMING 6"
-    redisfs6 = popen(redisfs_6_loc)
-    os.kill(bench.pid, signal.SIGCONT)
+    sleep(100)
+    print "UPDATING"
+    os.system("echo UPDATING PROCESS AT")
+    os.system("echo `pidof driver`")
+    os.system(kitsune_bin+"doupd" +" `pidof driver` /fs/macdonald/ksaur/schema_update/target_programs/redisfs.6/src/redisfs.so")
+    redisfs5.send_signal(signal.SIGTERM)
     bench.wait()
     redisfs6.terminate()
     stats.terminate()
@@ -68,4 +64,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+  main()
