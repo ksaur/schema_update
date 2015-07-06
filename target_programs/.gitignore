@@ -18,3 +18,13 @@ redisfs.6/src/sds.c
 redisfs.6/src/sds.h
 redisfs.6/src/util.h
 redisfs.6/src/redisfs-snapshot
+redisfs.7/src/fmacros.h
+redisfs.7/src/hiredis.c
+redisfs.7/src/hiredis.h
+redisfs.7/src/net.c
+redisfs.7/src/net.h
+redisfs.7/src/redisfs
+redisfs.7/src/sds.c
+redisfs.7/src/sds.h
+redisfs.7/src/util.h
+redisfs.7/src/redisfs-snapshot
