@@ -12,7 +12,7 @@ kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 impres_loc = "/fs/macdonald/ksaur/impressions-v1/impressions"
 impres_spec_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/inputfile"
 redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src/redisfs"
-redisfs_6_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.6/src/redisfs"
+redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs"
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so"
 trials = 11
 migrating = 0
@@ -51,7 +51,7 @@ def kv():
     stats.start()
     bench = subprocess.Popen([impres_loc, impres_spec_loc])
     sleep(100)
-    print "KILLING 5"
+    print "KILLING v5"
     os.kill(bench.pid, signal.SIGSTOP)
     redisfs5.send_signal(signal.SIGINT)
     redisfs5.wait()
@@ -65,12 +65,12 @@ def kv():
         r.get(k)
       elif(typ == 'set'):
         r.smembers(k)
-    print "RESUMING 6"
+    print "RESUMING at v7"
     migrating = 0
-    redisfs6 = popen(redisfs_6_loc)
+    redisfs7 = popen(redisfs_7_loc)
     os.kill(bench.pid, signal.SIGCONT)
     bench.wait()
-    redisfs6.terminate()
+    redisfs7.terminate()
     stats.terminate()
     print r.info()
     redis_server.terminate() 
