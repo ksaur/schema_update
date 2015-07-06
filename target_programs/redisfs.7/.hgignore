@@ -1,0 +1,51 @@
+syntax: glob
+
+#
+# Set by "release"
+#
+./.version
+
+
+#
+# The upstream repo for the redis C-client library
+#
+./hiredis/.git
+
+#
+# Symlinks to the same library
+#
+./src/fmacros.h
+./src/hiredis.c
+./src/hiredis.h
+./src/net.c
+./src/net.h
+./src/sds.c
+./src/sds.h
+./src/util.h
+
+#
+#  Ignore all object files.
+#
+./*/*.o
+
+#
+#  Ignore our binaries
+#
+./src/redisfs
+./tests/tests
+
+#
+#  Ignore our symlinks
+#
+./tests/fastlz.c
+./tests/fastlz.h
+./tests/pathutil.c
+./tests/pathutil.h
+
+#
+# on the off-chance somebody builds them.
+#
+./hiredis/hiredis-example
+./hiredis/hiredis-example-libev
+./hiredis/hiredis-test
+./hiredis/libhiredis.so

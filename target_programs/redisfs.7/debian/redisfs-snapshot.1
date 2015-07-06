@@ -1,0 +1,62 @@
+.TH REDISFS-SNAPSHOT 1
+
+
+.SH NAME
+redisfs-snapshot \(hy mount \-\-bind in user\-space
+
+
+.SH SYNOPSIS
+\fBredisfs-snapshot\fP [\fIoptions\fP]\fI
+
+
+.SH DESCRIPTION
+The redis-snapshot utility will duplicate all the keys in a redisfs-based
+filesystem, such that a second copy of that filesystem is created - a
+snapshot.
+
+
+.SH OPTIONS
+.TP
+.B \-d, \-\-debug
+Enable full debug output, but from FUSE and from the program itself.
+
+.TP
+.B \-f, \-\-from
+Specify the prefix of the keys to copy.
+
+.TP
+.B \-h, \-\-help
+Displays a help message and exits.
+
+.TP
+.B \-s, \-\-host
+Specify a remote hostname to connect to.  (Default is "localhost").
+
+.TP
+.B \-t, \-\-to
+Specify the prefix to give the copied keys.
+
+.TP
+.B \-P, \-\-port
+Specify the port to connect to a redis-server upon.  (Default is 6379).
+
+.TP
+.B \-V, \-\-version
+Displays version information and exits.
+
+
+.SH LIMITATIONS
+There is no attempt made to validate that the prefix copied from is
+valid, or that the destination key names don't already exist.
+
+
+.SH BUGS
+Please report any issues to the author.
+
+.SH AUTHOR
+Steve Kemp <steve@steve.org.uk>
+
+
+.SH SEE ALSO
+\fBfusermount\fP(1),\fBredisfs\fP(1),
+

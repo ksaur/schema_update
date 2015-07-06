@@ -1,0 +1,16 @@
+This package was debianized by Steve Kemp <steve@steve.org.uk> on
+Thu Mar  3 19:08:25 GMT 2011
+
+It was downloaded from http://www.steve.org.uk/Software/redisfs/
+
+Upstream Authors: See the included AUTHORS file.
+
+Copyright (c) 2010-2011 by Steve Kemp.
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms the GNU General Public License as published by
+    the Free Software Foundation; either version 2, or (at your option)
+    any later version.
+
+    On Debian GNU/Linux systems, the complete text of the GNU General
+    Public License can be found in `/usr/share/common-licenses/GPL-2'.
