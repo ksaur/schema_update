@@ -188,7 +188,7 @@ redis_alive()
          } else{ //Update the schema here
              reply = redisCommand(_g_redis, "client setname %s", "skx@5,skx:INODE@5,skx:PATH@5,skx:GLOBAL@5");
              freeReplyObject(reply);
-             reply = redisCommand(_g_redis, "client setname %s", "update/home/ksaur/AY1415/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so");
+             reply = redisCommand(_g_redis, "client setname %s", "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so");
              if(strcmp(reply->str, "OK")!=0){
                  fprintf(stderr, "Failed to connect to redis kvolve.\n");
                  exit(1);

@@ -7,7 +7,7 @@ Numfiles: 200 K
 Numdirs: 200 K
 Filesperdir: 10 N
 FilesizeDistr: Direct 3 994 9 0.91 
-FilecountDistr: Direct 2 5.48 2.45663283
+FilecountDistr: Direct 2 5.28 2.45663283
 Dircountfiles: Direct 2 2 2.36
 DirsizesubdirDistr: Indir DirsizesubdirDistr.txt
 Fileswithdepth: Direct 10
