@@ -53,7 +53,7 @@
 
 #define FUSE_USE_VERSION 26
 
-
+#include <kitsune.h>
 #include <fuse.h>
 #include <stdlib.h>
 #include <string.h>
@@ -101,7 +101,7 @@ pthread_mutex_t _g_lock = PTHREAD_MUTEX_INITIALIZER;
 /**
  * Handle to the redis server.
  */
-redisContext *_g_redis = NULL;
+redisContext  *E_OPAQUE _g_redis = NULL;
 
 
 /**
@@ -1815,6 +1815,44 @@ static struct fuse_operations redisfs_operations = {
 };
 
 
+/*  Kitsune    - taken from fuse.c (not in any header) */
+
+struct fuse_fs {
+    struct fuse_operations op; ///////THIS IS WHAT WE NEED TO UPDATE!!!
+    struct fuse_module * E_OPAQUE m;
+    void * E_OPAQUE user_data;
+    int compat;
+    int debug;
+};
+
+
+struct _fuse {
+    struct fuse_session * E_OPAQUE se;
+    unsigned char opaque_name_table[32];
+    unsigned char opaque_id_table[32];
+    unsigned char opaque_lru_table[16];
+    long unsigned int ctr;
+    unsigned int generation;
+    unsigned int hidectr;
+    pthread_mutex_t lock;
+    unsigned char opaque_conf[120];
+    int intr_installed;
+    struct fuse_fs *fs;
+    int nullpath_ok;
+    int utime_omit_ok;
+    struct lock_queue_element *E_OPAQUE lockq;
+    int pagesize;
+    unsigned char opaque_part[16];
+    unsigned char opaque_full[16];
+    pthread_t prune_thread;
+};
+
+
+struct _fuse * f;
+extern void _kitsune_transform_f(void); 
+extern void _kitsune_transform_mountpoint(void);
+char * E_OPAQUE mountpoint;
+/* end kitsune */
 
 
 /**
@@ -1932,8 +1970,8 @@ main(int argc, char *argv[])
   /**
    * Complain if our mount-point isn't a directory.
    */
-    if ((stat(_g_mount, &statbuf) != 0) ||
-        ((statbuf.st_mode & S_IFMT) != S_IFDIR))
+    if (!kitsune_is_updating() &&((stat(_g_mount, &statbuf) != 0) ||
+        ((statbuf.st_mode & S_IFMT) != S_IFDIR)))
     {
         fprintf(stderr, "%s doesn't exist or isn't a directory!\n", _g_mount);
         return -1;
@@ -1966,5 +2004,22 @@ main(int argc, char *argv[])
     /**
      * Launch fuse.
      */
-    return (fuse_main(args_c, args, &redisfs_operations, NULL));
+    ////return (fuse_main(args_c, args, &redisfs_operations, NULL));
+    /*Kitsune*/
+    int ret;
+    int multithreaded = 1;
+	if(kitsune_is_updating()){
+		_kitsune_transform_f();
+        _kitsune_transform_mountpoint();
+        kitsune_clear_request();
+    }
+	else
+       f = fuse_setup(args_c, args, &redisfs_operations, sizeof(struct fuse_operations), &mountpoint, &multithreaded, NULL);
+    printf("Mountpt is %s", mountpoint);
+    kitsune_update("session_loop");
+    ret = fuse_loop_mt(f);
+    kitsune_update("session_loop");
+    fuse_teardown(f, mountpoint);
+    return ret;
+
 }

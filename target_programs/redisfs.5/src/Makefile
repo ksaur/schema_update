@@ -2,14 +2,19 @@
 #
 #  Flags and stuffs.
 #
-CFLAGS=-ggdb -Wall -Werror `pkg-config fuse --cflags` -I. -DVERSION=$(VERSION)
-LDFLAGS=`pkg-config fuse --libs`
+CFLAGS=-ggdb -g -fPIC -Wall -Werror -lfuse -D_FILE_OFFSET_BITS=64 -I. -DVERSION=0.5
+LDFLAGS=-pthread -lrt -ldl -lz -lkitsune -shared -u kitsune_is_updating 
+LDFUSE_FLAGS=-lfuse -u fuse_get_context -zdefs -ldl -lrt
+
+
+#final:
+#	cc  redisfs.o pathutil.o hiredis.o sds.o net.o   -o redisfs -L../../fuse-2.9.3/lib/.libs/ -lfuse -pthread -lrt -ldl -lz -lkitsune
 
 
 #
 #  By default make our filesystem.
 #
-all: link redisfs redisfs-snapshot
+all: link redisfs redisfs-snapshot 
 
 
 #
@@ -44,7 +49,9 @@ tidy:
 #
 #  The filesystem
 #
-redisfs: pathutil.o redisfs.o hiredis.o sds.o net.o
+redisfs: pathutil.o hiredis.o sds.o net.o redisfs.o 
+	$(CC) $(LDFLAGS) $^  -o redisfs.so $(LDFUSE_FLAGS)
+
 
 
 #
@@ -65,7 +72,10 @@ link:
 	ln -sf ../hiredis/net.c .
 	ln -sf ../hiredis/net.h .
 	ln -sf ../hiredis/util.h .
-	@echo "TODO READ THIS *********************************************"
-	@echo "TODOFIXME, Makefile bug:\nchange flag order to to fix the\nundefined reference to \`fuse_get_context' bug that you're about to see.\n\n'cc  redisfs.o pathutil.o hiredis.o sds.o net.o   -o redisfs \`pkg-config fuse --libs\` -lz'  \n\nFor now just 'cd src', copy/paste/execute the line above after the error, and it will work.\n"
-	@echo "*********************************************"
+	@echo "\n\n******\nRun the .build.sh script to build redisfs.c\n******\n"
+
+
+#@echo "TODO READ THIS *********************************************"
+#@echo "TODOFIXME, Makefile bug (not mine, from redisfs repo):\nchange flag order to to fix the\nundefined reference to \`fuse_get_context' bug that you're about to see.\n\n'cc  redisfs.o pathutil.o hiredis.o sds.o net.o   -o redisfs ../../fuse-2.9.3/lib/.libs/libfuse.a -pthread -lrt -ldl -lz -lkitsune'  \n\nFor now just 'cd src', copy/paste/execute the line above after the error, and it will work.\n"
+#@echo "*********************************************"
 
