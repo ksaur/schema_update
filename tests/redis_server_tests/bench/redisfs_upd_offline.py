@@ -1,7 +1,7 @@
 import redis
 import signal
 import time
-import os
+import os, sys
 import threading
 from threading import Thread
 import multiprocessing
@@ -20,16 +20,28 @@ redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so"
 trials = 11
 migrating = False
+runtime = 230
+beforeupd = 100
 
 def popen(args):
   print "$ %s" % args
   return Popen(args.split(" "))
 
+def do_crawl():
+  t = time.time()
+  while True:
+    for path,dirs,files in os.walk("/mnt/redis"):
+      for f in files:
+        os.system("cat " + path +"/" +f +"> /dev/null")
+        sleep(.25)
+        if (time.time() - t)  > runtime:
+          return
+
 def do_stats(r):
   f = open('redisfs_upd_stats.txt', 'a')
   f.write("Time\t#Queries\n")
   i = 0
-  while i<230:
+  while i<runtime:
     if migrating == False:
       queries = r.info()["instantaneous_ops_per_sec"]
     else:
@@ -52,8 +64,10 @@ def kv():
     sleep(2)
     stats = Thread(target=do_stats, args=(r,))
     stats.start()
+    crawl = Thread(target=do_crawl)
+    crawl.start()
     bench = subprocess.Popen([impres_loc, impres_spec_loc])
-    sleep(100)
+    sleep(beforeupd)
     print "KILLING v5"
     os.kill(bench.pid, signal.SIGSTOP)
     redisfs5.send_signal(signal.SIGINT)
@@ -70,13 +84,15 @@ def kv():
       elif(typ == 'set'):
         r.smembers(k)
     print "RESUMING at v7"
-    print time.time()
     migrating = False
+    print time.time()
     redisfs7 = popen(redisfs_7_loc)
     os.kill(bench.pid, signal.SIGCONT)
-    bench.wait()
+    sleep(runtime - beforeupd)
+    bench.terminate()
     redisfs7.terminate()
     stats.join()
+    crawl.join()
     print r.info()
     redis_server.terminate() 
     sleep(1)

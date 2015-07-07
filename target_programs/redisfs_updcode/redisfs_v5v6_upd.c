@@ -18,7 +18,7 @@ void upd_fun_add_compression(char ** key, void ** value, size_t * val_len){
     if((split == NULL) || (strncmp(":DATA", split, 5) != 0))
         return;
 
-    /////printf("About to update: [%s], [%s] [%d]\n", *key, (char*)*value, *val_len);
+    ///printf("About to update: [%s],[%d]\n", *key, *val_len);
 
     /* The next several lines from redisfs.c v.7 (ln 848)*/
     int c_size = *val_len;
