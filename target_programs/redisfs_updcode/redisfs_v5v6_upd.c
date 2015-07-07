@@ -18,14 +18,17 @@ void upd_fun_add_compression(char ** key, void ** value, size_t * val_len){
     if((split == NULL) || (strncmp(":DATA", split, 5) != 0))
         return;
 
-    /* There's a bug in redisfs for values shorter than 3...this wouldn't normally be here...*/
-    if(strlen((char*)*value)<3)
-        return;
-    //printf("About to update: %s, %s\n", *key, (char*)*value);
+    /////printf("About to update: [%s], [%s] [%d]\n", *key, (char*)*value, *val_len);
 
-    /* The next several lines from redisfs.c v.6 (ln 848)*/
-    char *compressed = malloc((*val_len * 2) + 1);
-    uLongf compressed_len = ((*val_len * 2) + 1); //uLongf from zlib
+    /* The next several lines from redisfs.c v.7 (ln 848)*/
+    int c_size = *val_len;
+    if ( *val_len <= 16384 )
+      c_size = 1024 * 16;
+    else
+      c_size = ( *val_len * 2) + 1;
+
+    char *compressed = malloc(c_size );
+    uLongf compressed_len = c_size;
     int ret = compress2((void *)compressed, &compressed_len, *value, *val_len,
                   Z_BEST_SPEED);
     if (ret != Z_OK)
