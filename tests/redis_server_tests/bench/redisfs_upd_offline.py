@@ -13,31 +13,20 @@ from time import sleep
 
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
-impres_loc = "/fs/macdonald/ksaur/impressions-v1/impressions"
-impres_spec_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/inputfile"
+ps_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/postmark"
+ps_spec_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/config.pmrc"
 redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src/redisfs"
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs"
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v0v6.so"
 trials = 11
 migrating = False
-runtime = 230
+runtime = 200
 beforeupd = 100
 
 def popen(args):
   print "$ %s" % args
   return Popen(args.split(" "))
 
-def do_crawl():
-  t = time.time()
-  while True:
-    for path,dirs,files in os.walk("/mnt/redis"):
-      for f in files:
-        os.system("cat " + path +"/" +f +"> /dev/null")
-        sleep(.1)
-        if (time.time() - t)  > runtime:
-          return
-        while migrating == True:
-          sleep(1)
 
 def do_stats(r):
   f = open('redisfs_upd_stats.txt', 'a')
@@ -65,9 +54,7 @@ def kv():
     sleep(2)
     stats = Thread(target=do_stats, args=(r,))
     stats.start()
-    crawl = Thread(target=do_crawl)
-    crawl.start()
-    bench = subprocess.Popen([impres_loc, impres_spec_loc])
+    bench = subprocess.Popen([ps_loc, ps_spec_loc])
     sleep(beforeupd)
     print "KILLING v5"
     os.kill(bench.pid, signal.SIGSTOP)
@@ -97,7 +84,6 @@ def kv():
     bench.terminate()
     redisfs7.terminate()
     stats.join()
-    crawl.join()
     print r.info()
     redis_server.terminate() 
     sleep(1)

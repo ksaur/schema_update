@@ -11,14 +11,14 @@ from subprocess import Popen
 from time import sleep
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
-impres_loc = "/fs/macdonald/ksaur/impressions-v1/impressions"
-impres_spec_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/inputfile"
+ps_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/postmark"
+ps_spec_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/config.pmrc"
 redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src/redisfs.so"
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs.so"
 kitsune_bin = "/fs/macdonald/ksaur/kitsune-core/bin/bin/"
 trials = 11
 migrating = False
-runtime = 230
+runtime = 200
 beforeupd = 100
 
 def popen(args):
@@ -40,16 +40,6 @@ def do_stats(r):
     if (i%20 == 0):
       f.flush()
 
-def do_crawl():
-  t = time.time()
-  while True:
-    for path,dirs,files in os.walk("/mnt/redis"):
-      for f in files:
-        os.system("cat " + path +"/" +f +"> /dev/null")
-        sleep(.1)
-        if (time.time() - t)  > runtime:
-          return
-
 def kv():
   global migrating
   print("______________KV_____________")
@@ -63,9 +53,7 @@ def kv():
     # This thread prints the "queries per second"
     stats = Thread(target=do_stats, args=(r,))
     stats.start()
-    crawl = Thread(target=do_crawl)
-    crawl.start()
-    bench = subprocess.Popen([impres_loc, impres_spec_loc])
+    bench = subprocess.Popen([ps_loc, ps_spec_loc])
     sleep(beforeupd)
     print "UPDATING"
     print time.time()
@@ -78,7 +66,6 @@ def kv():
     bench.terminate()
     driver.terminate()
     stats.join()
-    crawl.join()
     print r.info()
     redis_server.terminate() 
     sleep(1)

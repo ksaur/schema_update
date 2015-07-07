@@ -1,0 +1,10 @@
+set location /mnt/redis
+set bias create 9
+set bias read 7
+set transactions 200000
+set size 4 4096
+set number 5000
+set subdirectories 250
+show
+run
+quit
