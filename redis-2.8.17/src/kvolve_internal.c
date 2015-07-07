@@ -501,7 +501,9 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
         for (fun=0; fun < v->info[key_vers+1]->num_funs; fun++){
             char * key = (char*)c->argv[1]->ptr;
             char * val = (char*)o->ptr;
-            size_t val_len = sdslen((sds)o->ptr);
+            size_t val_len = 0;
+            if(o->encoding == 0)
+                val_len = sdslen((sds)o->ptr);
             /* next lines calls the update func (mods key/val as specified): */
             if(type == REDIS_ZSET){
                 zsv.setelem = val;
