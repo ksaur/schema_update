@@ -53,8 +53,7 @@ def do_crawl():
 def kv():
   global migrating
   print("______________KV_____________")
-#  for i in range (trials):
-  if True:
+  for i in range (trials):
     redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
     sleep(1)
     r = redis.StrictRedis()
