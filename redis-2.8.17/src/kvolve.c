@@ -283,46 +283,29 @@ void kvolve_hmget(redisClient * c, struct version_hash * v){
 
 
 void kvolve_sadd(redisClient * c, struct version_hash * v){
-    int i;
-    if(v == NULL)
-        return;
-    kvolve_update_all_set(c, v);
-
-    /* Set the version for the new element(s) that is not yet a member */
-    for(i=2; i < c->argc; i++)
-        c->argv[i]->vers = v->versions[v->num_versions-1];
+    int ret = kvolve_update_all_set(c, v);
+    if (ret == 1)
+        kvolve_new_version(c, v);
 }
 
 /* similar to sadd but for sorted sets */
 void kvolve_zadd(redisClient * c, struct version_hash * v){
     /* Make sure all set elements are at this current version. Else update all*/
-    kvolve_update_all_zset(c, v);
-
-    /* sorted sets don't store the versions in the individual members (just in
-     * the parent zset), so we're done here*/
+    int ret = kvolve_update_all_zset(c, v);
+    if (ret == 1)
+        kvolve_new_version(c, v);
 }
 
 void kvolve_lpush(redisClient * c, struct version_hash * v){
-    int i;
-    if(v == NULL)
-        return;
-    kvolve_update_all_list(c, v);
-
-    /* Set the version for the new element(s) that is not yet a member */
-    for(i=2; i < c->argc; i++)
-        c->argv[i]->vers = v->versions[v->num_versions-1];
+    int ret = kvolve_update_all_list(c, v);
+    if (ret == 1)
+        kvolve_new_version(c, v);
 }
 
 void kvolve_hmset(redisClient * c, struct version_hash * v){
-    int i;
-    if(v == NULL)
-        return;
-    kvolve_update_all_hash(c, v);
-
-    /* Set the version for the new element(s) that is not yet a member */
-    for(i=2; i < c->argc; i++)
-        c->argv[i]->vers = v->versions[v->num_versions-1];
-
+    int ret = kvolve_update_all_hash(c, v);
+    if (ret == 1)
+        kvolve_new_version(c, v);
 }
 void kvolve_hset(redisClient * c, struct version_hash * v){
     kvolve_hmset(c, v);

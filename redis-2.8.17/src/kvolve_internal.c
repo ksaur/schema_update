@@ -464,7 +464,8 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
      * be shared by multiple keys, there's no safe way to store the version as they
      * may not be consistent.) However, the keys could still be renamed, check for
      * this, then return. */
-    if (o->type == REDIS_STRING && o->encoding == REDIS_ENCODING_INT){
+    if (o->encoding == REDIS_ENCODING_INT && o->type == REDIS_STRING
+        && (((long long)o->ptr) < REDIS_SHARED_INTEGERS)){
         kvolve_check_rename(c, v, 2);
         return;
     }
@@ -703,20 +704,18 @@ void kvolve_update_zset_elem(redisClient * c, char * new_val, robj ** o, double 
  * versions!! (would be a confusing mess.) This will check and return if current,
  * else update other set members to the current version. This will also update the
  * namespace of the key if necessary. */
-void kvolve_update_all_set(redisClient * c, struct version_hash * v){
+int kvolve_update_all_set(redisClient * c, struct version_hash * v){
     int first = 1, set_len, i=0;
     robj ** robj_array;
     
     if(v == NULL)
-        return;
+        return 0;
     robj * o = kvolve_get_db_val(c, v);
-    if (o == NULL) {
-        kvolve_new_version(c, v);
-        return;
-    }
+    if (o == NULL) 
+        return 1;
     /* return if object is already current */
     if (o->vers == v->versions[v->num_versions-1])
-        return;
+        return 0;
 
     setTypeIterator *si = setTypeInitIterator(o);
     robj * e = setTypeNextObject(si);
@@ -744,9 +743,10 @@ void kvolve_update_all_set(redisClient * c, struct version_hash * v){
      * just did on the set members .*/
     o->vers = v->versions[v->num_versions-1];
 
+    return 0;
 }
 
-void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
+int kvolve_update_all_zset(redisClient * c, struct version_hash * v){
 
     unsigned char *vstr;
     unsigned int vlen;
@@ -760,18 +760,16 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     unsigned char *p;
     robj * o;
 
-    if(v == NULL) return;
+    if(v == NULL) return 0;
     o = kvolve_get_db_val(c, v);
-    if (o == NULL) {
-        kvolve_new_version(c, v);
-        return;
-    }
+    if (o == NULL)
+        return 1;
     /* return if object is already current */
     if(o->vers == v->versions[v->num_versions-1])
-        return;
+        return 0;
     if(o->encoding != REDIS_ENCODING_ZIPLIST){ //TODO REDIS_ENCODING_SKIPLIST
         DEBUG_PRINT(("Type %d not implemented for zset\n", o->encoding));
-        return;
+        return 0;
     }
 
     zset_len = zsetLength(o);
@@ -806,20 +804,19 @@ void kvolve_update_all_zset(redisClient * c, struct version_hash * v){
     free(robj_array);
 
     o->vers = v->versions[v->num_versions-1];
+    return 0;
 }
 
-void kvolve_update_all_hash(redisClient * c, struct version_hash * v){
+int kvolve_update_all_hash(redisClient * c, struct version_hash * v){
     int first = 1, length, i=0;
     if(v == NULL)
-        return;
+        return 0;
     robj * o = kvolve_get_db_val(c, v);
-    if (o == NULL) {
-        kvolve_new_version(c, v);
-        return;
-    }
+    if (o == NULL) 
+        return 1;
     /* return if object is already current */
     if (o->vers == v->versions[v->num_versions-1])
-        return;
+        return 0;
     length = hashTypeLength(o) * 2;
 
     robj ** robj_array = calloc(length, sizeof(robj*));
@@ -847,22 +844,21 @@ void kvolve_update_all_hash(redisClient * c, struct version_hash * v){
     free(robj_array);
     hashTypeReleaseIterator(hi);
 
+    return 0;
 }
 
 /* Check if update is necessary for a list and if so do it. */
-void kvolve_update_all_list(redisClient * c, struct version_hash * v){
+int kvolve_update_all_list(redisClient * c, struct version_hash * v){
     if(v == NULL)
-        return;
+        return 0;
     int first = 1, exists = 0, i=0;
     robj *e, * o = kvolve_get_db_val(c, v);
-    if (o == NULL) {
-        kvolve_new_version(c, v);
-        return;
-    }
+    if (o == NULL)
+        return 1;
     listTypeEntry entry;
     /* return if object is already current */
     if (o->vers == v->versions[v->num_versions-1])
-        return;
+        return 0;
     int list_len = listTypeLength(o);
     robj ** robj_array = calloc(list_len, sizeof(robj*));
 
@@ -893,6 +889,7 @@ void kvolve_update_all_list(redisClient * c, struct version_hash * v){
      * just did on the set members .*/
     o->vers = v->versions[v->num_versions-1];
 
+    return 0;
 }
 
 void kvolve_prevcall_check(void){

@@ -102,11 +102,12 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int k
 
 /* Check if updated needed for robjs of set/list/zset/hsah, if so do the
  * upd. Also checks namespace/key update. These four functions are
- * basicaly container iterators that call kvolve_check_update_kv_pair */
-void kvolve_update_all_zset(redisClient * c, struct version_hash * v);
-void kvolve_update_all_list(redisClient * c, struct version_hash * v);
-void kvolve_update_all_set(redisClient * c, struct version_hash * v);
-void kvolve_update_all_hash(redisClient * c, struct version_hash * v);
+ * basically container iterators that call kvolve_check_update_kv_pair.
+ * Return 1 if object does not exist. Else return 0. */
+int kvolve_update_all_zset(redisClient * c, struct version_hash * v);
+int kvolve_update_all_list(redisClient * c, struct version_hash * v);
+int kvolve_update_all_set(redisClient * c, struct version_hash * v);
+int kvolve_update_all_hash(redisClient * c, struct version_hash * v);
 
 /* Update a _member_ of a set/list/zset/hash adding the new version
  * (@new_val) and delete the old version.  These are called from withint
