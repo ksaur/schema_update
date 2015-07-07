@@ -46,7 +46,7 @@ def do_crawl():
     for path,dirs,files in os.walk("/mnt/redis"):
       for f in files:
         os.system("cat " + path +"/" +f +"> /dev/null")
-        sleep(.25)
+        sleep(.1)
         if (time.time() - t)  > runtime:
           return
 

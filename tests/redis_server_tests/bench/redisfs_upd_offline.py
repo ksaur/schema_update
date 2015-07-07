@@ -17,7 +17,7 @@ impres_loc = "/fs/macdonald/ksaur/impressions-v1/impressions"
 impres_spec_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/inputfile"
 redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src/redisfs"
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs"
-upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v5v6.so"
+upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v0v6.so"
 trials = 11
 migrating = False
 runtime = 230
@@ -33,9 +33,11 @@ def do_crawl():
     for path,dirs,files in os.walk("/mnt/redis"):
       for f in files:
         os.system("cat " + path +"/" +f +"> /dev/null")
-        sleep(.25)
+        sleep(.1)
         if (time.time() - t)  > runtime:
           return
+        while migrating == True:
+          sleep(1)
 
 def do_stats(r):
   f = open('redisfs_upd_stats.txt', 'a')
@@ -59,7 +61,6 @@ def kv():
     redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
     sleep(1)
     r = redis.StrictRedis()
-    r.client_setname("skx@5,skx:INODE@5,skx:PATH@5,skx:GLOBAL@5")
     redisfs5 = popen(redisfs_5_loc)
     sleep(2)
     stats = Thread(target=do_stats, args=(r,))
@@ -72,6 +73,7 @@ def kv():
     os.kill(bench.pid, signal.SIGSTOP)
     redisfs5.send_signal(signal.SIGINT)
     redisfs5.wait()
+    r.client_setname("skx@0,skx:INODE@0,skx:PATH@0,skx:GLOBAL@0")
     r.client_setname("update/"+upd_code)
     print "Migrating schema offline starting"
     print time.time()
@@ -84,6 +86,9 @@ def kv():
       elif(typ == 'set'):
         r.smembers(k)
     print "RESUMING at v7"
+    # added if(strncmp(vers_str,"clear",5)==0) {vers_list = NULL; return;} kvolve_internal.c:115
+    # which will return kvolve to normal redis mode
+    r.client_setname("clear")
     migrating = False
     print time.time()
     redisfs7 = popen(redisfs_7_loc)
