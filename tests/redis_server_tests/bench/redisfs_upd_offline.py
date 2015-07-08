@@ -43,10 +43,11 @@ def do_stats(r):
     if (i%20 == 0):
       f.flush()
 
-def kv():
+def kvoff():
   global migrating
-  print("______________KV_____________")
+  print("______________OFFLINE_____________")
   for i in range (trials):
+    print "OFFLINE " + str(i)
     redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
     sleep(1)
     r = redis.StrictRedis()
@@ -91,7 +92,7 @@ def kv():
 
 def main():
   subprocess.call(["rm", "dump.rdb"])
-  kv()
+  kvoff()
 
 
 if __name__ == '__main__':

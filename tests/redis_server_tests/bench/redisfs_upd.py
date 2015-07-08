@@ -17,7 +17,6 @@ redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs.so"
 kitsune_bin = "/fs/macdonald/ksaur/kitsune-core/bin/bin/"
 trials = 11
-migrating = False
 runtime = 200
 beforeupd = 100
 
@@ -30,10 +29,7 @@ def do_stats(r):
   f.write("Time\t#Queries\n")
   i = 0
   while i<runtime:
-    if migrating == False:
-      queries = r.info()["instantaneous_ops_per_sec"]
-    else:
-      queries = 1
+    queries = r.info()["instantaneous_ops_per_sec"]
     f.write(str(i) + "\t" + str(queries-1) + "\n")
     time.sleep(.5)
     i = i + .5
@@ -41,9 +37,9 @@ def do_stats(r):
       f.flush()
 
 def kv():
-  global migrating
-  print("______________KV_____________")
+  print("______________KITSUNE_____________")
   for i in range (trials):
+    print "KITS " + str(i)
     redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
     sleep(1)
     r = redis.StrictRedis()
@@ -57,10 +53,8 @@ def kv():
     sleep(beforeupd)
     print "UPDATING"
     print time.time()
-    migrating = True
     os.system(kitsune_bin+"doupd" +" `pidof driver` "+ redisfs_7_loc)
     driver.send_signal(signal.SIGTERM)
-    migrating = False
     print time.time()
     sleep(runtime - beforeupd)
     bench.terminate()
