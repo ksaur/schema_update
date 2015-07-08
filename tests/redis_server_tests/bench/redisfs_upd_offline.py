@@ -20,7 +20,7 @@ redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v0v6.so"
 trials = 11
 migrating = False
-runtime = 100
+runtime = 150
 beforeupd = 50
 
 def popen(args):
@@ -29,15 +29,15 @@ def popen(args):
 
 
 def do_stats(r):
-  f = open('redisfs_upd_stats.txt', 'a')
-  f.write("Time\t#Queries\n")
+  f = open('redisfs_upd_stats_offline.txt', 'a')
+  f.write("\n")
   i = 0
   while i<runtime:
     if migrating == False:
       queries = r.info()["instantaneous_ops_per_sec"]
     else:
       queries = 1
-    f.write(str(i) + "\t" + str(queries-1) + "\n")
+    f.write(str(queries-1) + ",")
     time.sleep(.5)
     i = i + .5
     if (i%20 == 0):
@@ -46,6 +46,7 @@ def do_stats(r):
 def kvoff():
   global migrating
   print("______________OFFLINE_____________")
+  f2 = open('redisfs_upd_count_offline.txt', 'a')
   for i in range (trials):
     print "OFFLINE " + str(i)
     redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
@@ -66,6 +67,9 @@ def kvoff():
     print "Migrating schema offline starting"
     print time.time()
     migrating = True
+    orig = r.dbsize()
+    print "UPDATING, have " + str(orig) + " Keys to update" 
+    f2.write(str(orig) + "\n")
     allkeys = r.keys('*')
     for k in allkeys:
       typ = r.type(k)
@@ -88,6 +92,8 @@ def kvoff():
     print r.info()
     redis_server.terminate() 
     sleep(1)
+    f2.flush()
+  f2.close()
 
 
 def main():
