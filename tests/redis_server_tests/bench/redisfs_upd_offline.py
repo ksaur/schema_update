@@ -20,8 +20,8 @@ redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v0v6.so"
 trials = 11
 migrating = False
-runtime = 200
-beforeupd = 100
+runtime = 100
+beforeupd = 50
 
 def popen(args):
   print "$ %s" % args

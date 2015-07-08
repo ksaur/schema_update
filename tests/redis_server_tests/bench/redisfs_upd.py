@@ -17,8 +17,8 @@ redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs.so"
 kitsune_bin = "/fs/macdonald/ksaur/kitsune-core/bin/bin/"
 trials = 11
-runtime = 200
-beforeupd = 100
+runtime = 100
+beforeupd = 50
 
 def popen(args):
   print "$ %s" % args

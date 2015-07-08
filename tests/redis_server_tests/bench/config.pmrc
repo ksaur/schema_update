@@ -5,6 +5,7 @@ set transactions 200000
 set size 4 512
 set number 5000
 set subdirectories 250
+set buffering 0
 show
 run
 quit
