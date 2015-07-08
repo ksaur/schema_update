@@ -17,7 +17,7 @@ redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs.so"
 kitsune_bin = "/fs/macdonald/ksaur/kitsune-core/bin/bin/"
 trials = 11
-runtime = 100
+runtime = 150
 beforeupd = 50
 
 def popen(args):
@@ -26,11 +26,11 @@ def popen(args):
 
 def do_stats(r):
   f = open('redisfs_upd_stats.txt', 'a')
-  f.write("Time\t#Queries\n")
+  f.write("\n")
   i = 0
   while i<runtime:
     queries = r.info()["instantaneous_ops_per_sec"]
-    f.write(str(i) + "\t" + str(queries-1) + "\n")
+    f.write(str(queries-1) + ",")
     time.sleep(.5)
     i = i + .5
     if (i%20 == 0):
@@ -38,6 +38,7 @@ def do_stats(r):
 
 def kv():
   print("______________KITSUNE_____________")
+  f2 = open('redisfs_upd_count.txt', 'a')
   for i in range (trials):
     print "KITS " + str(i)
     redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
@@ -51,7 +52,9 @@ def kv():
     stats.start()
     bench = subprocess.Popen([ps_loc, ps_spec_loc])
     sleep(beforeupd)
-    print "UPDATING"
+    orig = r.dbsize()
+    print "UPDATING, have " + str(orig) + " Keys to update" 
+    f2.write(str(orig) + ",")
     print time.time()
     os.system(kitsune_bin+"doupd" +" `pidof driver` "+ redisfs_7_loc)
     driver.send_signal(signal.SIGTERM)
@@ -60,9 +63,19 @@ def kv():
     bench.terminate()
     driver.terminate()
     stats.join()
+    ke = r.keys('*')
+    notupd = 0
+    for k in ke:
+      t = r.object("idletime", k)
+      if t > beforeupd:
+         notupd = notupd + 1
+    print "UPDATED: " + str(orig -notupd)
+    f2.write(str(orig -notupd) + "\n")
     print r.info()
     redis_server.terminate() 
     sleep(1)
+    f2.flush()
+  f2.close()
 
 
 def main():
