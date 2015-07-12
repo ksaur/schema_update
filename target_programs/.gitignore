@@ -28,3 +28,4 @@ redisfs.7/src/sds.c
 redisfs.7/src/sds.h
 redisfs.7/src/util.h
 redisfs.7/src/redisfs-snapshot
+*txt

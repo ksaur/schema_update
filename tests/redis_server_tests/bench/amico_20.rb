@@ -1,0 +1,45 @@
+require 'rubygems'
+gem 'amico', '= 2.0.0'
+require 'amico'
+Amico.configure do |configuration|
+  configuration.redis = Redis.new
+  configuration.namespace = 'amico'
+  configuration.following_key = 'following'
+  configuration.followers_key = 'followers'
+  configuration.blocked_key = 'blocked'
+  configuration.reciprocated_key = 'reciprocated'
+  configuration.pending_key = 'pending'
+  configuration.default_scope_key = 'default'
+  configuration.pending_follow = false
+  configuration.page_size = 25
+end
+v1 = ARGV[0]
+if v1 == 'kvolve'
+  Amico.setns
+  puts "SET NAMESPACE"
+end
+x=0
+File.open("/home/ksaur/AY1415/icsme_paper_and_data/amico_snap_data/unique_twitter_shuffled_2") do |file|
+  file.each do |line|
+    user = line.split
+    Amico.follow(user[0], user[1])
+    if x % 2 == 0
+      Amico.follower?(user[1], user[0])
+    end
+    if x % 3 == 0
+      Amico.following(user[1])
+      Amico.following(user[0])
+    end
+    if x % 4 == 0
+      Amico.reciprocated?(user[1], user[0])
+    end
+    if x % 5 == 0
+      Amico.following_count(user[1])
+    end
+    if x % 6 == 0
+      Amico.followers(user[0])
+    end
+    x = x +1
+  end
+end
+
