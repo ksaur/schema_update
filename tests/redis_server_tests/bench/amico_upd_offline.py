@@ -13,12 +13,13 @@ from time import sleep
 
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
-amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/am12.rb"
-amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/am20.rb"
-trials = 11
+amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12.rb"
+amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20.rb"
+upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/amico_updcode/amico_v12v20.so"
+trials = 1
 migrating = False
-runtime = 150
-beforeupd = 50
+runtime = 200
+beforeupd = 150
 
 def popen(args):
   print "$ %s" % args
@@ -61,22 +62,17 @@ def kvoff():
     print "Migrating schema offline starting"
     print time.time()
     migrating = True
-    orig = r.dbsize()
-    print "UPDATING, have " + str(orig) + " Keys to update" 
-    f2.write(str(orig) + "\n")
     allkeys = r.keys('*')
+    print "UPDATING, have " + str(len(allkeys)) + " Keys to update" 
+    f2.write(str(len(allkeys)) + "\n")
     for k in allkeys:
-      typ = r.type(k)
-      if(typ == 'string'):
-        r.get(k)
-      elif(typ == 'set'):
-        r.smembers(k)
-    print "RESUMING at v7"
+      r.zcard(k)
+    r.client_setname("clear")
     # added if(strncmp(vers_str,"clear",5)==0) {vers_list = NULL; return;} kvolve_internal.c:115
     # which will return kvolve to normal redis mode
-    r.client_setname("clear")
-    print time.time()
     migrating = False
+    print time.time()
+    print "RESUMING at v7"
     amico20 = subprocess.Popen(["ruby", amico_20_loc])
     sleep(runtime - beforeupd)
     amico20.terminate()

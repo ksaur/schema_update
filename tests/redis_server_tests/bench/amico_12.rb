@@ -18,7 +18,7 @@ if v1 == 'kvolve'
   puts "SET NAMESPACE"
 end
 x=0
-File.open("/home/ksaur/AY1415/icsme_paper_and_data/amico_snap_data/unique_twitter_shuffled_1") do |file|
+File.open("unique_twitter_shuffled_1") do |file|
   file.each do |line|
     user = line.split
     Amico.follow(user[0], user[1])

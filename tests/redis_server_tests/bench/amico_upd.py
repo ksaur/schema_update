@@ -11,11 +11,12 @@ from subprocess import Popen
 from time import sleep
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
-amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/am12.rb"
-amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/am20.rb"
-trials = 11
-runtime = 15
-beforeupd = 5
+amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12.rb"
+amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20.rb"
+upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/amico_updcode/amico_v12v20.so"
+trials = 1
+runtime = 200
+beforeupd = 150
 
 def popen(args):
   print "$ %s" % args
@@ -33,6 +34,7 @@ def do_stats(r):
     if (i%20 == 0):
       f.flush()
 
+
 def kv():
   print("______________KVOLVE_____________")
   f2 = open('amico_upd_count.txt', 'a')
@@ -41,18 +43,20 @@ def kv():
     redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
     sleep(1)
     r = redis.StrictRedis()
-    amico12 = subprocess.Popen(["ruby", amico_12_loc])
+    r.client_setname("amico:followers@12,amico:following@12,amico:blocked@12,amico:reciprocated@12,amico:pending@12")
+    amico12 = subprocess.Popen(["ruby", amico_12_loc, "kvolve"])
     sleep(1)
     # This thread prints the "queries per second"
     stats = Thread(target=do_stats, args=(r,))
     stats.start()
     sleep(beforeupd)
-    orig = r.dbsize()
+    allkeys = r.keys('*')
+    orig = len(allkeys)
     f2.write(str(orig) + ",")
     print "UPDATING, have " + str(orig) + " Keys to update" 
-    amico12.terminate()
-
-    amico20 = subprocess.Popen(["ruby", amico_20_loc])
+    r.client_setname("update/"+upd_code)
+    amico12.terminate() # the connection will be automatically killed, this just kills the process
+    amico20 = subprocess.Popen(["ruby", amico_20_loc, "kvolve"])
     sleep(runtime - beforeupd)
     amico20.terminate()
     stats.join()
