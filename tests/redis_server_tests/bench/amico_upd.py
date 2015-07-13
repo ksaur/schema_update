@@ -14,9 +14,9 @@ kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12.rb"
 amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20.rb"
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/amico_updcode/amico_v12v20.so"
-trials = 1
-runtime = 200
-beforeupd = 150
+trials = 11
+runtime = 600 # 10 min
+beforeupd = 300 # 5 min
 
 def popen(args):
   print "$ %s" % args
@@ -60,7 +60,7 @@ def kv():
     sleep(runtime - beforeupd)
     amico20.terminate()
     stats.join()
-    ke = r.keys('*')
+    ke = r.keys('kvolve')
     notupd = 0
     for k in ke:
       t = r.object("idletime", k)
