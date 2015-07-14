@@ -39,6 +39,7 @@ void kvolve_zcard(redisClient * c, struct version_hash * v);
 void kvolve_zrem(redisClient * c, struct version_hash * v);
 void kvolve_zscore(redisClient * c, struct version_hash * v);
 void kvolve_zrange(redisClient * c, struct version_hash * v);
+void kvolve_zrevrange(redisClient * c, struct version_hash * v);
 
 /******* Lists ********/
 void kvolve_lpush(redisClient * c, struct version_hash * v);

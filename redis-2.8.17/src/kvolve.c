@@ -51,6 +51,7 @@ struct kvolve_cmd_hash_populate kvolveCommandTable[] = {
     {"zscore",kvolve_zscore,3},
     {"zrem",kvolve_zrem,3},
     {"zrange",kvolve_zrange,4},
+    {"zrevrange",kvolve_zrevrange,4},
     {"keys",kvolve_keys,2}
 };
 struct kvolve_cmd_hash * kvolve_commands = NULL;
@@ -223,6 +224,9 @@ void kvolve_zscore(redisClient * c, struct version_hash * v){
     kvolve_update_all_zset(c, v);
 }
 void kvolve_zrange(redisClient * c, struct version_hash * v){
+    kvolve_update_all_zset(c, v);
+}
+void kvolve_zrevrange(redisClient * c, struct version_hash * v){
     kvolve_update_all_zset(c, v);
 }
 void kvolve_lrange(redisClient * c, struct version_hash * v){
