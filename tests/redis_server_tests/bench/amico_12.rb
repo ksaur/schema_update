@@ -22,16 +22,14 @@ File.open("unique_twitter_shuffled_1") do |file|
   file.each do |line|
     user = line.split
     Amico.follow(user[0], user[1])
-    if ((x) % 5) == 0
+    if ((x) % 4) == 0
       Amico.follower?(user[1], user[0])
-    elsif ((x+1) % 5) == 0
+    elsif ((x+1) % 4) == 0
       Amico.following(user[0])
-    elsif ((x+2) % 5) == 0
+    elsif ((x+2) % 4) == 0
       Amico.reciprocated?(user[1], user[0])
-    elsif ((x+3) % 5) == 0
+    elsif ((x+3) % 4) == 0
       Amico.following_count(user[1])
-    elsif ((x+4) % 5) == 0
-      Amico.followers(user[0])
     end
     x = x +1
   end
