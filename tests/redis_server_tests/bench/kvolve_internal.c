@@ -407,7 +407,7 @@ void kvolve_namespace_update(redisClient * c, struct version_hash * v) {
     if (curr == (server.unixtime-server.stat_starttime))
        count++;
     else if (curr < (server.unixtime-server.stat_starttime)){
-       fprintf(test,"%d,",count);
+       fprintf(test,"%d\n",count);
        count = 0;
        curr++;
     }
@@ -908,8 +908,10 @@ int kvolve_update_all_list(redisClient * c, struct version_hash * v){
 
 void kvolve_prevcall_check(void){
 
-    if(test == NULL)
-        test = fopen("test.txt", "w");
+    if(test == NULL){
+        test = fopen("test.txt", "a");
+        fprintf(test,"----------------------\n");
+    }
     struct tmp_vers_store_hash *current_fix, *tmp;
     robj * o;
     dictEntry *de;

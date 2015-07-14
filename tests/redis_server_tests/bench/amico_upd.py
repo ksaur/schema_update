@@ -15,22 +15,23 @@ amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench
 amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20.rb"
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/amico_updcode/amico_v12v20.so"
 trials = 11
-runtime = 600 # 10 min
-beforeupd = 300 # 5 min
+runtime = 1200 # 20 min
+beforeupd = 600 # 10 min
 
 def popen(args):
   print "$ %s" % args
   return Popen(args.split(" "))
 
-def do_stats(r):
-  f = open('amico_upd_stats.txt', 'a')
+def do_stats(r, run):
+  name = "amico_upd_stats"+str(run)+".txt"
+  f = open(name, 'a')
   f.write("\n")
   i = 0
   while i<runtime:
     queries = r.info()["instantaneous_ops_per_sec"]
-    f.write(str(queries-1) + ",")
-    time.sleep(.5)
-    i = i + .5
+    f.write(str(queries-1) + "\n")
+    time.sleep(1)
+    i = i + 1 
     if (i%20 == 0):
       f.flush()
 
@@ -47,7 +48,7 @@ def kv():
     amico12 = subprocess.Popen(["ruby", amico_12_loc, "kvolve"])
     sleep(1)
     # This thread prints the "queries per second"
-    stats = Thread(target=do_stats, args=(r,))
+    stats = Thread(target=do_stats, args=(r,i))
     stats.start()
     sleep(beforeupd)
     allkeys = r.keys('*')
