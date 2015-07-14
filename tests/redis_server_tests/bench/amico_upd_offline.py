@@ -14,12 +14,14 @@ from time import sleep
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12.rb"
+amico_12b_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12_b.rb"
 amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20.rb"
+amico_20b_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20_b.rb"
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/amico_updcode/amico_v12v20.so"
 trials = 11
 migrating = False
-runtime = 1200 # 20 min
-beforeupd = 600 # 10 min
+runtime = 1800 # 30 min
+beforeupd = 900 # 15 min
 
 def popen(args):
   print "$ %s" % args
@@ -52,12 +54,14 @@ def kvoff():
     sleep(1)
     r = redis.StrictRedis()
     amico12 = subprocess.Popen(["ruby", amico_12_loc])
+    amico12b = subprocess.Popen(["ruby", amico_12b_loc])
     sleep(1)
     stats = Thread(target=do_stats, args=(r,i))
     stats.start()
     sleep(beforeupd)
     print "KILLING v5"
     amico12.terminate()
+    amico12b.terminate()
     r.client_setname("amico:followers@12,amico:following@12,amico:blocked@12,amico:reciprocated@12,amico:pending@12")
     r.client_setname("update/"+upd_code)
     print "Migrating schema offline starting"
@@ -75,8 +79,10 @@ def kvoff():
     print time.time()
     print "RESUMING at v7"
     amico20 = subprocess.Popen(["ruby", amico_20_loc])
+    amico20b = subprocess.Popen(["ruby", amico_20b_loc])
     sleep(runtime - beforeupd)
     amico20.terminate()
+    amico20b.terminate()
     stats.join()
     print r.info()
     redis_server.terminate() 

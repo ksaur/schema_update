@@ -19,10 +19,9 @@ if v1 == 'kvolve'
   puts "SET NAMESPACE"
 end
 x=0
-File.open("unique_twitter_shuffled_2") do |file|
+File.open("wiki-Talk-shuffled2_part2") do |file|
   file.each do |line|
     user = line.split
-    Amico.follow(user[0], user[1])
     if ((x) % 4) == 0
       Amico.follower?(user[1], user[0])
     elsif ((x+1) % 4) == 0

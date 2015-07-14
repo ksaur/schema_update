@@ -12,11 +12,13 @@ from time import sleep
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12.rb"
+amico_12b_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12_b.rb"
 amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20.rb"
+amico_20b_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20_b.rb"
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/amico_updcode/amico_v12v20.so"
 trials = 11
-runtime = 1200 # 20 min
-beforeupd = 600 # 10 min
+runtime = 1800 # 30 min
+beforeupd = 900 # 15 min
 
 def popen(args):
   print "$ %s" % args
@@ -46,6 +48,7 @@ def kv():
     r = redis.StrictRedis()
     r.client_setname("amico:followers@12,amico:following@12,amico:blocked@12,amico:reciprocated@12,amico:pending@12")
     amico12 = subprocess.Popen(["ruby", amico_12_loc, "kvolve"])
+    amico12b = subprocess.Popen(["ruby", amico_12b_loc, "kvolve"])
     sleep(1)
     # This thread prints the "queries per second"
     stats = Thread(target=do_stats, args=(r,i))
@@ -57,9 +60,12 @@ def kv():
     print "UPDATING, have " + str(orig) + " Keys to update" 
     r.client_setname("update/"+upd_code)
     amico12.terminate() # the connection will be automatically killed, this just kills the process
+    amico12b.terminate() # the connection will be automatically killed, this just kills the process
     amico20 = subprocess.Popen(["ruby", amico_20_loc, "kvolve"])
+    amico20b = subprocess.Popen(["ruby", amico_20b_loc, "kvolve"])
     sleep(runtime - beforeupd)
     amico20.terminate()
+    amico20b.terminate()
     stats.join()
     ke = r.keys('kvolve')
     notupd = 0
