@@ -34,4 +34,19 @@ File.open("wiki-Talk-shuffled2_part2") do |file|
     x = x +1
   end
 end
+File.open("wiki-Talk-shuffled2_part1") do |file|
+  file.each do |line|
+    user = line.split
+    if ((x) % 4) == 0
+      Amico.follower?(user[1], user[0])
+    elsif ((x+1) % 4) == 0
+      Amico.following(user[0])
+    elsif ((x+2) % 4) == 0
+      Amico.reciprocated?(user[1], user[0])
+    elsif ((x+3) % 4) == 0
+      Amico.following_count(user[1])
+    end
+    x = x +1
+  end
+end
 

@@ -24,4 +24,10 @@ File.open("wiki-Talk-shuffled1_part1") do |file|
     Amico.follow(user[0], user[1])
   end
 end
+File.open("wiki-Talk-shuffled1_part2") do |file|
+  file.each do |line|
+    user = line.split
+    Amico.follow(user[0], user[1])
+  end
+end
 
