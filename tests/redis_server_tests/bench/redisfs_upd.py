@@ -17,8 +17,8 @@ redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs.so"
 kitsune_bin = "/fs/macdonald/ksaur/kitsune-core/bin/bin/"
 trials = 11
-runtime = 150
-beforeupd = 50
+runtime = 200
+beforeupd = 60
 
 def popen(args):
   print "$ %s" % args
@@ -52,9 +52,9 @@ def kv():
     stats.start()
     bench = subprocess.Popen([ps_loc, ps_spec_loc])
     sleep(beforeupd)
-    orig = r.dbsize()
+    orig = len(r.keys("skx:/*")) + len(r.keys("*INODE*"))
     print "UPDATING, have " + str(orig) + " Keys to update" 
-    f2.write(str(orig) + ",")
+    f2.write(str(orig) + "\n")
     print time.time()
     os.system(kitsune_bin+"doupd" +" `pidof driver` "+ redisfs_7_loc)
     driver.send_signal(signal.SIGTERM)
@@ -69,8 +69,6 @@ def kv():
       t = r.object("idletime", k)
       if t > beforeupd:
          notupd = notupd + 1
-    print "UPDATED: " + str(orig -notupd)
-    f2.write(str(orig -notupd) + "\n")
     print r.info()
     redis_server.terminate() 
     sleep(1)

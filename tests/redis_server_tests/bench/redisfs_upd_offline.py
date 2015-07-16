@@ -20,8 +20,8 @@ redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v0v6.so"
 trials = 11
 migrating = False
-runtime = 150
-beforeupd = 50
+runtime = 200
+beforeupd = 60
 
 def popen(args):
   print "$ %s" % args
@@ -67,10 +67,10 @@ def kvoff():
     print "Migrating schema offline starting"
     print time.time()
     migrating = True
-    orig = r.dbsize()
+    allkeys = (r.keys("skx:/*")) + (r.keys("*INODE*"))
+    orig = len(allkeys)
     print "UPDATING, have " + str(orig) + " Keys to update" 
     f2.write(str(orig) + "\n")
-    allkeys = r.keys('*')
     for k in allkeys:
       typ = r.type(k)
       if(typ == 'string'):
