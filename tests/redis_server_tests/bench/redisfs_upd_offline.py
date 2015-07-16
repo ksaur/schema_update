@@ -20,8 +20,8 @@ redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/redisfs_v0v6.so"
 trials = 11
 migrating = False
-runtime = 200
-beforeupd = 60
+runtime = 140
+beforeupd = 70
 
 def popen(args):
   print "$ %s" % args
@@ -38,8 +38,8 @@ def do_stats(r):
     else:
       queries = 1
     f.write(str(queries-1) + ",")
-    time.sleep(.5)
-    i = i + .5
+    time.sleep(1)
+    i = i + 1
     if (i%20 == 0):
       f.flush()
 

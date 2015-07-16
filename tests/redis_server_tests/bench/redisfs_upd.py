@@ -9,6 +9,7 @@ from multiprocessing import Process
 import subprocess
 from subprocess import Popen
 from time import sleep
+from redisfs_upd_offline import kvoff
 
 kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 ps_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/postmark"
@@ -17,8 +18,8 @@ redisfs_5_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.5/src
 redisfs_7_loc = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs.7/src/redisfs.so"
 kitsune_bin = "/fs/macdonald/ksaur/kitsune-core/bin/bin/"
 trials = 11
-runtime = 200
-beforeupd = 60
+runtime = 140
+beforeupd = 70
 
 def popen(args):
   print "$ %s" % args
@@ -31,8 +32,8 @@ def do_stats(r):
   while i<runtime:
     queries = r.info()["instantaneous_ops_per_sec"]
     f.write(str(queries-1) + ",")
-    time.sleep(.5)
-    i = i + .5
+    time.sleep(1)
+    i = i + 1
     if (i%20 == 0):
       f.flush()
 
@@ -79,6 +80,7 @@ def kv():
 def main():
   subprocess.call(["rm", "dump.rdb"])
   kv()
+  kvoff()
 
 
 if __name__ == '__main__':

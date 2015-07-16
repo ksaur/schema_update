@@ -1001,6 +1001,7 @@ char *param; /* unused */
    if (subdirectories>1)
       {
       printf("Creating subdirectories...");
+      system("date +\"%s\"");
       fflush(stdout);
       create_subdirectories(file_systems,NULL,subdirectories);
       printf("Done\n");
@@ -1010,12 +1011,14 @@ char *param; /* unused */
 
    /* create files in specified directory until simultaneous number */
    printf("Creating files...");
+   system("date +\"%s\"");
    fflush(stdout);
    for (i=0; i<simultaneous; i++)
       create_file(buffered_io);
    printf("Done\n");
   
    printf("Performing transactions");
+   system("date +\"%s\"");
    fflush(stdout);
    time(&t_start_time);
    incomplete=run_transactions(buffered_io);
