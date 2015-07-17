@@ -60,21 +60,12 @@ int main(int argc, char* argv[]){
    int i;
 
    redisContext * c = redisConnect("127.0.0.1", 6379);
-   reply = redisCommand(c,"keys %s", "*DATA*");
+   reply = redisCommand(c,"keys %s", "*INODE*");
    for (i =0; i < reply->elements; i++){
      redisReply * curr = reply->element[i];
      reply2 = redisCommand(c,"get %s", curr->str);
-     char * split = strrchr(curr->str, ':');
-     char * newname = malloc(strlen(curr->str));
-     strcpy(newname, curr->str);
-     size_t len = split - curr->str + 1;
-     strcpy(newname+len,"SIZE");
-     reply3 = redisCommand(c, "GET %s", newname);
-     size_t sz = atoi(reply3->str);
-
-     upd_fun_add_compression(c, curr->str, reply2->str, sz);
+     upd_fun_add_compression(c, curr->str, reply2->str, reply2->len);
      freeReplyObject(reply2);
-     freeReplyObject(reply3);
    } 
    freeReplyObject(reply);
 
