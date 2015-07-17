@@ -10,6 +10,7 @@ trials = 11
 num_clients = "50" # default
 num_ops = "10000000"
 keyspace = "1000000"
+pipeline = 16
 
 def popen(args):
   print "$ %s" % args
@@ -24,9 +25,9 @@ def unmod(cmd, s, flag):
     r.client_setname("placebo")
     sleep(1)
     if flag:
-      bench = subprocess.Popen([redis_loc +"redis-benchmark", "-n", num_ops, "-P", "5", "-r", keyspace, cmd, "__rand_int__", "val"])
+      bench = subprocess.Popen([redis_loc +"redis-benchmark", "-n", num_ops, "-P", pipeline, "-r", keyspace, cmd, "__rand_int__", "val"])
     else:
-      bench = subprocess.Popen([redis_loc +"redis-benchmark", "-n", num_ops, "-P", "5", "-r", keyspace, cmd, "__rand_int__"])
+      bench = subprocess.Popen([redis_loc +"redis-benchmark", "-n", num_ops, "-P", pipeline, "-r", keyspace, cmd, "__rand_int__"])
     bench.wait()
     redis_server.terminate() 
     sleep(1)
@@ -40,9 +41,9 @@ def kvolve_no_ns(cmd, s, flag):
     r.client_setname("placebo")
     sleep(1)
     if flag:
-      bench = subprocess.Popen([kvolve_loc +"redis-benchmark", "-n", num_ops, "-P", "5", "-r", keyspace, cmd, "__rand_int__", "val"])
+      bench = subprocess.Popen([kvolve_loc +"redis-benchmark", "-n", num_ops, "-P", pipeline, "-r", keyspace, cmd, "__rand_int__", "val"])
     else:
-      bench = subprocess.Popen([kvolve_loc +"redis-benchmark", "-n", num_ops, "-P", "5", "-r", keyspace, cmd, "__rand_int__"])
+      bench = subprocess.Popen([kvolve_loc +"redis-benchmark", "-n", num_ops, "-P", pipeline, "-r", keyspace, cmd, "__rand_int__"])
     bench.wait()
     redis_server.terminate() 
     sleep(1)
@@ -56,9 +57,9 @@ def kvolve_with_ns(cmd, s, flag):
     r.client_setname("key@2") # Redis uses "key" for prefix on the random keys
     sleep(1)
     if flag:
-      bench = subprocess.Popen([kvolve_loc +"redis-benchmark",  "-n", num_ops, "-P", "5", "-r", keyspace, cmd, "__rand_int__", "val"])
+      bench = subprocess.Popen([kvolve_loc +"redis-benchmark",  "-n", num_ops, "-P", pipeline, "-r", keyspace, cmd, "__rand_int__", "val"])
     else:
-      bench = subprocess.Popen([kvolve_loc +"redis-benchmark",  "-n", num_ops, "-P", "5", "-r", keyspace, cmd, "__rand_int__"])
+      bench = subprocess.Popen([kvolve_loc +"redis-benchmark",  "-n", num_ops, "-P", pipeline, "-r", keyspace, cmd, "__rand_int__"])
     bench.wait()
     redis_server.terminate() 
     sleep(1)
@@ -73,9 +74,9 @@ def kvolve_with_ns_change(cmd, s, flag):
     r.client_setname(upd_loc) # update from k@1->key@2 (namespace change)
     sleep(1)
     if flag:
-      bench = subprocess.Popen([kvolve_loc +"redis-benchmark", "-n", num_ops, "-P", "5", "-r", keyspace, cmd, "__rand_int__", "val"])
+      bench = subprocess.Popen([kvolve_loc +"redis-benchmark", "-n", num_ops, "-P", pipeline, "-r", keyspace, cmd, "__rand_int__", "val"])
     else:
-      bench = subprocess.Popen([kvolve_loc +"redis-benchmark", "-n", num_ops, "-P", "5", "-r", keyspace, cmd, "__rand_int__"])
+      bench = subprocess.Popen([kvolve_loc +"redis-benchmark", "-n", num_ops, "-P", pipeline, "-r", keyspace, cmd, "__rand_int__"])
     bench.wait()
     redis_server.terminate() 
     sleep(1)
