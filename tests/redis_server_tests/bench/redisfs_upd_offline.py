@@ -21,7 +21,7 @@ upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/redisfs_updcode/re
 trials = 11
 migrating = False
 runtime = 140
-beforeupd = 80
+beforeupd = 70
 
 def popen(args):
   print "$ %s" % args

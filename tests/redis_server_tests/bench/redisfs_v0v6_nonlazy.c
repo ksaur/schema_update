@@ -34,7 +34,7 @@ void upd_fun_add_compression(redisContext * c, char * key, void * value, size_t 
                   Z_BEST_SPEED);
     if (ret != Z_OK)
     {
-        fprintf(stderr, "compress2() failed - aborting write for %s\n", key);
+        fprintf(stderr, "UPDATER: compress2() failed - aborting write for %s\n", key);
         free(compressed);
     }
 
@@ -43,7 +43,9 @@ void upd_fun_add_compression(redisContext * c, char * key, void * value, size_t 
      * redisfs.7/src/redisfs.c:909 for orig...they set 'size' not 'compressed_len'.)
      * Grab the prefix by substracting from the split point.(ex: "skx:INODE:inode")*/
     snprintf(inode_info, (split-key)+1, "%s\0", key);
-    sprintf(callstr, "set %s:MTIME %d", inode_info, (int)time(NULL));
+    sprintf(callstr, "%s:MTIME", inode_info);
+    reply = redisCommand(c,"set %s %d", callstr, (int)time(NULL));
+    free(reply);
     /* Set the new value and length (don't touch key),
      * to be stored in redis by kvolve */
     reply = redisCommand(c,"set %s %s", key, compressed, compressed_len);
@@ -58,7 +60,7 @@ int main(int argc, char* argv[]){
    int i;
 
    redisContext * c = redisConnect("127.0.0.1", 6379);
-   reply = redisCommand(c,"keys %s", "*INODE*DATA");
+   reply = redisCommand(c,"keys %s", "*DATA*");
    for (i =0; i < reply->elements; i++){
      redisReply * curr = reply->element[i];
      reply2 = redisCommand(c,"get %s", curr->str);
