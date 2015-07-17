@@ -8,9 +8,9 @@ kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
 upd_loc = "update/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/prev_ns.so"
 trials = 11 
 num_clients = "50" # default
-num_ops = "10000000"
+num_ops = "50000000"
 keyspace = "1000000"
-pipeline = 16
+pipeline = "16"
 
 def popen(args):
   print "$ %s" % args
