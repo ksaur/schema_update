@@ -48,7 +48,7 @@ void upd_fun_add_compression(redisContext * c, char * key, void * value, size_t 
     free(reply);
     /* Set the new value and length (don't touch key),
      * to be stored in redis by kvolve */
-    reply = redisCommand(c,"set %s %s", key, compressed, compressed_len);
+    reply = redisCommand(c,"set %s %b", key, compressed, compressed_len);
     free(reply);
 }
 
