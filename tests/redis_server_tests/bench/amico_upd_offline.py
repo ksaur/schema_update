@@ -20,8 +20,8 @@ amico_20b_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/benc
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/amico_updcode/amico_v12v20.so"
 trials = 11
 migrating = False
-runtime = 18#00 # 30 min
-beforeupd = 9#00 # 15 min
+runtime = 1800 # 30 min
+beforeupd = 900 # 15 min
 
 def popen(args):
   print "$ %s" % args
