@@ -12,7 +12,7 @@ from time import sleep
 
 
 
-kvolve_loc = "/fs/macdonald/ksaur/schema_update/redis-2.8.17/src/"
+redis_loc = "/fs/macdonald/ksaur/redis-2.8.17/src/"
 amico_12_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12.rb"
 amico_12b_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_12_b.rb"
 amico_20_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/bench/amico_20.rb"
@@ -20,8 +20,8 @@ amico_20b_loc = "/fs/macdonald/ksaur/schema_update/tests/redis_server_tests/benc
 upd_code = "/fs/macdonald/ksaur/schema_update/target_programs/amico_updcode/amico_v12v20.so"
 trials = 11
 migrating = False
-runtime = 1800 # 30 min
-beforeupd = 900 # 15 min
+runtime = 18#00 # 30 min
+beforeupd = 9#00 # 15 min
 
 def popen(args):
   print "$ %s" % args
@@ -50,7 +50,7 @@ def kvoff():
   f2 = open('amico_upd_count_offline.txt', 'a')
   for i in range (trials):
     print "OFFLINE " + str(i)
-    redis_server = popen(kvolve_loc +"redis-server " + kvolve_loc +"../redis.conf")
+    redis_server = popen(redis_loc +"redis-server " + redis_loc +"../redis.conf")
     sleep(1)
     r = redis.StrictRedis()
     amico12 = subprocess.Popen(["ruby", amico_12_loc])
@@ -62,19 +62,14 @@ def kvoff():
     print "KILLING v5"
     amico12.terminate()
     amico12b.terminate()
-    r.client_setname("amico:followers@12,amico:following@12,amico:blocked@12,amico:reciprocated@12,amico:pending@12")
-    r.client_setname("update/"+upd_code)
     print "Migrating schema offline starting"
     print time.time()
     migrating = True
     allkeys = r.keys('*')
     print "UPDATING, have " + str(len(allkeys)) + " Keys to update" 
     f2.write(str(len(allkeys)) + "\n")
-    for k in allkeys:
-      r.zcard(k)
-    r.client_setname("clear")
-    # added if(strncmp(vers_str,"clear",5)==0) {vers_list = NULL; return;} kvolve_internal.c:115
-    # which will return kvolve to normal redis mode
+    for s in allkeys:
+      r.rename(s, s[0:s.rfind(':')] +":default"+s[s.rfind(':'):])
     migrating = False
     print time.time()
     print "RESUMING at v7"
