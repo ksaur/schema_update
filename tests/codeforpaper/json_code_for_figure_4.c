@@ -32,7 +32,9 @@ void test_fun_updval(char ** key, void ** value,
 int main(void){
 
   size_t s = strlen(v);
+  printf("%d\n", (int)s);
   test_fun_updval(&k, (void**)&v, &s); 
-  printf("%s", v);
+  printf("%s\n", v);
+  printf("%d\n", (int)s);
   return 0;
 }
