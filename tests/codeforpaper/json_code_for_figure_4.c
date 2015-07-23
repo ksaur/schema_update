@@ -11,11 +11,8 @@ char * v = "{ \"_id\": \"4bd8ae97c47016442af4a580\", \"customerid\": 99999, \"na
 void test_fun_updval(char ** key, void ** value, 
                                 size_t * val_len){
   json_t *root, *arr, *ele, *price;
-  int i;
-  double pval;
-  json_error_t error;
-  char * jstr = (char*)*value;
-  root = json_loads(jstr, 0, &error);
+  int i; double pval;  json_error_t error;
+  root = json_loads((char*)*value, 0, &error);
   arr = json_object_get(json_object_get(root, "order"), "orderItems");
   for(i = 0; i < json_array_size(arr); i++){
      ele = json_array_get(arr, i);
