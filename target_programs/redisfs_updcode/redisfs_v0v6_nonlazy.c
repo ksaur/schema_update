@@ -37,13 +37,13 @@ void upd_fun_add_compression(char ** key, void ** value, size_t * val_len){
         free(compressed);
     }
 
-    /* Now set the modification time.  We don't need to set size, since the
-     * size of the decompressed data didn't change. (See
-     * redisfs.7/src/redisfs.c:909 for orig...they set 'size' not 'compressed_len'.)
-     * Grab the prefix by substracting from the split point.(ex: "skx:INODE:inode")*/
-    snprintf(inode_info, (split-*key)+1, "%s\0", *key);
-    sprintf(callstr, "set %s:MTIME %d", inode_info, (int)time(NULL));
-    kvolve_upd_redis_call(callstr);
+    ///* Now set the modification time.  We don't need to set size, since the
+    // * size of the decompressed data didn't change. (See
+    // * redisfs.7/src/redisfs.c:909 for orig...they set 'size' not 'compressed_len'.)
+    // * Grab the prefix by substracting from the split point.(ex: "skx:INODE:inode")*/
+    //snprintf(inode_info, (split-*key)+1, "%s\0", *key);
+    //sprintf(callstr, "set %s:MTIME %d", inode_info, (int)time(NULL));
+    //kvolve_upd_redis_call(callstr);
 
     /* Set the new value and length (don't touch key),
      * to be stored in redis by kvolve */

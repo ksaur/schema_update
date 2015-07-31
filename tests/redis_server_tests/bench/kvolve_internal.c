@@ -402,15 +402,6 @@ void kvolve_namespace_update(redisClient * c, struct version_hash * v) {
     c_fake->cmd->proc(c_fake);
     DEBUG_PRINT(("Updated key (namespace) from %s to %s\n", 
                  old, (char*)c_fake->argv[2]->ptr));
-    if(curr == 0)
-       curr = server.unixtime-server.stat_starttime;
-    if (curr == (server.unixtime-server.stat_starttime))
-       count++;
-    else if (curr < (server.unixtime-server.stat_starttime)){
-       fprintf(test,"%d\n",count);
-       count = 0;
-       curr++;
-    }
 
     zfree(c_fake->argv[1]);
     zfree(c_fake->argv);
@@ -493,6 +484,15 @@ void kvolve_check_update_kv_pair(redisClient * c, struct version_hash * v, int c
             key_vers = i;
             break;
         }
+    }
+    if(curr == 0)
+       curr = server.unixtime-server.stat_starttime;
+    if (curr == (server.unixtime-server.stat_starttime))
+       count++;
+    else if (curr < (server.unixtime-server.stat_starttime)){
+       fprintf(test,"%d\n",count);
+       count = 0;
+       curr++;
     }
     
     /* check if we need to rename the key based on a new namespace */
